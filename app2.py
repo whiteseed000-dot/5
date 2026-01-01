@@ -1,103 +1,52 @@
-import streamlit as st
-import yfinance as yf
-import pandas as pd
-import numpy as np
-from scipy import stats
-import plotly.graph_objects as go
-from datetime import datetime, timedelta
+# --- 5. 新增：所有追蹤標的位階概覽 ---
+st.divider()
+st.header("📋 追蹤清單位階概覽")
 
-# --- 網站設定 ---
-st.set_page_config(page_title="股市樂活五線譜", layout="wide")
-
-# --- 1. 初始化追蹤清單 (Session State) ---
-if 'watchlist' not in st.session_state:
-    # 預設一些初始股票
-    st.session_state.watchlist = ["2330.TW", "0050.TW", "AAPL", "NVDA"]
-
-# --- 核心演算法 ---
-@st.cache_data(ttl=3600)
-def get_lohas_data(ticker, years):
-    try:
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=int(years * 365))
-        df = yf.download(ticker, start=start_date, end=end_date, progress=False)
-        if df.empty: return None
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-        df = df[['Close']].reset_index()
-        df.columns = ['Date', 'Close']
-        df['x'] = np.arange(len(df))
-        slope, intercept, _, _, _ = stats.linregress(df['x'], df['Close'])
-        df['TL'] = slope * df['x'] + intercept
-        std_dev = np.std(df['Close'] - df['TL'])
-        df['TL+2SD'] = df['TL'] + (2 * std_dev)
-        df['TL+1SD'] = df['TL'] + (1 * std_dev)
-        df['TL-1SD'] = df['TL'] - (1 * std_dev)
-        df['TL-2SD'] = df['TL'] - (2 * std_dev)
-        return df, std_dev, slope
-    except:
-        return None
-
-# --- 2. 側邊欄：追蹤清單功能 ---
-with st.sidebar:
-    st.header("📋 追蹤清單")
+# 建立一個按鈕來觸發掃描 (避免每次重新整理都掃描，節省流量)
+if st.button("🔄 掃描所有追蹤標的位階"):
+    summary_data = []
+    with st.spinner('正在分析清單中的股票...'):
+        for t in st.session_state.watchlist:
+            # 獲取各標的數據 (同樣使用 3.5 年回測)
+            res = get_lohas_data(t, years_input)
+            if res:
+                temp_df, _, _ = res
+                price = float(temp_df['Close'].iloc[-1])
+                tl = temp_df['TL'].iloc[-1]
+                p2sd = temp_df['TL+2SD'].iloc[-1]
+                m2sd = temp_df['TL-2SD'].iloc[-1]
+                
+                # 判斷位階
+                if price > p2sd:
+                    pos = "⚠️ 過熱"
+                elif price > tl:
+                    pos = "📊 偏高"
+                elif price < m2sd:
+                    pos = "💎 特價"
+                else:
+                    pos = "✅ 便宜"
+                
+                dist = ((price - tl) / tl) * 100
+                summary_data.append({
+                    "股票代號": t,
+                    "目前價格": f"{price:.2f}",
+                    "中心線距離": f"{dist:+.2f}%",
+                    "目前位階": pos
+                })
     
-    # 讓使用者從清單中點選
-    # index=0 表示預設選中第一個
-    selected_ticker = st.selectbox(
-        "快速切換股票", 
-        options=st.session_state.watchlist,
-        index=0
-    )
-    
-    st.divider()
-    
-    st.header("⚙️ 參數設定")
-    # 輸入框的預設值會跟隨選取的清單內容
-    ticker_input = st.text_input("手動輸入代號", value=selected_ticker).upper()
-    years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
-
-# --- 3. 主畫面：加入/移除按鈕 ---
-col_head, col_btn = st.columns([4, 1])
-with col_head:
-    st.title(f"📈 樂活五線譜: {ticker_input}")
-
-with col_btn:
-    # 判斷是否已在清單內
-    if ticker_input not in st.session_state.watchlist:
-        if st.button("➕ 加入清單"):
-            st.session_state.watchlist.append(ticker_input)
-            st.rerun()
+    if summary_data:
+        summary_df = pd.DataFrame(summary_data)
+        # 使用顏色標註功能
+        def color_status(val):
+            color = 'white'
+            if val == "💎 特價": color = '#90ee90' # 淺綠
+            elif val == "⚠️ 過熱": color = '#ffcccb' # 淺紅
+            return f'background-color: {color}'
+        
+        st.table(summary_df.style.applymap(color_status, subset=['目前位階']))
     else:
-        if st.button("➖ 移除清單"):
-            st.session_state.watchlist.remove(ticker_input)
-            st.rerun()
+        st.info("請點擊按鈕開始掃描清單位階。")
 
-# --- 數據抓取與繪圖 (同原邏輯) ---
-if ticker_input:
-    result = get_lohas_data(ticker_input, years_input)
-    if result:
-        df, std_dev, slope = result
-        current_price = df['Close'].iloc[-1]
-        
-        # 指標顯示
-        last_tl = df['TL'].iloc[-1]
-        dist_pct = ((current_price - last_tl) / last_tl) * 100
-        
-        m1, m2, m3 = st.columns(3)
-        m1.metric("最新股價", f"{current_price:.2f}")
-        m2.metric("中心線 (TL)", f"{last_tl:.2f}", f"{dist_pct:+.2f}%")
-        m3.metric("斜率", f"{slope:.4f}")
-
-        # Plotly 圖表
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='#2D5E3F', width=2)))
-        for sd, color, name in zip(['TL+2SD', 'TL+1SD', 'TL', 'TL-1SD', 'TL-2SD'], 
-                                   ['red', 'orange', 'gray', 'lightgreen', 'green'],
-                                   ['+2SD 昂貴', '+1SD', 'TL 中心線', '-1SD', '-2SD 便宜']):
-            fig.add_trace(go.Scatter(x=df['Date'], y=df[sd], name=name, line=dict(color=color, dash='dash' if 'SD' in sd else 'solid')))
-        
-        fig.update_layout(height=600, template="plotly_white", hovermode="x unified")
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.error("找不到該股票數據，請檢查代號（例如台股需加 .TW）。")
+# --- 6. 顯示原始詳細數據 (保留原功能) ---
+with st.expander("查看當前標的詳細數據"):
+    st.dataframe(df.tail(10).sort_values('Date', ascending=False))
