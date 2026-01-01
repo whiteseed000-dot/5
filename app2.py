@@ -46,7 +46,7 @@ if 'watchlist' not in st.session_state:
 
 # --- (其餘數據計算與圖表邏輯保持不變) ---
 # ... (您的 get_lohas_data 函式與 UI 程式碼) ...
-
+col_title, col_btn = st.columns([4, 1])
 # 修改按鈕觸發部分：
 with col_btn:
     if ticker_input not in st.session_state.watchlist:
