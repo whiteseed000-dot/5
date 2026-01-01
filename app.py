@@ -118,7 +118,7 @@ if ticker_input:
 
         
         # 新增：目前股價的橫向指示線
-        fig.add_hline(y=current_price, line_dash="dot", line_color="white", 
+        fig.add_hline(y=current_price, line_dash="dot", line_color="cyan", 
                       annotation_text=f"目前現價: {current_price:.2f}", 
                       annotation_position="bottom right")
 
@@ -145,6 +145,7 @@ if ticker_input:
 
     else:
         st.warning("找不到股票數據，請確認代號是否正確 (例如台股需加 .TW)。")
+
 
 
 
