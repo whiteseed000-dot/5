@@ -74,25 +74,32 @@ with col_btn:
                 st.rerun()
 
 # --- 4. 數據抓取 (強化 2330.TW 相容性) ---
-@st.cache_data(ttl=600)
+# --- 2. 核心演算法 (五線譜計算) ---
+@st.cache_data(ttl=3600)
 def get_lohas_data(ticker, years):
     try:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=int(years * 365))
-        # 關鍵參數：multi_level_download=False 解決 2330 失敗問題
-        df = yf.download(ticker, start=start_date, end=end_date, progress=False, multi_level_download=False)
-        
+        df = yf.download(ticker, start=start_date, end=end_date, progress=False)
         if df.empty: return None
-        if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
         
         df = df[['Close']].reset_index()
         df.columns = ['Date', 'Close']
         df['x'] = np.arange(len(df))
+        
+        # 線性回歸
         slope, intercept, _, _, _ = stats.linregress(df['x'], df['Close'])
         df['TL'] = slope * df['x'] + intercept
+        
+        # 標準差通道
         std_dev = np.std(df['Close'] - df['TL'])
         df['TL+2SD'] = df['TL'] + (2 * std_dev)
+        df['TL+1SD'] = df['TL'] + (1 * std_dev)
+        df['TL-1SD'] = df['TL'] - (1 * std_dev)
         df['TL-2SD'] = df['TL'] - (2 * std_dev)
+        
         return df, std_dev, slope
     except:
         return None
