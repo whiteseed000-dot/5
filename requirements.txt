@@ -5,4 +5,3 @@ numpy
 scipy
 plotly
 gspread
-streamlit-gsheets-connection
