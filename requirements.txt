@@ -4,6 +4,3 @@ pandas
 numpy
 scipy
 plotly
-json
-pickle
-os
