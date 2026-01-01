@@ -8,57 +8,70 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- 1. Google Sheets 連線邏輯 ---
+# --- 1. Google Sheets 邏輯 (加入錯誤攔截) ---
 def get_gsheet_client():
-    # 從 Streamlit Secrets 讀取憑證
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    # 假設您在 Secrets 中設定了名為 "gcp_service_account" 的區塊
     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
     return gspread.authorize(creds)
 
 def load_watchlist_from_google():
+    default_list = ["2330.TW", "0050.TW", "AAPL", "NVDA"]
     try:
         client = get_gsheet_client()
-        # 開啟試算表 (請替換成您的試算表名稱或 URL)
         sheet = client.open("MyWatchlist").sheet1
-        # 讀取 A 欄所有資料並去掉標題
         records = sheet.get_all_values()
         if len(records) > 1:
             return [row[0] for row in records[1:] if row[0]]
     except Exception as e:
-        st.error(f"Google 讀取失敗: {e}")
-    return ["2330.TW", "0050.TW"]
+        st.warning(f"目前無法連線至 Google Sheets (原因: {e})，暫時使用預設清單。")
+    return default_list
 
 def save_watchlist_to_google(watchlist):
     try:
         client = get_gsheet_client()
         sheet = client.open("MyWatchlist").sheet1
-        # 清空並重新寫入
         sheet.clear()
         data = [["ticker"]] + [[t] for t in watchlist]
         sheet.update("A1", data)
+        st.success("成功儲存至 Google 雲端！")
     except Exception as e:
-        st.error(f"Google 儲存失敗: {e}")
+        st.error(f"儲存失敗: {e}")
 
-# --- 2. 初始化 Session State ---
+# --- 2. 初始化 ---
+st.set_page_config(page_title="股市五線譜 Pro", layout="wide")
+
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist_from_google()
 
-# --- (其餘數據計算與圖表邏輯保持不變) ---
-# ... (您的 get_lohas_data 函式與 UI 程式碼) ...
+# --- 3. 介面佈局 (先定義變數避免 NameError) ---
+with st.sidebar:
+    st.header("📋 追蹤清單")
+    quick_pick = st.selectbox("我的收藏", options=["-- 手動輸入 --"] + st.session_state.watchlist)
+    st.divider()
+    st.header("⚙️ 搜尋設定")
+    default_val = quick_pick if quick_pick != "-- 手動輸入 --" else "2330.TW"
+    ticker_input = st.text_input("股票代號", value=default_val).upper().strip()
+    years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
+
+# 佈局主標題與按鈕
 col_title, col_btn = st.columns([4, 1])
-# 修改按鈕觸發部分：
+
+with col_title:
+    st.title(f"📈 樂活五線譜: {ticker_input}")
+
 with col_btn:
+    # 這裡現在絕對不會報 NameError 了
     if ticker_input not in st.session_state.watchlist:
         if st.button("➕ 加入追蹤"):
             st.session_state.watchlist.append(ticker_input)
-            save_watchlist_to_google(st.session_state.watchlist) # 改成存到 Google
+            save_watchlist_to_google(st.session_state.watchlist)
             st.rerun()
     else:
         if st.button("➖ 移除追蹤"):
-            st.session_state.watchlist.remove(ticker_input)
-            save_watchlist_to_google(st.session_state.watchlist) # 改成存到 Google
-            st.rerun()
+            if len(st.session_state.watchlist) > 1:
+                st.session_state.watchlist.remove(ticker_input)
+                save_watchlist_to_google(st.session_state.watchlist)
+                st.rerun()
 
 # --- 2. 核心演算法 (五線譜計算) ---
 @st.cache_data(ttl=3600)
