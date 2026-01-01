@@ -44,14 +44,6 @@ if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist_from_google()
 
 # --- 3. 介面佈局 (先定義變數避免 NameError) ---
-with st.sidebar:
-    st.header("📋 追蹤清單")
-    quick_pick = st.selectbox("我的收藏", options=["-- 手動輸入 --"] + st.session_state.watchlist)
-    st.divider()
-    st.header("⚙️ 搜尋設定")
-    default_val = quick_pick if quick_pick != "-- 手動輸入 --" else "2330.TW"
-    ticker_input = st.text_input("股票代號", value=default_val).upper().strip()
-    years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
 
 # 佈局主標題與按鈕
 col_title, col_btn = st.columns([4, 1])
