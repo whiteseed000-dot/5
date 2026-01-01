@@ -132,7 +132,7 @@ if ticker_input:
 
         # 繪製圖表
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='#2D5E3F', width=2)))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='#00DDAA', width=2)))
         
         lines = [('TL+2SD', 'red', '昂貴'), ('TL+1SD', 'orange', '+1SD'), 
                  ('TL', 'gray', '中心線'), ('TL-1SD', 'lightgreen', '-1SD'), 
@@ -146,7 +146,7 @@ if ticker_input:
 
 
 #
-        fig.add_hline(y=current_price, line_dash="dot", line_color="cyan", 
+        fig.add_hline(y=current_price, line_dash="dot", line_color="#00DDAA", 
                       annotation_text=f"目前現價: {current_price:.2f}", 
                       annotation_position="bottom right")
 
