@@ -27,38 +27,34 @@ def save_watchlist(watchlist):
     except Exception as e:
         st.error(f"存檔失敗: {e}")
 
-# --- 2. 數據下載 (強化穩定性) ---
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=3600)
 def get_lohas_data(ticker, years):
     try:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=int(years * 365))
-        # 修正 2330.TW 讀取失敗的關鍵：multi_level_download=False
-        df = yf.download(ticker, start=start_date, end=end_date, progress=False, multi_level_download=False)
-        
-        if df is None or df.empty:
-            return None
-        
-        # 確保欄位名稱正確
+        df = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-            
+        
         df = df[['Close']].reset_index()
         df.columns = ['Date', 'Close']
         df['x'] = np.arange(len(df))
         
-        # 線性回歸與五線譜計算
+        # 線性回歸
         slope, intercept, _, _, _ = stats.linregress(df['x'], df['Close'])
         df['TL'] = slope * df['x'] + intercept
+        
+        # 標準差通道
         std_dev = np.std(df['Close'] - df['TL'])
         df['TL+2SD'] = df['TL'] + (2 * std_dev)
         df['TL+1SD'] = df['TL'] + (1 * std_dev)
         df['TL-1SD'] = df['TL'] - (1 * std_dev)
         df['TL-2SD'] = df['TL'] - (2 * std_dev)
+        
         return df, std_dev, slope
     except:
         return None
-
 # --- 3. 頁面配置與初始化 ---
 st.set_page_config(page_title="股市樂活五線譜 Pro", layout="wide")
 
