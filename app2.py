@@ -5,42 +5,60 @@ import numpy as np
 from scipy import stats
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-import json
-import os
+import gspread
+from google.oauth2.service_account import Credentials
 
-import streamlit as st
-from streamlit_gsheets import GSheetsConnection  # 需安裝 streamlit-gsheets-connection
-import pandas as pd
+# --- 1. Google Sheets 連線邏輯 ---
+def get_gsheet_client():
+    # 從 Streamlit Secrets 讀取憑證
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    # 假設您在 Secrets 中設定了名為 "gcp_service_account" 的區塊
+    creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+    return gspread.authorize(creds)
 
-# --- 1. 改用 Google Sheets 儲存邏輯 ---
-# 注意：需在 .streamlit/secrets.toml 設定 spreadsheet 連結
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-def load_watchlist():
-    """從 Google Sheets 讀取追蹤清單"""
+def load_watchlist_from_google():
     try:
-        # 讀取現有試算表資料
-        df = conn.read(ttl=0) # ttl=0 確保每次都是即時讀取
-        if not df.empty and 'ticker' in df.columns:
-            return df['ticker'].dropna().tolist()
+        client = get_gsheet_client()
+        # 開啟試算表 (請替換成您的試算表名稱或 URL)
+        sheet = client.open("MyWatchlist").sheet1
+        # 讀取 A 欄所有資料並去掉標題
+        records = sheet.get_all_values()
+        if len(records) > 1:
+            return [row[0] for row in records[1:] if row[0]]
     except Exception as e:
-        st.error(f"讀取雲端清單失敗: {e}")
-    return ["2330.TW", "0050.TW", "AAPL", "NVDA"] # 失敗時的備援
+        st.error(f"Google 讀取失敗: {e}")
+    return ["2330.TW", "0050.TW"]
 
-def save_watchlist(watchlist):
-    """將目前的追蹤清單寫回 Google Sheets"""
+def save_watchlist_to_google(watchlist):
     try:
-        # 將清單轉回 DataFrame
-        new_df = pd.DataFrame({"ticker": watchlist})
-        # 更新整個試算表內容
-        conn.update(data=new_df)
-        st.success("雲端同步成功！")
+        client = get_gsheet_client()
+        sheet = client.open("MyWatchlist").sheet1
+        # 清空並重新寫入
+        sheet.clear()
+        data = [["ticker"]] + [[t] for t in watchlist]
+        sheet.update("A1", data)
     except Exception as e:
-        st.error(f"同步至雲端失敗: {e}")
+        st.error(f"Google 儲存失敗: {e}")
 
-# --- 更新後的 session_state 初始化 ---
+# --- 2. 初始化 Session State ---
 if 'watchlist' not in st.session_state:
-    st.session_state.watchlist = load_watchlist()
+    st.session_state.watchlist = load_watchlist_from_google()
+
+# --- (其餘數據計算與圖表邏輯保持不變) ---
+# ... (您的 get_lohas_data 函式與 UI 程式碼) ...
+
+# 修改按鈕觸發部分：
+with col_btn:
+    if ticker_input not in st.session_state.watchlist:
+        if st.button("➕ 加入追蹤"):
+            st.session_state.watchlist.append(ticker_input)
+            save_watchlist_to_google(st.session_state.watchlist) # 改成存到 Google
+            st.rerun()
+    else:
+        if st.button("➖ 移除追蹤"):
+            st.session_state.watchlist.remove(ticker_input)
+            save_watchlist_to_google(st.session_state.watchlist) # 改成存到 Google
+            st.rerun()
 
 # --- 2. 核心演算法 (五線譜計算) ---
 @st.cache_data(ttl=3600)
