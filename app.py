@@ -102,7 +102,7 @@ if ticker_input:
         fig = go.Figure()
 
         # 1. 畫股價
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], mode='lines', name='收盤價', line=dict(color='white', width=2)))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], mode='lines', name='收盤價', line=dict(color='#2D5E3F', width=2)))
 
         # 2. 畫五線譜
         # +2SD
@@ -145,6 +145,7 @@ if ticker_input:
 
     else:
         st.warning("找不到股票數據，請確認代號是否正確 (例如台股需加 .TW)。")
+
 
 
 
