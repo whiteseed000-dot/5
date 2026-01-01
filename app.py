@@ -79,7 +79,7 @@ if ticker_input:
         # 顯示關鍵指標 (KPI Card)
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("最新股價", f"{current_price:.2f}", f"{current_date}")
-        col2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", delta_color="off")
+        col2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_from_tl:+.2f}%")
         
         # 狀態判斷與顏色
         if current_price > last_p2sd:
@@ -116,6 +116,17 @@ if ticker_input:
         # -2SD
         fig.add_trace(go.Scatter(x=df['Date'], y=df['TL-2SD'], mode='lines', name='-2 SD (便宜)', line=dict(color='green', width=1, dash='dash')))
 
+        
+        # 新增：目前股價的橫向指示線
+        fig.add_hline(y=current_price, line_dash="dot", line_color="white", 
+                      annotation_text=f"目前現價: {current_price:.2f}", 
+                      annotation_position="bottom right")
+
+        fig.update_layout(height=600, template="plotly_white", hovermode="x unified",
+                          xaxis_title="日期", yaxis_title="價格")
+
+        st.plotly_chart(fig, use_container_width=True)
+        
         # 設定圖表樣式
         fig.update_layout(
             title=f"{ticker_input} 樂活五線譜 ({years_input}年)",
@@ -134,4 +145,5 @@ if ticker_input:
 
     else:
         st.warning("找不到股票數據，請確認代號是否正確 (例如台股需加 .TW)。")
+
 
