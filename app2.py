@@ -8,23 +8,39 @@ from datetime import datetime, timedelta
 import json
 import os
 
-# --- 1. 自動儲存與讀取邏輯 ---
-DB_FILE = "watchlist_db.json"
+import streamlit as st
+from streamlit_gsheets import GSheetsConnection  # 需安裝 streamlit-gsheets-connection
+import pandas as pd
+
+# --- 1. 改用 Google Sheets 儲存邏輯 ---
+# 注意：需在 .streamlit/secrets.toml 設定 spreadsheet 連結
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_watchlist():
-    """從檔案讀取追蹤清單，若檔案不存在則提供預設值"""
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r") as f:
-                return json.load(f)
-        except:
-            return ["2330.TW", "0050.TW", "AAPL", "NVDA"]
-    return ["2330.TW", "0050.TW", "AAPL", "NVDA"]
+    """從 Google Sheets 讀取追蹤清單"""
+    try:
+        # 讀取現有試算表資料
+        df = conn.read(ttl=0) # ttl=0 確保每次都是即時讀取
+        if not df.empty and 'ticker' in df.columns:
+            return df['ticker'].dropna().tolist()
+    except Exception as e:
+        st.error(f"讀取雲端清單失敗: {e}")
+    return ["2330.TW", "0050.TW", "AAPL", "NVDA"] # 失敗時的備援
 
 def save_watchlist(watchlist):
-    """將目前的追蹤清單存入檔案"""
-    with open(DB_FILE, "w") as f:
-        json.dump(watchlist, f)
+    """將目前的追蹤清單寫回 Google Sheets"""
+    try:
+        # 將清單轉回 DataFrame
+        new_df = pd.DataFrame({"ticker": watchlist})
+        # 更新整個試算表內容
+        conn.update(data=new_df)
+        st.success("雲端同步成功！")
+    except Exception as e:
+        st.error(f"同步至雲端失敗: {e}")
+
+# --- 更新後的 session_state 初始化 ---
+if 'watchlist' not in st.session_state:
+    st.session_state.watchlist = load_watchlist()
 
 # --- 2. 核心演算法 (五線譜計算) ---
 @st.cache_data(ttl=3600)
