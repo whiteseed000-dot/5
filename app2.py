@@ -143,8 +143,18 @@ if ticker_input:
                                      line=dict(color=color, dash='dash' if 'SD' in col else 'solid')))
 
         fig.update_layout(height=500, template="plotly_white", hovermode="x unified", margin=dict(l=10, r=10, t=30, b=10))
-        st.plotly_chart(fig, use_container_width=True)
 
+
+#
+        fig.add_hline(y=current_price, line_dash="dot", line_color="cyan", 
+                      annotation_text=f"目前現價: {current_price:.2f}", 
+                      annotation_position="bottom right")
+
+        fig.update_layout(height=600, template="plotly_white", hovermode="x unified",
+                          xaxis_title="日期", yaxis_title="價格")
+
+        st.plotly_chart(fig, use_container_width=True)
+ #       
         # --- 6. 掃描概覽表 ---
         st.divider()
         st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
