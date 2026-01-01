@@ -75,7 +75,7 @@ if ticker_input:
         last_tl = df['TL'].iloc[-1]
         last_p2sd = df['TL+2SD'].iloc[-1]
         last_m2sd = df['TL-2SD'].iloc[-1]
-        
+        dist_from_tl = ((current_price - last_tl) / last_tl) * 100
         # 顯示關鍵指標 (KPI Card)
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("最新股價", f"{current_price:.2f}", f"{current_date}")
@@ -145,5 +145,6 @@ if ticker_input:
 
     else:
         st.warning("找不到股票數據，請確認代號是否正確 (例如台股需加 .TW)。")
+
 
 
