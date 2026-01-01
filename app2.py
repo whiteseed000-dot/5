@@ -93,10 +93,10 @@ if ticker_input:
                                      line=dict(color=color, width=1, dash='dash' if 'SD' in line else 'solid')))
 
         # 繪製股價
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='black', width=2)))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='white', width=2)))
 
         # 新增：目前股價的橫向指示線
-        fig.add_hline(y=current_price, line_dash="dot", line_color="black", 
+        fig.add_hline(y=current_price, line_dash="dot", line_color="white", 
                       annotation_text=f"目前現價: {current_price:.2f}", 
                       annotation_position="bottom right")
 
