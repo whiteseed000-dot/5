@@ -207,6 +207,36 @@ if result:
     # --- 7. 切換按鈕 ---
     st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
+   
+    with st.container():
+    # 計算隱藏指標
+    df = get_technical_indicators(df) 
+    c_rsi = df['RSI'].iloc[-1]
+    c_macd = df['MACD'].iloc[-1]
+    c_sig = df['Signal'].iloc[-1]
+    c_bias = df['BIAS'].iloc[-1]
+    
+    # 建立四個小指標列
+    i1, i2, i3, i4 = st.columns(4)
+    
+    # 1. RSI 判斷
+    rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
+    i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
+    
+    # 2. MACD 判斷
+    macd_delta = c_macd - c_sig
+    macd_status = "📈 金叉" if macd_delta > 0 else "📉 死叉"
+    i2.metric("MACD 趨勢", f"{c_macd:.2f}", macd_status, delta_color="normal")
+    
+    # 3. BIAS 乖離率 (判斷與月線距離)
+    bias_status = "⚠️ 乖離過大" if abs(c_bias) > 5 else "✅ 穩定"
+    i3.metric("月線乖離 (BIAS)", f"{c_bias:+.2f}%", bias_status, delta_color="inverse")
+    
+    # 4. 季線位置 (MA60)
+    ma60_last = df['MA60'].iloc[-1]
+    above_ma60 = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
+    i4.metric("長線支撐 (MA60)", f"{ma60_last:.1f}", above_ma60, delta_color="normal")
+    
     st.write("")
 
     # --- 8. 圖表核心 (修正文字重複問題) ---
