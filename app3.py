@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- 1. Google Sheets 邏輯 (保持不變) ---
+# --- 1. Google Sheets 邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
@@ -23,7 +23,7 @@ def load_watchlist_from_google():
         if len(records) > 1:
             return [row[0] for row in records[1:] if row[0]]
     except Exception as e:
-        st.warning(f"無法連線至 Google Sheets，暫時使用預設清單。")
+        st.warning(f"目前暫時使用預設清單。")
     return default_list
 
 def save_watchlist_to_google(watchlist):
@@ -39,6 +39,7 @@ def save_watchlist_to_google(watchlist):
 
 # --- 2. 初始化 ---
 st.set_page_config(page_title="股市五線譜 Pro", layout="wide")
+
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist_from_google()
 
@@ -53,6 +54,7 @@ with st.sidebar:
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
 
 col_title, col_btn = st.columns([4, 1])
+
 with col_title:
     st.title(f"📈 樂活五線譜: {ticker_input}")
 
@@ -97,7 +99,7 @@ def get_lohas_data(ticker, years):
     except:
         return None
 
-# --- 5. 繪圖顯示 (完全依照照片調整) ---
+# --- 5. 數據繪圖 (修正格式與顯示邏輯) ---
 if ticker_input:
     result = get_lohas_data(ticker_input, years_input)
     if result:
@@ -106,77 +108,72 @@ if ticker_input:
         
         fig = go.Figure()
         
-        # 每日收盤價 (實線)
+        # 每日收盤價線
         fig.add_trace(go.Scatter(
             x=df['Date'], y=df['Close'], 
             name='每日收盤價', 
             line=dict(color='#2E7D32', width=1.5),
-            hovertemplate='%{y:.1f}'
+            hovertemplate='每日收盤價: %{y:.1f}<extra></extra>' # 顯示小數點第一位
         ))
         
-        # 配置各條線 (名稱、顏色、標籤文字)
+        # 配置五線譜 (對應照片中的文字與顏色)
         lines_config = [
             ('TL+2SD', '#E53935', '+2SD (天價)'), 
             ('TL+1SD', '#FB8C00', '+1SD (偏高)'), 
-            ('TL', '#BDBDBD', '趨勢線 (合理)'), 
+            ('TL', '#FFFFFF', '趨勢線 (合理)'), 
             ('TL-1SD', '#1E88E5', '-1SD (偏低)'), 
             ('TL-2SD', '#43A047', '-2SD (特價)')
         ]
         
         for col, hex_color, name_tag in lines_config:
-            # 1. 畫線
+            # 畫線
             fig.add_trace(go.Scatter(
                 x=df['Date'], y=df[col], 
                 name=name_tag, 
                 line=dict(color=hex_color, dash='dash' if 'SD' in col else 'solid', width=1),
-                hovertemplate='%{y:.1f}'
+                hovertemplate=f'{name_tag}: %{{y:.1f}}<extra></extra>' # 小數點第一位
             ))
             
-            # 2. 末端數值標籤方塊 (取小數點第一位)
+            # 末端數值標籤方塊 (修正語法錯誤: {val:.1f})
             last_val = df[col].iloc[-1]
             fig.add_annotation(
                 x=df['Date'].iloc[-1],
                 y=last_val,
-                text=f"<b>{last_val:.1;f}</b>",
+                text=f"<b>{last_val:.1f}</b>", # 修正點：移除分號
                 showarrow=False,
                 xanchor="left",
-                xshift=5,
+                xshift=8,
                 font=dict(color="white", size=10),
                 bgcolor=hex_color,
-                borderpad=2
+                borderpad=3
             )
 
-        # 3. 現價標示 (仿照片：白色虛線 + 無背景文字)
-        fig.add_hline(y=current_price, line_dash="dot", line_color="white", line_width=2)
+        # 現價水平線與標示
+        fig.add_hline(y=current_price, line_dash="dot", line_color="white", line_width=1.5)
         fig.add_annotation(
             x=df['Date'].iloc[-1],
             y=current_price,
             text=f"現價: {current_price:.2f}",
             showarrow=False,
             xanchor="left",
-            xshift=5,
-            yshift=15, # 向上偏移避免覆蓋方塊
-            font=dict(color="white", size=12)
+            xshift=8,
+            yshift=15, # 避開下方方塊
+            font=dict(color="white", size=12, family="Arial Black")
         )
 
-        # 4. 圖表佈局與懸停提示框樣式
+        # 圖表佈局
         fig.update_layout(
             height=600, 
             template="plotly_dark",
-            hovermode="x unified",
-            margin=dict(l=10, r=100, t=30, b=10), # 增加右邊距
+            hovermode="x unified", # 統一顯示所有線的數值
+            margin=dict(l=10, r=100, t=50, b=10),
             xaxis=dict(showgrid=True, gridcolor='#262626'),
-            yaxis=dict(showgrid=True, gridcolor='#262626', side="right"), # 座標軸移到右邊更像照片
-            hoverlabel=dict(bgcolor="#1A1A1A", font_size=12, font_family="Arial"),
+            yaxis=dict(showgrid=True, gridcolor='#262626', side="right"),
+            hoverlabel=dict(bgcolor="rgba(0,0,0,0.8)", font_size=12),
             showlegend=False
         )
 
         st.plotly_chart(fig, use_container_width=True)
-
-        # --- 位階掃描 (保持原邏輯) ---
-        if st.button("🔄 開始掃描所有標的狀態"):
-            # ... (此處代碼同前)
-            pass
 
     else:
         st.error("數據獲取失敗。")
