@@ -196,3 +196,31 @@ if ticker_input:
             xaxis=dict(showgrid=True, gridcolor='#333333')
         )
         st.plotly_chart(fig, use_container_width=True)
+
+# --- 6. 掃描概覽表 (同步) ---
+        st.divider()
+        st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
+        if st.button("🔄 開始掃描所有標的狀態"):
+            summary_data = []
+            with st.spinner('掃描中...'):
+                for t in st.session_state.watchlist:
+                    res = get_lohas_data(t, years_input)
+                    if res:
+                        t_df, _, _ = res
+                        p = float(t_df['Close'].iloc[-1])
+                        t_tl = t_df['TL'].iloc[-1]
+                        t_p1 = t_df['TL+1SD'].iloc[-1]
+                        t_p2 = t_df['TL+2SD'].iloc[-1]
+                        t_m1 = t_df['TL-1SD'].iloc[-1]
+                        t_m2 = t_df['TL-2SD'].iloc[-1]
+                        if p > t_p2: pos = "🔴 +2SD (天價)"
+                        elif p > t_p1: pos = "🟠 +1SD (偏高)"
+                        elif p > t_m1: pos = "⚪ 趨勢線 (合理)"
+                        elif p > t_m2: pos = "🔵 -1SD (偏低)"
+                        else: pos = "🟢 -2SD (特價)"
+                        summary_data.append({
+                            "代號": t, "最新價格": f"{p:.1f}",
+                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", "位階狀態": pos
+                        })
+            if summary_data:
+                st.table(pd.DataFrame(summary_data))
