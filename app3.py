@@ -111,22 +111,22 @@ if ticker_input:
 
         # 狀態判斷
         if current_price > last_p2sd:
-            status, status_color = "⚠️ 過熱 (高於 +2SD)", "red"
+            status, _ = "⚠️ 過熱 (高於 +2SD)", "red"
         elif current_price > last_tl:
-            status, status_color = "📊 相對偏高", "orange"
+            status, _ = "📊 相對偏高", "orange"
         elif current_price < last_m2sd:
-            status, status_color = "💎 特價區 (低於 -2SD)", "green"
+            status, _ = "💎 特價區 (低於 -2SD)", "green"
         else:
-            status, status_color = "✅ 相對便宜", "lightgreen"
+            status, _ = "✅ 相對便宜", "lightgreen"
 
-        # --- 保留關鍵指標區塊 ---
+        # 顯示關鍵指標
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("最新股價", f"{current_price:.2f}")
         m2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_pct:+.2f}%")
         m3.metric("目前狀態", status)
         m4.metric("趨勢斜率", f"{slope:.4f}")
 
-        # --- 繪圖邏輯 (取消數值底色) ---
+        # --- 繪圖邏輯 ---
         fig = go.Figure()
         
         # 每日收盤價
@@ -147,6 +147,7 @@ if ticker_input:
         ]
         
         for col, hex_color, name_tag in lines_config:
+            # 畫線
             fig.add_trace(go.Scatter(
                 x=df['Date'], y=df[col], 
                 name=name_tag, 
@@ -154,7 +155,7 @@ if ticker_input:
                 hovertemplate=f'{name_tag}: %{{y:.1f}}<extra></extra>'
             ))
             
-            # 末端數值標籤 (取消 bgcolor)
+            # 右側末端純文字標籤
             last_val = df[col].iloc[-1]
             fig.add_annotation(
                 x=df['Date'].iloc[-1],
@@ -163,11 +164,11 @@ if ticker_input:
                 showarrow=False,
                 xanchor="left",
                 xshift=10,
-                font=dict(color=hex_color, size=12), # 文字顏色改為與線條一致
-                bgcolor="rgba(0,0,0,0)" # 透明底色
+                font=dict(color=hex_color, size=12),
+                bgcolor="rgba(0,0,0,0)"
             )
 
-        # 現價標示 (純文字，無底色)
+        # 現價水平線與文字
         fig.add_hline(y=current_price, line_dash="dot", line_color="white", line_width=1.5)
         fig.add_annotation(
             x=df['Date'].iloc[-1],
@@ -177,23 +178,34 @@ if ticker_input:
             xanchor="left",
             xshift=10,
             yshift=15,
-            font=dict(color="white", size=13, family="Arial"),
-            bgcolor="rgba(0,0,0,0)" # 透明底色
+            font=dict(color="white", size=13),
+            bgcolor="rgba(0,0,0,0)"
         )
 
+        # 圖表佈局設定
         fig.update_layout(
             height=650, 
             template="plotly_dark",
             hovermode="x unified",
             margin=dict(l=10, r=100, t=50, b=10),
-            xaxis=dict(showgrid=True, gridcolor='#262626'),
-            yaxis=dict(showgrid=True, gridcolor='#262626', side="right"),
-            showlegend=False
+            # Y軸移至左側
+            yaxis=dict(showgrid=True, gridcolor='#262626', side="left", title="價格"),
+            xaxis=dict(showgrid=True, gridcolor='#262626', title="日期"),
+            # 線段說明欄（Legend）移至左側
+            showlegend=True,
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor="rgba(0,0,0,0.5)"
+            )
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # --- 6. 掃描概覽表 (同步調整) ---
+        # --- 6. 掃描概覽表 ---
         st.divider()
         st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
         
