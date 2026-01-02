@@ -70,7 +70,7 @@ def save_watchlist_to_google(username, watchlist_dict):
 
 # --- 2. 登入系統 ---
 if "authenticated" not in st.session_state:
-    st.set_page_config(page_title="登入 - 股市五線譜")
+    st.set_page_config(page_title="登入 - 股市五線譜", page_icon="🔐")
     st.title("🔐 樂活五線譜 Pro")
     with st.form("login"):
         user = st.text_input("帳號")
@@ -78,8 +78,14 @@ if "authenticated" not in st.session_state:
         if st.form_submit_button("登入"):
             creds = get_user_credentials()
             if user in creds and creds[user] == pw:
+                # --- 關鍵修正：登入成功後，立即清理所有快取 ---
+                st.cache_data.clear() 
+                
                 st.session_state.authenticated = True
                 st.session_state.username = user
+                # 確保舊帳號的清單不會殘留
+                if 'watchlist_dict' in st.session_state:
+                    del st.session_state.watchlist_dict
                 st.rerun()
             else: st.error("帳號或密碼錯誤")
     st.stop()
@@ -110,9 +116,14 @@ with st.sidebar:
     stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
     st.divider()
-    if st.button("🚪 登出帳號"):
-        del st.session_state.authenticated
-        st.rerun()
+# 在側邊欄的登出按鈕部分
+if st.button("🚪 登出帳號"):
+    # 清理快取
+    st.cache_data.clear()
+    # 清理 Session 狀態
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
