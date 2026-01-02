@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- 1. 核心雲端邏輯 ---
+# --- 1. 核心雲端邏輯 (加入自動建立功能) ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
@@ -23,15 +23,25 @@ def get_user_credentials():
     except: return {"admin": "1234"}
 
 def load_watchlist_from_google(username):
-    default_dict = {"2330.TW": "台積電"}
+    """讀取清單，若無分頁則自動建立並預設台積電"""
+    default_dict = {"2330.TW": "台積電"} # 預設標的
     try:
         client = get_gsheet_client()
         spreadsheet = client.open("MyWatchlist")
-        sheet = spreadsheet.worksheet(username)
+        try:
+            sheet = spreadsheet.worksheet(username)
+        except gspread.exceptions.WorksheetNotFound:
+            # --- 關鍵修正：若找不到分頁，立即建立並寫入預設值 ---
+            sheet = spreadsheet.add_worksheet(title=username, rows="100", cols="20")
+            header_and_default = [["ticker", "name"], ["2330.TW", "台積電"]]
+            sheet.update("A1", header_and_default)
+            return default_dict
+        
         records = sheet.get_all_values()
         if len(records) > 1:
             return {row[0]: row[1] if len(row) > 1 else "" for row in records[1:] if row[0]}
-    except: pass
+    except Exception as e:
+        st.error(f"雲端連線異常: {e}")
     return default_dict
 
 def save_watchlist_to_google(username, watchlist_dict):
