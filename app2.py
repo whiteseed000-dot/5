@@ -55,9 +55,9 @@ with st.sidebar:
 
 # 佈局主標題與按鈕
 col_title, col_btn = st.columns([4, 1])
-stock_name = tk.info.get('longName', search_ticker)
+
 with col_title:
-    st.title(f"📈 樂活五線譜: {ticker_input} ({stock_name})")
+    st.title(f"📈 樂活五線譜: {ticker_input}")
 
 with col_btn:
     # 這裡現在絕對不會報 NameError 了
@@ -152,7 +152,25 @@ if ticker_input:
 
         fig.update_layout(height=600, template="plotly_white", hovermode="x unified",
                           xaxis_title="日期", yaxis_title="價格")
+# 收盤價線 (深墨綠色)
+        fig.add_trace(go.Scatter(
+            x=df['Date'], y=df['Close'], 
+            name='每日收盤價', 
+            line=dict(color='#2D5E3F', width=2.5) 
+        ))
+        fig.update_layout(
+            height=700, 
+            template="plotly_dark", 
+            hovermode="x unified",
+            paper_bgcolor="#121212",
+            plot_bgcolor="#121212",
+            margin=dict(r=80), # 留出右側空間放標籤
+            xaxis=dict(showgrid=True, gridcolor='#333333'),
+            yaxis=dict(showgrid=True, gridcolor='#333333', side="left")
+        )
+        
 
+        
         st.plotly_chart(fig, use_container_width=True)
  #       
         # --- 6. 掃描概覽表 ---
