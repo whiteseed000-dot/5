@@ -217,7 +217,7 @@ if ticker_input:
         if st.button("🔄 開始掃描所有標的狀態"):
             summary_data = []
             with st.spinner('掃描中...'):
-                for t in st.session_state.watchlist_dict.keys():
+                for t, name in st.session_state.watchlist_dict.keys():
                     res = get_lohas_data(t, years_input)
                     if res:
                         t_df, _, _ = res
@@ -233,8 +233,11 @@ if ticker_input:
                         elif p > t_m2: pos = "🔵 -1SD (偏低)"
                         else: pos = "🟢 -2SD (特價)"
                         summary_data.append({
-                            "代號": t, "名稱": name ,"最新價格": f"{p:.1f}",
-                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", "位階狀態": pos
+                            "代號": t, 
+                            "名稱": name,
+                            "最新價格": f"{p:.1f}",
+                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", 
+                            "位階狀態": pos
                         })
             if summary_data:
                 st.table(pd.DataFrame(summary_data))
