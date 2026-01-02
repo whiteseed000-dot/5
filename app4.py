@@ -330,6 +330,7 @@ def check_advanced_alerts(watchlist, years):
 
 # 點擊掃描按鈕後觸發
 if st.button("🔍 執行全自動多指標雷達掃描"):
+    st.cache_data.clear() 
     with st.spinner("正在計算 RSI/MACD/MA/BIAS 共振訊號..."):
         adv_alerts = check_advanced_alerts(st.session_state.watchlist_dict, years_input)
         
@@ -342,3 +343,74 @@ if st.button("🔍 執行全自動多指標雷達掃描"):
                     st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
         else:
             st.info("目前沒有標的符合共振條件。")
+# --- 在核心運算部分加入指標計算 (get_technical_indicators) ---
+
+def get_full_analysis(df):
+    """計算所有隱藏技術指標並給出評估結論"""
+    # RSI (14)
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+    
+    # MACD (12, 26, 9)
+    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = exp1 - exp2
+    df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    
+    # BIAS (20) & MA (60)
+    df['MA20'] = df['Close'].rolling(window=20).mean()
+    df['BIAS'] = ((df['Close'] - df['MA20']) / df['MA20']) * 100
+    df['MA60'] = df['Close'].rolling(window=60).mean()
+    
+    curr = df.iloc[-1]
+    prev = df.iloc[-2]
+    
+    # --- 評估邏輯 ---
+    signals = []
+    
+    # RSI 狀態
+    if curr['RSI'] < 30: signals.append("RSI 超賣(超跌)")
+    elif curr['RSI'] > 70: signals.append("RSI 超買(過熱)")
+    
+    # MACD 交叉
+    if prev['MACD'] < prev['Signal'] and curr['MACD'] > curr['Signal']:
+        signals.append("MACD 黃金交叉")
+    elif prev['MACD'] > prev['Signal'] and curr['MACD'] < curr['Signal']:
+        signals.append("MACD 死亡交叉")
+        
+    # 均線位階
+    ma_status = "站上季線" if curr['Close'] > curr['MA60'] else "季線之下"
+    signals.append(ma_status)
+    
+    # 乖離率
+    if curr['BIAS'] < -10: signals.append("乖離率極低(反彈機會)")
+    
+    return signals
+
+# --- 在 UI 介面部分 (紅框位置) 插入顯示邏輯 ---
+
+if result:
+    df, slope = result
+    analysis_signals = get_full_analysis(df)
+    
+    # --- 關鍵：紅框顯示區域 (放置於切換按鈕上方) ---
+    st.write("")
+    with st.container():
+        # 建立一個醒目的底色區塊顯示評估結果
+        bg_color = "rgba(0, 208, 132, 0.1)" if "黃金交叉" in str(analysis_signals) else "rgba(255, 255, 255, 0.05)"
+        
+        analysis_text = " | ".join(analysis_signals)
+        st.markdown(
+            f"""
+            <div style="background-color: {bg_color}; padding: 15px; border-radius: 10px; border-left: 5px solid #00D084; margin-bottom: 10px;">
+                <span style="color: #888; font-size: 0.9em;">🔍 多指標綜合分析 (RSI/MACD/MA/BIAS)：</span><br>
+                <span style="color: white; font-size: 1.2em; font-weight: bold;">{analysis_text if analysis_text else "盤整中，無明顯動能訊號"}</span>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+    # --- 原本的切換按鈕 ---
+    view_mode = st.radio("分析視圖", ["樂活五線譜", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
