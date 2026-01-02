@@ -17,18 +17,13 @@ def get_lohas_data(ticker, years):
     
     try:
         # 自動處理台股格式
-        if ticker.isdigit() and len(ticker) >= 4:
-            search_ticker = f"{ticker}.TW"
-        else:
-            search_ticker = ticker
+        search_ticker = f"{ticker}.TW" if ticker.isdigit() and len(ticker) >= 4 else ticker
 
-        # 下載數據與股票資訊
         tk = yf.Ticker(search_ticker)
         df = tk.history(start=start_date, end=end_date)
         
         if df.empty: return None
         
-        # 取得中文/英文名稱
         stock_name = tk.info.get('longName', search_ticker)
         
         df = df[['Close']].reset_index()
@@ -36,7 +31,7 @@ def get_lohas_data(ticker, years):
         
         # 線性回歸計算
         df['x'] = np.arange(len(df))
-        slope, intercept, r_value, p_value, std_err = stats.linregress(df['x'], df['Close'])
+        slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
         df['TL'] = slope * df['x'] + intercept
         
         # 標準差計算
@@ -51,7 +46,7 @@ def get_lohas_data(ticker, years):
         return df, std_dev, slope, r_value**2, search_ticker, stock_name
         
     except Exception as e:
-        st.error(f"錯誤: {e}")
+        st.error(f"數據下載失敗: {e}")
         return None
 
 # --- UI 介面 ---
@@ -62,10 +57,8 @@ with st.sidebar:
     ticker_input = st.text_input("輸入股票代碼", value="2330")
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
     st.divider()
-    st.markdown("### 顏色說明")
-    st.write("🔴 +2SD: 天價區")
-    st.write("⚪ TL: 趨勢線")
-    st.write("🟢 -2SD: 特價區")
+    st.markdown("### 價格標籤說明")
+    st.info("圖表右側已加上彩色價格標籤，方便快速查看位階價位。")
 
 if ticker_input:
     result = get_lohas_data(ticker_input, years_input)
@@ -73,63 +66,80 @@ if ticker_input:
     if result:
         df, std_dev, slope, r_squared, final_ticker, stock_name = result
         current_price = float(df['Close'].iloc[-1])
-        last_tl = float(df['TL'].iloc[-1])
-        dist_from_tl = ((current_price - last_tl) / last_tl) * 100
-
-        # 在上方標題顯示：代號 + 中文名稱
-        display_title = f"{final_ticker} ({stock_name})"
-        st.subheader(display_title)
+        last_date = df['Date'].iloc[-1]
+        
+        st.subheader(f"{final_ticker} ({stock_name})")
 
         # KPI 顯示區
         col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("最新收盤價", f"{current_price:.2f}")
-        with col2:
-            st.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_from_tl:+.2f}%")
-        with col3:
-            st.metric("趨勢強度 (R²)", f"{r_squared:.2f}")
+        col1.metric("最新收盤價", f"{current_price:.2f}")
+        col2.metric("趨勢中心 (TL)", f"{df['TL'].iloc[-1]:.2f}")
+        col3.metric("趨勢強度 (R²)", f"{r_squared:.2f}")
 
         # --- Plotly 圖表 ---
         fig = go.Figure()
 
-        # 軌道線顏色
-        colors = {'+2SD': 'red', '+1SD': 'orange', 'TL': 'white', '-1SD': 'royalblue', '-2SD': 'green'}
+        # 五線譜顏色設定
+        line_configs = {
+            'TL+2SD': {'name': '+2SD (天價)', 'color': '#FF4B4B'}, # 紅
+            'TL+1SD': {'name': '+1SD (偏高)', 'color': '#FFA500'}, # 橘
+            'TL':      {'name': '趨勢線 (合理)', 'color': '#FFFFFF'}, # 白
+            'TL-1SD': {'name': '-1SD (偏低)', 'color': '#1E90FF'}, # 藍
+            'TL-2SD': {'name': '-2SD (特價)', 'color': '#00FF00'}  # 綠
+        }
         
-        for line in ['TL+2SD', 'TL+1SD', 'TL', 'TL-1SD', 'TL-2SD']:
-            line_color = colors.get(line.replace('TL', '').replace('+', '+').replace('-', '-') or 'TL')
+        for key, config in line_configs.items():
+            last_val = df[key].iloc[-1]
+            # 畫線
             fig.add_trace(go.Scatter(
-                x=df['Date'], y=df[line], 
-                name=line.replace('TL', '趨勢線'),
-                line=dict(color=line_color, width=1, dash='dash' if 'SD' in line else 'solid'),
-                opacity=0.5
+                x=df['Date'], y=df[key], 
+                name=config['name'],
+                line=dict(color=config['color'], width=1.5, dash='dash' if 'SD' in key else 'solid'),
+                opacity=0.6,
+                showlegend=True
+            ))
+            # 新增：右側價格標籤 (比照參考圖)
+            fig.add_trace(go.Scatter(
+                x=[last_date],
+                y=[last_val],
+                mode='text+markers',
+                text=[f"<b> {last_val:.1f} </b>"],
+                textposition="middle right",
+                textfont=dict(color="white", size=12),
+                marker=dict(color=config['color'], size=10, symbol='square'),
+                showlegend=False,
+                hoverinfo='skip'
             ))
 
-        # 收盤價線 (深綠色)
+        # 收盤價線 (深墨綠色)
         fig.add_trace(go.Scatter(
             x=df['Date'], y=df['Close'], 
-            name='收盤價', 
+            name='每日收盤價', 
             line=dict(color='#2D5E3F', width=2.5) 
         ))
 
-        # 白色現價指示線
+        # 白色現價指示水平線
         fig.add_hline(
             y=current_price, 
             line_dash="dot", 
             line_color="white", 
-            annotation_text=f"目前現價: {current_price:.2f}", 
-            annotation_position="bottom right",
-            annotation_font_color="white"
+            annotation_text=f"現價: {current_price:.2f}", 
+            annotation_position="top right",
+            annotation_font=dict(color="white", size=14)
         )
 
         fig.update_layout(
-            height=600, 
+            height=700, 
             template="plotly_dark", 
             hovermode="x unified",
             paper_bgcolor="#121212",
-            plot_bgcolor="#121212"
+            plot_bgcolor="#121212",
+            margin=dict(r=80), # 留出右側空間放標籤
+            xaxis=dict(showgrid=True, gridcolor='#333333'),
+            yaxis=dict(showgrid=True, gridcolor='#333333', side="left")
         )
 
         st.plotly_chart(fig, use_container_width=True)
         
     else:
-        st.error("無法取得數據，請檢查代號。")
+        st.error("無法取得數據，請確認代號。")
