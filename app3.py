@@ -230,8 +230,7 @@ if ticker_input:
                 # 簡單美化表格
                 st.table(pd.DataFrame(summary_data))
 
-    else:
-        st.error("數據獲取失敗，請確認代號是否正確。")
+
 
 # 詳細數據展開
 with st.expander("查看原始數據"):
