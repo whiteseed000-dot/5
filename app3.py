@@ -104,7 +104,28 @@ lines_config = [
     ('TL-1SD', '#0096FF', '-1SD (偏低)', 'dash'), 
     ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
 ]
-
+def get_technical_indicators(df):
+    """計算 RSI, MACD, BIAS, MA60"""
+    # RSI (14)
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+    
+    # MACD (12, 26, 9)
+    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = exp1 - exp2
+    df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    
+    # BIAS (20) & MA20
+    df['MA20'] = df['Close'].rolling(window=20).mean()
+    df['BIAS'] = ((df['Close'] - df['MA20']) / df['MA20']) * 100
+    
+    # MA 季線 (60)
+    df['MA60'] = df['Close'].rolling(window=60).mean()
+    return df
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
