@@ -126,6 +126,43 @@ def get_technical_indicators(df):
     # MA 季線 (60)
     df['MA60'] = df['Close'].rolling(window=60).mean()
     return df
+
+def check_advanced_alerts(watchlist, years):
+    alerts = []
+    for ticker, name in watchlist.items():
+        data = get_stock_data(ticker, years)
+        if data:
+            df, _ = data
+            df = get_technical_indicators(df)
+            
+            # 取得最新一筆與前一筆數據 (判斷交叉)
+            curr = df.iloc[-1]
+            prev = df.iloc[-2]
+            
+            # --- 買進訊號條件 ---
+            # 1. 五線譜在偏低或特價區
+            is_cheap = curr['Close'] <= curr['TL-1SD']
+            # 2. 技術面轉強 (滿足其一即可)
+            tech_strong = (
+                (prev['RSI'] < 30 and curr['RSI'] > 30) or       # RSI 低檔回升
+                (prev['MACD'] < prev['Signal'] and curr['MACD'] > curr['Signal']) or # MACD 金叉
+                (prev['Close'] < curr['MA60'] and curr['Close'] > curr['MA60'])      # 站上季線
+            )
+            
+            # --- 賣出訊號條件 ---
+            is_expensive = curr['Close'] >= curr['TL+1SD']
+            tech_weak = (
+                (prev['RSI'] > 70 and curr['RSI'] < 70) or       # RSI 高檔反轉
+                (prev['MACD'] > prev['Signal'] and curr['MACD'] < curr['Signal'])    # MACD 死叉
+            )
+
+            if is_cheap and tech_strong:
+                alerts.append({"name": name, "type": "BUY", "reason": "位階偏低 + 技術面轉強"})
+            elif is_expensive and tech_weak:
+                alerts.append({"name": name, "type": "SELL", "reason": "位階偏高 + 技術面轉弱"})
+                
+    return alerts
+
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -162,7 +199,8 @@ def get_stock_data(ticker, years):
         std = np.std(df['Close'] - df['TL'])
         df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
         df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
-        
+        # 加入技術指標計算
+        df = get_technical_indicators(df)        
         # 指標
         low_9 = df['Low'].rolling(9).min(); high_9 = df['High'].rolling(9).max()
         rsv = 100 * (df['Close'] - low_9) / (high_9 - low_9)
