@@ -171,8 +171,16 @@ fig.add_hline(
             annotation_font=dict(color="white", size=14)
         )
 
-        fig.update_layout(height=600, template="plotly_white", hovermode="x unified",
-                          xaxis_title="日期", yaxis_title="價格")
+fig.update_layout(
+            height=700, 
+            template="plotly_dark", 
+            hovermode="x unified",
+            paper_bgcolor="#121212",
+            plot_bgcolor="#121212",
+            margin=dict(r=80), # 留出右側空間放標籤
+            xaxis=dict(showgrid=True, gridcolor='#333333'),
+            yaxis=dict(showgrid=True, gridcolor='#333333', side="left")
+        )
 
         st.plotly_chart(fig, use_container_width=True)
  #       
