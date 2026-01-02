@@ -23,7 +23,7 @@ def load_watchlist_from_google():
         if len(records) > 1:
             return [row[0] for row in records[1:] if row[0]]
     except Exception as e:
-        st.warning(f"目前暫時使用預設清單。")
+        st.warning("目前暫時使用預設清單。")
     return default_list
 
 def save_watchlist_to_google(watchlist):
@@ -54,7 +54,6 @@ with st.sidebar:
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
 
 col_title, col_btn = st.columns([4, 1])
-
 with col_title:
     st.title(f"📈 樂活五線譜: {ticker_input}")
 
@@ -99,7 +98,7 @@ def get_lohas_data(ticker, years):
     except:
         return None
 
-# --- 5. 數據繪圖 (修正格式與顯示邏輯) ---
+# --- 5. 數據分析與繪圖 ---
 if ticker_input:
     result = get_lohas_data(ticker_input, years_input)
     if result:
@@ -108,15 +107,15 @@ if ticker_input:
         
         fig = go.Figure()
         
-        # 每日收盤價線
+        # 每日收盤價
         fig.add_trace(go.Scatter(
             x=df['Date'], y=df['Close'], 
             name='每日收盤價', 
             line=dict(color='#2E7D32', width=1.5),
-            hovertemplate='每日收盤價: %{y:.1f}<extra></extra>' # 顯示小數點第一位
+            hovertemplate='每日收盤價: %{y:.1f}<extra></extra>'
         ))
         
-        # 配置五線譜 (對應照片中的文字與顏色)
+        # 配置五線譜
         lines_config = [
             ('TL+2SD', '#E53935', '+2SD (天價)'), 
             ('TL+1SD', '#FB8C00', '+1SD (偏高)'), 
@@ -126,20 +125,19 @@ if ticker_input:
         ]
         
         for col, hex_color, name_tag in lines_config:
-            # 畫線
             fig.add_trace(go.Scatter(
                 x=df['Date'], y=df[col], 
                 name=name_tag, 
                 line=dict(color=hex_color, dash='dash' if 'SD' in col else 'solid', width=1),
-                hovertemplate=f'{name_tag}: %{{y:.1f}}<extra></extra>' # 小數點第一位
+                hovertemplate=f'{name_tag}: %{{y:.1f}}<extra></extra>'
             ))
             
-            # 末端數值標籤方塊 (修正語法錯誤: {val:.1f})
+            # 末端標籤方塊 (修正格式)
             last_val = df[col].iloc[-1]
             fig.add_annotation(
                 x=df['Date'].iloc[-1],
                 y=last_val,
-                text=f"<b>{last_val:.1f}</b>", # 修正點：移除分號
+                text=f"<b>{last_val:.1f}</b>",
                 showarrow=False,
                 xanchor="left",
                 xshift=8,
@@ -148,7 +146,7 @@ if ticker_input:
                 borderpad=3
             )
 
-        # 現價水平線與標示
+        # 現價標示
         fig.add_hline(y=current_price, line_dash="dot", line_color="white", line_width=1.5)
         fig.add_annotation(
             x=df['Date'].iloc[-1],
@@ -157,23 +155,55 @@ if ticker_input:
             showarrow=False,
             xanchor="left",
             xshift=8,
-            yshift=15, # 避開下方方塊
-            font=dict(color="white", size=12, family="Arial Black")
+            yshift=15,
+            font=dict(color="white", size=12)
         )
 
-        # 圖表佈局
         fig.update_layout(
             height=600, 
             template="plotly_dark",
-            hovermode="x unified", # 統一顯示所有線的數值
+            hovermode="x unified",
             margin=dict(l=10, r=100, t=50, b=10),
             xaxis=dict(showgrid=True, gridcolor='#262626'),
             yaxis=dict(showgrid=True, gridcolor='#262626', side="right"),
-            hoverlabel=dict(bgcolor="rgba(0,0,0,0.8)", font_size=12),
             showlegend=False
         )
-
         st.plotly_chart(fig, use_container_width=True)
 
+        # --- 6. 同步調整後的掃描概覽表 ---
+        st.divider()
+        st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
+        
+        if st.button("🔄 開始掃描所有標的狀態"):
+            summary_data = []
+            with st.spinner('掃描中...'):
+                for t in st.session_state.watchlist:
+                    res = get_lohas_data(t, years_input)
+                    if res:
+                        t_df, _, _ = res
+                        p = float(t_df['Close'].iloc[-1])
+                        t_tl = t_df['TL'].iloc[-1]
+                        t_p1 = t_df['TL+1SD'].iloc[-1]
+                        t_p2 = t_df['TL+2SD'].iloc[-1]
+                        t_m1 = t_df['TL-1SD'].iloc[-1]
+                        t_m2 = t_df['TL-2SD'].iloc[-1]
+                        
+                        # 同步狀態判定與標籤
+                        if p > t_p2: pos = "🔴 +2SD (天價)"
+                        elif p > t_p1: pos = "🟠 +1SD (偏高)"
+                        elif p > t_m1: pos = "⚪ 趨勢線 (合理)"
+                        elif p > t_m2: pos = "🔵 -1SD (偏低)"
+                        else: pos = "🟢 -2SD (特價)"
+                        
+                        summary_data.append({
+                            "代號": t,
+                            "最新價格": f"{p:.1f}",
+                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%",
+                            "位階狀態": pos
+                        })
+            
+            if summary_data:
+                # 使用 DataFrame 顯示，並設定樣式
+                st.table(pd.DataFrame(summary_data))
     else:
         st.error("數據獲取失敗。")
