@@ -46,7 +46,7 @@ def save_watchlist_to_google(username, watchlist_dict):
 # --- 2. 登入系統 ---
 if "authenticated" not in st.session_state:
     st.set_page_config(page_title="登入 - 股市五線譜", page_icon="🔐")
-    st.title("樂活五線譜 Pro", help="若無法顯示資料，請按右上角 ⋮ → Clear cache")
+    st.title("🔐 樂活五線譜 Pro")
     with st.form("login"):
         user = st.text_input("帳號")
         pw = st.text_input("密碼", type="password")
@@ -126,7 +126,7 @@ def get_vix_index():
 # --- 6. 介面形式恢復 ---
 col_title, col_btn = st.columns([4, 1])
 with col_title:
-    st.markdown(f'# <img src="https://cdn-icons-png.flaticon.com/512/421/421644.png" width="30"> 樂活五線譜: {ticker_input} ({stock_name})', unsafe_allow_html=True)
+    st.markdown(f'# <img src="https://cdn-icons-png.flaticon.com/512/421/421644.png" width="30"> 樂活五線譜: {ticker_input} ({stock_name})', unsafe_allow_html=True, help="若無法顯示資料，請按右上角 ⋮ → Clear cache")
 
 with col_btn:
     if ticker_input in st.session_state.watchlist_dict:
