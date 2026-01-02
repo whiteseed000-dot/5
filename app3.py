@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- 1. Google Sheets 邏輯 ---
+# --- 1. Google Sheets 邏輯 (維持不變) ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
@@ -43,7 +43,7 @@ st.set_page_config(page_title="股市五線譜 Pro", layout="wide")
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist_from_google()
 
-# --- 亮度優化後的顏色配置 ---
+# --- 顏色配置 ---
 lines_config = [
     ('TL+2SD', '#FF3131', '+2SD (天價)', 'dash'), 
     ('TL+1SD', '#FFBD03', '+1SD (偏高)', 'dash'), 
@@ -56,14 +56,12 @@ lines_config = [
 with st.sidebar:
     st.header("📋 追蹤清單")
     quick_pick = st.selectbox("我的收藏", options=["-- 手動輸入 --"] + st.session_state.watchlist)
-    
     st.divider()
     st.header("⚙️ 搜尋設定")
     default_val = quick_pick if quick_pick != "-- 手動輸入 --" else "2330.TW"
     ticker_input = st.text_input("股票代號", value=default_val).upper().strip()
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
 
-    # --- 自定義圖例 (側邊欄紅框位置) ---
     st.divider()
     st.subheader("📌 線段說明")
     st.markdown(f'<span style="color:#00D084; font-size:18px;">●</span> 每日收盤價', unsafe_allow_html=True)
@@ -72,6 +70,14 @@ with st.sidebar:
         st.markdown(f'<span style="color:{hex_color}; font-weight:bold;">{line_symbol}</span> {name_tag}', unsafe_allow_html=True)
 
 # --- 4. 核心演算法 ---
+@st.cache_data(ttl=3600)
+def get_vix_index():
+    try:
+        vix_data = yf.download("^VIX", period="1d", progress=False)
+        return float(vix_data['Close'].iloc[-1])
+    except:
+        return 0.0
+
 @st.cache_data(ttl=3600)
 def get_lohas_data(ticker, years):
     try:
@@ -119,6 +125,8 @@ with col_btn:
 
 if ticker_input:
     result = get_lohas_data(ticker_input, years_input)
+    vix_val = get_vix_index()
+    
     if result:
         df, std_dev, slope = result
         current_price = float(df['Close'].iloc[-1])
@@ -129,24 +137,27 @@ if ticker_input:
         last_m2 = df['TL-2SD'].iloc[-1]
         dist_pct = ((current_price - last_tl) / last_tl) * 100
 
-        # --- 修正重點：同步判定基準為 5 級 ---
-        if current_price > last_p2: 
-            status_label = "🔴 +2SD (天價)"
-        elif current_price > last_p1: 
-            status_label = "🟠 +1SD (偏高)"
-        elif current_price > last_m1: 
-            status_label = "⚪ 趨勢線 (合理)"
-        elif current_price > last_m2: 
-            status_label = "🔵 -1SD (偏低)"
-        else: 
-            status_label = "🟢 -2SD (特價)"
+        # 五級判定 (個股)
+        if current_price > last_p2: status_label = "🔴 天價"
+        elif current_price > last_p1: status_label = "🟠 偏高"
+        elif current_price > last_m1: status_label = "⚪ 合理"
+        elif current_price > last_m2: status_label = "🔵 偏低"
+        else: status_label = "🟢 特價"
 
-        # 顯示關鍵指標
-        m1, m2, m3, m4 = st.columns(4)
+        # VIX 判定邏輯 (與個股反向：VIX越高越紅)
+        if vix_val >= 30: vix_status = "🔴 恐慌"
+        elif vix_val > 15: vix_status = "🟠 警戒"
+        elif round(vix_val) == 15: vix_status = "⚪ 穩定"
+        elif vix_val > 0: vix_status = "🔵 樂觀"
+        else: vix_status = "🟢 極致樂觀"
+
+        # --- 顯示 5 個關鍵指標 ---
+        m1, m2, m3, m4, m5 = st.columns(5)
         m1.metric("最新股價", f"{current_price:.2f}")
         m2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_pct:+.2f}%")
         m3.metric("目前狀態", status_label)
         m4.metric("趨勢斜率", f"{slope:.4f}")
+        m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status)
 
         # --- 繪圖邏輯 (維持亮度優化版) ---
         fig = go.Figure()
@@ -185,31 +196,3 @@ if ticker_input:
             xaxis=dict(showgrid=True, gridcolor='#333333')
         )
         st.plotly_chart(fig, use_container_width=True)
-
-        # --- 6. 掃描概覽表 (同步) ---
-        st.divider()
-        st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
-        if st.button("🔄 開始掃描所有標的狀態"):
-            summary_data = []
-            with st.spinner('掃描中...'):
-                for t in st.session_state.watchlist:
-                    res = get_lohas_data(t, years_input)
-                    if res:
-                        t_df, _, _ = res
-                        p = float(t_df['Close'].iloc[-1])
-                        t_tl = t_df['TL'].iloc[-1]
-                        t_p1 = t_df['TL+1SD'].iloc[-1]
-                        t_p2 = t_df['TL+2SD'].iloc[-1]
-                        t_m1 = t_df['TL-1SD'].iloc[-1]
-                        t_m2 = t_df['TL-2SD'].iloc[-1]
-                        if p > t_p2: pos = "🔴 +2SD (天價)"
-                        elif p > t_p1: pos = "🟠 +1SD (偏高)"
-                        elif p > t_m1: pos = "⚪ 趨勢線 (合理)"
-                        elif p > t_m2: pos = "🔵 -1SD (偏低)"
-                        else: pos = "🟢 -2SD (特價)"
-                        summary_data.append({
-                            "代號": t, "最新價格": f"{p:.1f}",
-                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", "位階狀態": pos
-                        })
-            if summary_data:
-                st.table(pd.DataFrame(summary_data))
