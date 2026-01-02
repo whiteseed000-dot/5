@@ -45,7 +45,7 @@ def save_watchlist_to_google(username, watchlist_dict):
 
 # --- 2. 登入系統 ---
 if "authenticated" not in st.session_state:
-    st.set_page_config(page_title="登入 - 股市五線譜", page_icon="🔐")
+    st.set_page_config(page_title="登入 - 股市五線譜")
     st.title("🔐 樂活五線譜 Pro")
     with st.form("login"):
         user = st.text_input("帳號")
