@@ -65,6 +65,7 @@ username = st.session_state.username
 if 'watchlist_dict' not in st.session_state:
     st.session_state.watchlist_dict = load_watchlist_from_google(username)
 
+# 顏色配置與線段
 lines_config = [
     ('TL+2SD', '#FF3131', '+2SD (天價)', 'dash'), 
     ('TL+1SD', '#FFBD03', '+1SD (偏高)', 'dash'), 
@@ -73,7 +74,7 @@ lines_config = [
     ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
 ]
 
-# --- 4. 側邊欄佈局 ---
+# --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
     ticker_list = list(st.session_state.watchlist_dict.keys())
@@ -105,7 +106,7 @@ def get_stock_data(ticker, years):
         df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
         df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
         
-        # 技術指標
+        # 指標
         low_9 = df['Low'].rolling(9).min(); high_9 = df['High'].rolling(9).max()
         rsv = 100 * (df['Close'] - low_9) / (high_9 - low_9)
         df['K'] = rsv.ewm(com=2).mean(); df['D'] = df['K'].ewm(com=2).mean()
@@ -122,7 +123,7 @@ def get_vix_index():
         return float(vix['Close'].iloc[-1])
     except: return 0.0
 
-# --- 6. 介面與標題 (維持原始樣式) ---
+# --- 6. 介面形式恢復 ---
 col_title, col_btn = st.columns([4, 1])
 with col_title:
     st.markdown(f'# <img src="https://cdn-icons-png.flaticon.com/512/421/421644.png" width="30"> 樂活五線譜: {ticker_input} ({stock_name})', unsafe_allow_html=True)
@@ -148,7 +149,6 @@ if result:
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
-    # VIX 與 狀態邏輯 (恢復原始)
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
@@ -170,52 +170,49 @@ if result:
 
     # --- 7. 切換按鈕 ---
     st.write("")
-    view_mode = st.radio("分析視圖切換", ["樂活五線譜", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
+    view_mode = st.radio("分析視圖", ["樂活五線譜", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
     st.write("")
 
-    # --- 8. 圖表核心 (修正滑鼠標示資訊) ---
+    # --- 8. 圖表核心 (修正文字重複問題) ---
     fig = go.Figure()
     
     if view_mode == "樂活五線譜":
-        # 恢復收盤價與五線譜的 hovertemplate
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='收盤價: %{y:.1f}'))
+        # 修正：hovertemplate 移除手寫文字，直接使用 %{y} 即可，因為文字會由 name 自動提供
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         for col, hex_color, name_tag, line_style in lines_config:
-            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag, hovertemplate=f'{name_tag}: %{{y:.1f}}'))
+            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag, hovertemplate='%{y:.1f}'))
             last_val = df[col].iloc[-1]
             fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
 
     elif view_mode == "KD指標":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131', width=2), hovertemplate='K: %{y:.1f}'))
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF', width=2), hovertemplate='D: %{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131', width=2), hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF', width=2), hovertemplate='%{y:.1f}'))
         fig.add_hline(y=80, line_dash="dot", line_color="rgba(255,255,255,0.3)"); fig.add_hline(y=20, line_dash="dot", line_color="rgba(255,255,255,0.3)")
 
     elif view_mode == "布林通道":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2), hovertemplate='價: %{y:.1f}'))
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash'), hovertemplate='上軌: %{y:.1f}'))
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['MA20'], name="20MA", line=dict(color='#FFBD03'), hovertemplate='20MA: %{y:.1f}'))
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash'), hovertemplate='下軌: %{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2), hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash'), hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['MA20'], name="20MA", line=dict(color='#FFBD03'), hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash'), hovertemplate='%{y:.1f}'))
 
     elif view_mode == "成交量":
         bar_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
-        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量", hovertemplate='量: %{y:}'))
+        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量", hovertemplate='%{y}'))
 
-    # 共同設定：現價線
+    # 共同設定
     if view_mode not in ["成交量", "KD指標"]:
         fig.add_hline(y=curr, line_dash="dot", line_color="#FFFFFF", line_width=2)
         fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14, family="Arial Black"))
 
-    # 關鍵修正：恢復 hovermode="x unified" 與顯示設定
-        fig.update_layout(
-            height=650, # 保留 650
-            plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
-            hovermode="x unified", showlegend=False,
-            margin=dict(l=10, r=100, t=50, b=10),
-            yaxis=dict(showgrid=True, gridcolor='#333333', side="left"),
-            xaxis=dict(showgrid=True, gridcolor='#333333')
-        )
+    fig.update_layout(
+        height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
+        hovermode="x unified",
+        hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
+        showlegend=False, margin=dict(l=10, r=100, t=10, b=10)
+    )
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 9. 概覽掃描 ---
+# --- 9. 掃描 ---
 st.divider()
 if st.button("🔄 開始掃描所有標的狀態"):
     summary = []
