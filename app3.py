@@ -364,6 +364,7 @@ def check_advanced_alerts(watchlist, years):
 
 # 點擊掃描按鈕後觸發
 if st.button("🔍 執行全自動多指標雷達掃描"):
+    st.cache_data.clear() 
     with st.spinner("正在計算 RSI/MACD/MA/BIAS 共振訊號..."):
         adv_alerts = check_advanced_alerts(st.session_state.watchlist_dict, years_input)
         
