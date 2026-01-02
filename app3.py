@@ -130,7 +130,51 @@ if ticker_input:
         m3.metric("目前狀態", status)
         m4.metric("趨勢斜率", f"{slope:.4f}")
 
-        y=current_price, 
+# --- Plotly 圖表 ---
+        fig = go.Figure()
+
+        # 五線譜顏色設定
+        line_configs = {
+            'TL+2SD': {'name': '+2SD (天價)', 'color': '#FF4B4B'}, # 紅
+            'TL+1SD': {'name': '+1SD (偏高)', 'color': '#FFA500'}, # 橘
+            'TL':      {'name': '趨勢線 (合理)', 'color': '#FFFFFF'}, # 白
+            'TL-1SD': {'name': '-1SD (偏低)', 'color': '#1E90FF'}, # 藍
+            'TL-2SD': {'name': '-2SD (特價)', 'color': '#00FF00'}  # 綠
+        }
+        
+        for key, config in line_configs.items():
+            last_val = df[key].iloc[-1]
+            # 畫線
+            fig.add_trace(go.Scatter(
+                x=df['Date'], y=df[key], 
+                name=config['name'],
+                line=dict(color=config['color'], width=1.5, dash='dash' if 'SD' in key else 'solid'),
+                opacity=0.6,
+                showlegend=True
+            ))
+            # 新增：右側價格標籤 (比照參考圖)
+            fig.add_trace(go.Scatter(
+                x=[last_date],
+                y=[last_val],
+                mode='text+markers',
+                text=[f"<b> {last_val:.1f} </b>"],
+                textposition="middle right",
+                textfont=dict(color="white", size=12),
+                marker=dict(color=config['color'], size=10, symbol='square'),
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+
+        # 收盤價線 (深墨綠色)
+        fig.add_trace(go.Scatter(
+            x=df['Date'], y=df['Close'], 
+            name='每日收盤價', 
+            line=dict(color='#2D5E3F', width=2.5) 
+        ))
+
+        # 白色現價指示水平線
+        fig.add_hline(
+            y=current_price, 
             line_dash="dot", 
             line_color="white", 
             annotation_text=f"現價: {current_price:.2f}", 
@@ -150,6 +194,9 @@ if ticker_input:
         )
 
         st.plotly_chart(fig, use_container_width=True)
+        
+    else:
+        st.error("無法取得數據，請確認代號。")
  #       
         # --- 6. 掃描概覽表 ---
         st.divider()
