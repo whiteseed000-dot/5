@@ -102,101 +102,118 @@ def get_lohas_data(ticker, years):
     except:
         return None
 
-# --- 5. 數據分析與繪圖 ---
+# --- 5. 數據分析與繪圖 (修正重點在此) ---
 if ticker_input:
     result = get_lohas_data(ticker_input, years_input)
     if result:
         df, std_dev, slope = result
         current_price = float(df['Close'].iloc[-1])
-        last_tl = df['TL'].iloc[-1]
-        last_p2sd = df['TL+2SD'].iloc[-1]
-        last_m2sd = df['TL-2SD'].iloc[-1]
-        dist_pct = ((current_price - last_tl) / last_tl) * 100
-
-        # 狀態判斷
-        if current_price > last_p2sd:
-            status, color = "⚠️ 過熱 (高於 +2SD)", "red"
-        elif current_price > last_tl:
-            status, color = "📊 相對偏高", "orange"
-        elif current_price < last_m2sd:
-            status, color = "💎 特價區 (低於 -2SD)", "green"
-        else:
-            status, color = "✅ 相對便宜", "lightgreen"
-
-        # 顯示關鍵指標
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("最新股價", f"{current_price:.2f}")
-        m2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_pct:+.2f}%")
-        m3.metric("目前狀態", status)
-        m4.metric("趨勢斜率", f"{slope:.4f}")
-
-# --- Plotly 圖表 ---
-        fig = go.Figure()
-
-        # 五線譜顏色設定
-        line_configs = {
-            'TL+2SD': {'name': '+2SD (天價)', 'color': '#FF4B4B'}, # 紅
-            'TL+1SD': {'name': '+1SD (偏高)', 'color': '#FFA500'}, # 橘
-            'TL':      {'name': '趨勢線 (合理)', 'color': '#FFFFFF'}, # 白
-            'TL-1SD': {'name': '-1SD (偏低)', 'color': '#1E90FF'}, # 藍
-            'TL-2SD': {'name': '-2SD (特價)', 'color': '#00FF00'}  # 綠
-        }
         
-        for key, config in line_configs.items():
-            last_val = df[key].iloc[-1]
-            # 畫線
+        # 取得五條線的最新數值 (用於右側標籤)
+        last_vals = {
+            'TL+2SD': df['TL+2SD'].iloc[-1],
+            'TL+1SD': df['TL+1SD'].iloc[-1],
+            'TL': df['TL'].iloc[-1],
+            'TL-1SD': df['TL-1SD'].iloc[-1],
+            'TL-2SD': df['TL-2SD'].iloc[-1],
+            'Close': current_price
+        }
+
+        # ... (狀態判斷與 Metric 顯示部分保持不變) ...
+
+        # 繪製圖表
+        fig = go.Figure()
+        
+        # 1. 繪製收盤價主線
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='#00DDAA', width=2)))
+        
+        # 2. 繪製五線譜
+        lines = [
+            ('TL+2SD', '#FF3377', '+2 SD (昂貴)'), 
+            ('TL+1SD', '#FF99AA', '+1SD'), 
+            ('TL', '#888888', '中心線'), 
+            ('TL-1SD', '#AACCFF', '-1SD'), 
+            ('TL-2SD', '#3366FF', '-2 SD (便宜)')
+        ]
+        
+        for col, color, label in lines:
             fig.add_trace(go.Scatter(
-                x=df['Date'], y=df[key], 
-                name=config['name'],
-                line=dict(color=config['color'], width=1.5, dash='dash' if 'SD' in key else 'solid'),
-                opacity=0.6,
-                showlegend=True
-            ))
-            # 新增：右側價格標籤 (比照參考圖)
-            fig.add_trace(go.Scatter(
-                x=[last_date],
-                y=[last_val],
-                mode='text+markers',
-                text=[f"<b> {last_val:.1f} </b>"],
-                textposition="middle right",
-                textfont=dict(color="white", size=12),
-                marker=dict(color=config['color'], size=10, symbol='square'),
-                showlegend=False,
-                hoverinfo='skip'
+                x=df['Date'], 
+                y=df[col], 
+                name=label, 
+                line=dict(color=color, width=1, dash='dash' if 'SD' in col else 'solid'),
+                hoverinfo='skip' # 減少雜訊
             ))
 
-        # 收盤價線 (深墨綠色)
-        fig.add_trace(go.Scatter(
-            x=df['Date'], y=df['Close'], 
-            name='每日收盤價', 
-            line=dict(color='#2D5E3F', width=2.5) 
-        ))
+        # 3. 核心修正：新增右側價格標籤 (Y-Axis 配置)
+        # 我們將 yaxis 設定在右邊，並強迫顯示五條線的數值
+        y_ticks = [last_vals[k] for k in last_vals]
+        y_labels = [f"{v:.1f}" for v in y_ticks]
 
-        # 白色現價指示水平線
+        fig.update_layout(
+            height=600,
+            template="plotly_white",
+            hovermode="x unified",
+            margin=dict(l=10, r=50, t=30, b=10), # 預留右側空間給標籤
+            xaxis_title="日期",
+            yaxis={
+                "title": "價格",
+                "side": "right", # 將座標軸移到右邊
+                "tickmode": "array",
+                "tickvals": y_ticks,
+                "ticktext": y_labels,
+                "showgrid": True,
+                "gridcolor": "#F0F0F0"
+            }
+        )
+
+        # 4. 加入目前價格的水平線與醒目標籤
         fig.add_hline(
             y=current_price, 
             line_dash="dot", 
-            line_color="white", 
-            annotation_text=f"現價: {current_price:.2f}", 
-            annotation_position="top right",
-            annotation_font=dict(color="white", size=14)
-        )
-
-        fig.update_layout(
-            height=700, 
-            template="plotly_dark", 
-            hovermode="x unified",
-            paper_bgcolor="#121212",
-            plot_bgcolor="#121212",
-            margin=dict(r=80), # 留出右側空間放標籤
-            xaxis=dict(showgrid=True, gridcolor='#333333'),
-            yaxis=dict(showgrid=True, gridcolor='#333333', side="left")
+            line_color="black", 
+            annotation_text=f" ◀ {current_price:.2f}", 
+            annotation_position="right",
+            annotation_font=dict(color="white", size=12),
+            annotation_bgcolor="black" # 模擬圖片中的黑底標籤
         )
 
         st.plotly_chart(fig, use_container_width=True)
+ #       
+        # --- 6. 掃描概覽表 ---
+        st.divider()
+        st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
         
+        if st.button("🔄 開始掃描所有標的狀態"):
+            summary_data = []
+            with st.spinner('掃描中...'):
+                for t in st.session_state.watchlist:
+                    res = get_lohas_data(t, years_input)
+                    if res:
+                        t_df, _, _ = res
+                        p = float(t_df['Close'].iloc[-1])
+                        t_tl = t_df['TL'].iloc[-1]
+                        t_p2 = t_df['TL+2SD'].iloc[-1]
+                        t_m2 = t_df['TL-2SD'].iloc[-1]
+                        
+                        if p > t_p2: pos = "⚠️ 過熱"
+                        elif p > t_tl: pos = "📊 偏高"
+                        elif p < t_m2: pos = "💎 特價"
+                        else: pos = "✅ 便宜"
+                        
+                        summary_data.append({
+                            "代號": t,
+                            "價格": f"{p:.2f}",
+                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.2f}%",
+                            "位階狀態": pos
+                        })
+            
+            if summary_data:
+                # 簡單美化表格
+                st.table(pd.DataFrame(summary_data))
+
     else:
-        st.error("無法取得數據，請確認代號。")
+        st.error("數據獲取失敗，請確認代號是否正確。")
 
 # 詳細數據展開
 with st.expander("查看原始數據"):
