@@ -258,7 +258,7 @@ if result:
 
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("最新股價", f"{curr:.2f}")
-    m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%")
+    m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
     m3.metric("目前狀態", status_label)
     m4.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
     m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, help="超過60代表極度恐慌")
@@ -279,10 +279,10 @@ if result:
         i2.metric("MACD 趨勢", f"{c_macd:.2f}", macd_status)
         
         bias_status = "⚠️ 乖離大" if abs(c_bias) > 5 else "✅ 穩定"
-        i3.metric("月線乖離 (BIAS)", f"{c_bias:+.2f}%", bias_status, delta_color="inverse")
+        i3.metric("月線乖離 (BIAS)", f"{c_bias:+.2f}%", bias_status, delta_color="nornal")
         
         ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
-        i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status)
+        i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="nornal")
     
     st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
