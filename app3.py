@@ -117,13 +117,13 @@ with st.sidebar:
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
     st.divider()
 # 在側邊欄的登出按鈕部分
-if st.button("🚪 登出帳號"):
+    if st.button("🚪 登出帳號"):
     # 清理快取
-    st.cache_data.clear()
+        st.cache_data.clear()
     # 清理 Session 狀態
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.rerun()
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
