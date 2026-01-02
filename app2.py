@@ -134,9 +134,13 @@ if ticker_input:
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='#00DDAA', width=2)))
         
-        lines = [('TL+2SD', 'red', '+2 SD (昂貴)'), ('TL+1SD', 'orange', '+1SD'), 
-                 ('TL', 'gray', '中心線'), ('TL-1SD', 'lightgreen', '-1SD'), 
-                 ('TL-2SD', 'green', '-2 SD (便宜)')]
+line_configs = {
+            'TL+2SD': {'name': '+2SD (天價)', 'color': '#FF4B4B'}, # 紅
+            'TL+1SD': {'name': '+1SD (偏高)', 'color': '#FFA500'}, # 橘
+            'TL':      {'name': '趨勢線 (合理)', 'color': '#FFFFFF'}, # 白
+            'TL-1SD': {'name': '-1SD (偏低)', 'color': '#1E90FF'}, # 藍
+            'TL-2SD': {'name': '-2SD (特價)', 'color': '#00FF00'}  # 綠
+        }
         
 for key, config in line_configs.items():
             last_val = df[key].iloc[-1]
