@@ -263,3 +263,80 @@ if st.button("🔄 開始掃描所有標的狀態"):
             else: pos = "🟢 特價"
             summary.append({"代號": t, "名稱": name, "最新價格": f"{p:.1f}", "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", "位階狀態": pos})
     if summary: st.table(pd.DataFrame(summary))
+# --- 1. 後台多指標運算函數 ---
+def get_technical_indicators(df):
+    """在後台計算所有隱藏指標"""
+    # RSI (14)
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+    
+    # MACD (12, 26, 9)
+    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = exp1 - exp2
+    df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    
+    # BIAS (20)
+    df['MA20'] = df['Close'].rolling(window=20).mean()
+    df['BIAS'] = ((df['Close'] - df['MA20']) / df['MA20']) * 100
+    
+    # MA 季線 (60)
+    df['MA60'] = df['Close'].rolling(window=60).mean()
+    return df
+
+# --- 2. 核心警示判斷邏輯 ---
+def check_advanced_alerts(watchlist, years):
+    alerts = []
+    for ticker, name in watchlist.items():
+        data = get_stock_data(ticker, years)
+        if data:
+            df, _ = data
+            df = get_technical_indicators(df)
+            
+            # 取得最新一筆與前一筆數據 (判斷交叉)
+            curr = df.iloc[-1]
+            prev = df.iloc[-2]
+            
+            # --- 買進訊號條件 ---
+            # 1. 五線譜在偏低或特價區
+            is_cheap = curr['Close'] <= curr['TL-1SD']
+            # 2. 技術面轉強 (滿足其一即可)
+            tech_strong = (
+                (prev['RSI'] < 30 and curr['RSI'] > 30) or       # RSI 低檔回升
+                (prev['MACD'] < prev['Signal'] and curr['MACD'] > curr['Signal']) or # MACD 金叉
+                (prev['Close'] < curr['MA60'] and curr['Close'] > curr['MA60'])      # 站上季線
+            )
+            
+            # --- 賣出訊號條件 ---
+            is_expensive = curr['Close'] >= curr['TL+1SD']
+            tech_weak = (
+                (prev['RSI'] > 70 and curr['RSI'] < 70) or       # RSI 高檔反轉
+                (prev['MACD'] > prev['Signal'] and curr['MACD'] < curr['Signal'])    # MACD 死叉
+            )
+
+            if is_cheap and tech_strong:
+                alerts.append({"name": name, "type": "BUY", "reason": "位階偏低 + 技術面轉強"})
+            elif is_expensive and tech_weak:
+                alerts.append({"name": name, "type": "SELL", "reason": "位階偏高 + 技術面轉弱"})
+                
+    return alerts
+
+# --- 3. UI 顯示部分 (放置於指標儀表板下方) ---
+
+# 點擊掃描按鈕後觸發
+if st.button("🔍 執行全自動多指標雷達掃描"):
+    with st.spinner("正在計算 RSI/MACD/MA/BIAS 共振訊號..."):
+        adv_alerts = check_advanced_alerts(st.session_state.watchlist_dict, years_input)
+        
+        if adv_alerts:
+            st.write("### 🔔 即時策略警示")
+            for alert in adv_alerts:
+                if alert['type'] == "BUY":
+                    st.success(f"✅ **買進建議：{alert['name']}** ({alert['reason']})")
+                else:
+                    st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
+        else:
+            st.info("目前沒有標的符合共振條件。")
