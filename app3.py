@@ -276,13 +276,13 @@ if result:
         
         macd_delta = c_macd - c_sig
         macd_status = "📈 金叉" if macd_delta > 0 else "📉 死叉"
-        i2.metric("MACD 趨勢", f"{c_macd:.2f}", macd_status)
+        i2.metric("MACD 趨勢", f"{c_macd:.2f}", macd_status, delta_color="off")
         
         bias_status = "⚠️ 乖離大" if abs(c_bias) > 5 else "✅ 穩定"
-        i3.metric("月線乖離 (BIAS)", f"{c_bias:+.2f}%", bias_status, delta_color="normal")
+        i3.metric("月線乖離 (BIAS)", f"{c_bias:+.2f}%", bias_status, delta_color="off")
         
         ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
-        i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="normal")
+        i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="off")
     
     st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
