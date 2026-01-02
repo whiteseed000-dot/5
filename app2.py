@@ -162,10 +162,14 @@ for key, config in line_configs.items():
             ))
 
 
-#
-        fig.add_hline(y=current_price, line_dash="dot", line_color="#00DDAA", 
-                      annotation_text=f"目前現價: {current_price:.2f}", 
-                      annotation_position="bottom right")
+fig.add_hline(
+            y=current_price, 
+            line_dash="dot", 
+            line_color="white", 
+            annotation_text=f"現價: {current_price:.2f}", 
+            annotation_position="top right",
+            annotation_font=dict(color="white", size=14)
+        )
 
         fig.update_layout(height=600, template="plotly_white", hovermode="x unified",
                           xaxis_title="日期", yaxis_title="價格")
