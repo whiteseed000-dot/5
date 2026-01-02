@@ -172,7 +172,19 @@ if result:
     elif curr > df['TL-2SD'].iloc[-1]: status_label = "🔵 偏低"
     else: status_label = "🟢 特價"
 
-    vix_s = "🔴 恐慌" if vix_val >= 30 else "🟠 警戒" if vix_val > 15 else "⚪ 穩定" if round(vix_val) == 15 else "🔵 樂觀"
+vix_val = get_vix_index()
+
+# 修正判斷邏輯，使用 float 確保穩定
+if vix_val >= 30:
+    vix_s = "🔴 恐慌"
+elif vix_val > 15:
+    vix_s = "🟠 警戒"
+elif 14.5 <= vix_val <= 15.5: # 用範圍取代精確的 round(vix_val) == 15 避免浮點數誤差
+    vix_s = "⚪ 穩定"
+elif vix_val > 0:
+    vix_s = "🔵 樂觀"
+else:
+    vix_s = "🟢 極致樂觀"
     
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("最新股價", f"{curr:.2f}")
