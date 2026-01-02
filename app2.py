@@ -57,7 +57,7 @@ with st.sidebar:
 col_title, col_btn = st.columns([4, 1])
 
 with col_title:
-    st.title(f"📈 樂活五線譜: {ticker_input}")
+    st.title(f"📈 樂活五線譜: {ticker_input} ({stock_name})")
 
 with col_btn:
     # 這裡現在絕對不會報 NameError 了
@@ -101,7 +101,7 @@ def get_lohas_data(ticker, years):
         return df, std_dev, slope
     except:
         return None
-
+stock_name = tk.info.get('longName', search_ticker)
 # --- 5. 數據分析與繪圖 ---
 if ticker_input:
     result = get_lohas_data(ticker_input, years_input)
@@ -134,9 +134,9 @@ if ticker_input:
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='#00DDAA', width=2)))
         
-        lines = [('TL+2SD', 'red', '昂貴'), ('TL+1SD', 'orange', '+1SD'), 
+        lines = [('TL+2SD', 'red', '+2 SD (昂貴)'), ('TL+1SD', 'orange', '+1SD'), 
                  ('TL', 'gray', '中心線'), ('TL-1SD', 'lightgreen', '-1SD'), 
-                 ('TL-2SD', 'green', '便宜')]
+                 ('TL-2SD', 'green', '-2 SD (便宜)')]
         
         for col, color, label in lines:
             fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=label, 
