@@ -176,15 +176,22 @@ if ticker_input:
         elif current_price > df['TL-2SD'].iloc[-1]: status_label = "🔵 偏低"
         else: status_label = "🟢 特價"
 
+                
+        if vix_val >= 30: vix_status = "🔴 恐慌"
+        elif vix_val > 15: vix_status = "🟠 警戒"
+        elif round(vix_val) == 15: vix_status = "⚪ 穩定"
+        elif vix_val > 0: vix_status = "🔵 樂觀"
+        else: vix_status = "🟢 極致樂觀"
+            
         # 頂部 5 指標欄位 (維持圖片格式)
         m1, m2, m3, m4, m5 = st.columns(5)
         m1.metric("最新股價", f"{current_price:.2f}")
         m2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_pct:+.2f}%")
         m3.metric("目前狀態", status_label)
-        m4.metric("趨勢斜率", f"{slope:.5f}") # 校對圖片為 5 位小數
-        
-        vix_status = "🟢 穩定" if vix_val < 15 else "🟠 警戒"
-        m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status)
+        m4.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上") # 校對圖片為 5 位小數
+
+            
+        m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, help="超過60代表極度恐慌")
 
         # Plotly 繪圖 (保留 650 高度與所有格式)
         fig = go.Figure()
