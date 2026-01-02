@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- 1. 核心雲端邏輯 (帳號與清單) ---
+# --- 1. 核心雲端邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
@@ -65,7 +65,6 @@ username = st.session_state.username
 if 'watchlist_dict' not in st.session_state:
     st.session_state.watchlist_dict = load_watchlist_from_google(username)
 
-# 顏色配置與線段 (恢復原始)
 lines_config = [
     ('TL+2SD', '#FF3131', '+2SD (天價)', 'dash'), 
     ('TL+1SD', '#FFBD03', '+1SD (偏高)', 'dash'), 
@@ -99,14 +98,14 @@ def get_stock_data(ticker, years):
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
         df = df.reset_index()
-        # 五線譜計算
         df['x'] = np.arange(len(df))
         slope, intercept, _, _, _ = stats.linregress(df['x'], df['Close'])
         df['TL'] = slope * df['x'] + intercept
         std = np.std(df['Close'] - df['TL'])
         df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
         df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
-        # 技術指標計算 (KD, Bollinger)
+        
+        # 技術指標
         low_9 = df['Low'].rolling(9).min(); high_9 = df['High'].rolling(9).max()
         rsv = 100 * (df['Close'] - low_9) / (high_9 - low_9)
         df['K'] = rsv.ewm(com=2).mean(); df['D'] = df['K'].ewm(com=2).mean()
@@ -123,10 +122,9 @@ def get_vix_index():
         return float(vix['Close'].iloc[-1])
     except: return 0.0
 
-# --- 6. 介面形式恢復 (標題與指標) ---
+# --- 6. 介面與標題 (維持原始樣式) ---
 col_title, col_btn = st.columns([4, 1])
 with col_title:
-    # 標題樣式恢復
     st.markdown(f'# <img src="https://cdn-icons-png.flaticon.com/512/421/421644.png" width="30"> 樂活五線譜: {ticker_input} ({stock_name})', unsafe_allow_html=True)
 
 with col_btn:
@@ -150,21 +148,19 @@ if result:
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
-    # 恢復原本的五級判定
+    # VIX 與 狀態邏輯 (恢復原始)
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
     elif curr > df['TL-2SD'].iloc[-1]: status_label = "🔵 偏低"
     else: status_label = "🟢 特價"
 
-    # --- 關鍵：恢復原本 VIX 指數計算規則 ---
     if vix_val >= 30: vix_status = "🔴 恐慌"
     elif vix_val > 15: vix_status = "🟠 警戒"
     elif round(vix_val) == 15: vix_status = "⚪ 穩定"
     elif vix_val > 0: vix_status = "🔵 樂觀"
     else: vix_status = "🟢 極致樂觀"
 
-    # 恢復原本的 5 欄顯示形式
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("最新股價", f"{curr:.2f}")
     m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%")
@@ -172,45 +168,57 @@ if result:
     m4.metric("趨勢斜率", f"{slope:.5f}")
     m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status)
 
-    # --- 7. 切換按鈕 (放置於指標下方) ---
+    # --- 7. 切換按鈕 ---
     st.write("")
     view_mode = st.radio("分析視圖切換", ["樂活五線譜", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
     st.write("")
 
-    # --- 8. 圖表形式 (恢復 650 高度與樣式) ---
+    # --- 8. 圖表核心 (修正滑鼠標示資訊) ---
     fig = go.Figure()
     
     if view_mode == "樂活五線譜":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), hovertemplate='價: %{y:.1f}'))
+        # 恢復收盤價與五線譜的 hovertemplate
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='收盤價: %{y:.1f}'))
         for col, hex_color, name_tag, line_style in lines_config:
-            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), hoverinfo='skip'))
+            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag, hovertemplate=f'{name_tag}: %{{y:.1f}}'))
             last_val = df[col].iloc[-1]
             fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
 
     elif view_mode == "KD指標":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131', width=2)))
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF', width=2)))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131', width=2), hovertemplate='K: %{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF', width=2), hovertemplate='D: %{y:.1f}'))
         fig.add_hline(y=80, line_dash="dot", line_color="rgba(255,255,255,0.3)"); fig.add_hline(y=20, line_dash="dot", line_color="rgba(255,255,255,0.3)")
 
     elif view_mode == "布林通道":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2)))
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash')))
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['MA20'], name="20MA", line=dict(color='#FFBD03')))
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash')))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2), hovertemplate='價: %{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash'), hovertemplate='上軌: %{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['MA20'], name="20MA", line=dict(color='#FFBD03'), hovertemplate='20MA: %{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash'), hovertemplate='下軌: %{y:.1f}'))
 
     elif view_mode == "成交量":
         bar_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
-        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors))
+        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量", hovertemplate='量: %{y:}'))
 
-    # 共同設定：現價標籤
-    if view_mode != "成交量" and view_mode != "KD指標":
+    # 共同設定：現價線
+    if view_mode not in ["成交量", "KD指標"]:
         fig.add_hline(y=curr, line_dash="dot", line_color="#FFFFFF", line_width=2)
         fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14, family="Arial Black"))
 
-    fig.update_layout(height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117', hovermode="x unified", showlegend=False, margin=dict(l=10, r=100, t=10, b=10))
+    # 關鍵修正：恢復 hovermode="x unified" 與顯示設定
+    fig.update_layout(
+        height=650, 
+        plot_bgcolor='#0E1117', 
+        paper_bgcolor='#0E1117', 
+        hovermode="x unified",  # 恢復橫向統一顯示
+        hoverlabel=dict(bgcolor="#1E1E1E", font_size=12, font_family="Arial"),
+        showlegend=False, 
+        margin=dict(l=10, r=100, t=10, b=10),
+        xaxis=dict(showgrid=True, gridcolor='#333333'),
+        yaxis=dict(showgrid=True, gridcolor='#333333')
+    )
     st.plotly_chart(fig, use_container_width=True)
 
-# --- 9. 掃覽概覽 (維持原樣) ---
+# --- 9. 概覽掃描 ---
 st.divider()
 if st.button("🔄 開始掃描所有標的狀態"):
     summary = []
