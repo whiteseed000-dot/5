@@ -44,7 +44,6 @@ if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist_from_google()
 
 # --- 亮度優化後的顏色配置 ---
-# 使用更鮮豔的顏色：鮮紅、橙黃、純白、亮藍、螢光綠
 lines_config = [
     ('TL+2SD', '#FF3131', '+2SD (天價)', 'dash'), 
     ('TL+1SD', '#FFBD03', '+1SD (偏高)', 'dash'), 
@@ -124,42 +123,44 @@ if ticker_input:
         df, std_dev, slope = result
         current_price = float(df['Close'].iloc[-1])
         last_tl = df['TL'].iloc[-1]
-        last_p2sd = df['TL+2SD'].iloc[-1]
-        last_m2sd = df['TL-2SD'].iloc[-1]
+        last_p2 = df['TL+2SD'].iloc[-1]
+        last_p1 = df['TL+1SD'].iloc[-1]
+        last_m1 = df['TL-1SD'].iloc[-1]
+        last_m2 = df['TL-2SD'].iloc[-1]
         dist_pct = ((current_price - last_tl) / last_tl) * 100
+
+        # --- 修正重點：同步判定基準為 5 級 ---
+        if current_price > last_p2: 
+            status_label = "🔴 +2SD (天價)"
+        elif current_price > last_p1: 
+            status_label = "🟠 +1SD (偏高)"
+        elif current_price > last_m1: 
+            status_label = "⚪ 趨勢線 (合理)"
+        elif current_price > last_m2: 
+            status_label = "🔵 -1SD (偏低)"
+        else: 
+            status_label = "🟢 -2SD (特價)"
 
         # 顯示關鍵指標
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("最新股價", f"{current_price:.2f}")
         m2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_pct:+.2f}%")
-        
-        status_label = "✅ 相對便宜"
-        if current_price > last_p2sd: status_label = "⚠️ 過熱 (高於 +2SD)"
-        elif current_price > last_tl: status_label = "📊 相對偏高"
-        elif current_price < last_m2sd: status_label = "💎 特價區 (低於 -2SD)"
-        
         m3.metric("目前狀態", status_label)
         m4.metric("趨勢斜率", f"{slope:.4f}")
 
-        # --- 繪圖邏輯 (亮度提升版) ---
+        # --- 繪圖邏輯 (維持亮度優化版) ---
         fig = go.Figure()
-        
-        # 每日收盤價 (螢光綠)
         fig.add_trace(go.Scatter(
             x=df['Date'], y=df['Close'], 
             line=dict(color='#00D084', width=2),
             hovertemplate='收盤價: %{y:.1f}<extra></extra>'
         ))
-        
-        # 五線譜線段
         for col, hex_color, name_tag, line_style in lines_config:
             fig.add_trace(go.Scatter(
                 x=df['Date'], y=df[col], 
                 line=dict(color=hex_color, dash=line_style, width=1.5),
                 hovertemplate=f'{name_tag}: %{{y:.1f}}<extra></extra>'
             ))
-            
-            # 右側末端純文字標籤
             last_val = df[col].iloc[-1]
             fig.add_annotation(
                 x=df['Date'].iloc[-1], y=last_val,
@@ -168,8 +169,6 @@ if ticker_input:
                 font=dict(color=hex_color, size=13),
                 bgcolor="rgba(0,0,0,0)"
             )
-
-        # 現價水平線 (高對比白色)
         fig.add_hline(y=current_price, line_dash="dot", line_color="#FFFFFF", line_width=2)
         fig.add_annotation(
             x=df['Date'].iloc[-1], y=current_price,
@@ -178,34 +177,18 @@ if ticker_input:
             font=dict(color="#FFFFFF", size=14, family="Arial Black"),
             bgcolor="rgba(0,0,0,0)"
         )
-
-        # --- 佈局亮度優化 ---
         fig.update_layout(
-            height=650, 
-            plot_bgcolor='#0E1117', # 調整背景為深灰色而非全黑，能提升線條對比
-            paper_bgcolor='#0E1117',
-            hovermode="x unified",
-            showlegend=False,
+            height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
+            hovermode="x unified", showlegend=False,
             margin=dict(l=10, r=100, t=50, b=10),
-            yaxis=dict(
-                showgrid=True, 
-                gridcolor='#333333', # 格線調亮一點
-                side="left", 
-                tickfont=dict(color='#BBBBBB')
-            ),
-            xaxis=dict(
-                showgrid=True, 
-                gridcolor='#333333',
-                tickfont=dict(color='#BBBBBB')
-            )
+            yaxis=dict(showgrid=True, gridcolor='#333333', side="left"),
+            xaxis=dict(showgrid=True, gridcolor='#333333')
         )
-
         st.plotly_chart(fig, use_container_width=True)
 
-        # --- 6. 掃描概覽表 ---
+        # --- 6. 掃描概覽表 (同步) ---
         st.divider()
         st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
-        
         if st.button("🔄 開始掃描所有標的狀態"):
             summary_data = []
             with st.spinner('掃描中...'):
@@ -219,19 +202,14 @@ if ticker_input:
                         t_p2 = t_df['TL+2SD'].iloc[-1]
                         t_m1 = t_df['TL-1SD'].iloc[-1]
                         t_m2 = t_df['TL-2SD'].iloc[-1]
-                        
                         if p > t_p2: pos = "🔴 +2SD (天價)"
                         elif p > t_p1: pos = "🟠 +1SD (偏高)"
                         elif p > t_m1: pos = "⚪ 趨勢線 (合理)"
                         elif p > t_m2: pos = "🔵 -1SD (偏低)"
                         else: pos = "🟢 -2SD (特價)"
-                        
                         summary_data.append({
-                            "代號": t,
-                            "最新價格": f"{p:.1f}",
-                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%",
-                            "位階狀態": pos
+                            "代號": t, "最新價格": f"{p:.1f}",
+                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", "位階狀態": pos
                         })
-            
             if summary_data:
                 st.table(pd.DataFrame(summary_data))
