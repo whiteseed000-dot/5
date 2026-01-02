@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- 1. Google Sheets 邏輯 (加入錯誤攔截) ---
+# --- 1. Google Sheets 邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
@@ -23,7 +23,7 @@ def load_watchlist_from_google():
         if len(records) > 1:
             return [row[0] for row in records[1:] if row[0]]
     except Exception as e:
-        st.warning(f"目前無法連線至 Google Sheets (原因: {e})，暫時使用預設清單。")
+        st.warning("目前暫時使用預設清單。")
     return default_list
 
 def save_watchlist_to_google(watchlist):
@@ -43,36 +43,36 @@ st.set_page_config(page_title="股市五線譜 Pro", layout="wide")
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = load_watchlist_from_google()
 
-# --- 3. 介面佈局 (先定義變數避免 NameError) ---
+# --- 亮度優化後的顏色配置 ---
+# 使用更鮮豔的顏色：鮮紅、橙黃、純白、亮藍、螢光綠
+lines_config = [
+    ('TL+2SD', '#FF3131', '+2SD (天價)', 'dash'), 
+    ('TL+1SD', '#FFBD03', '+1SD (偏高)', 'dash'), 
+    ('TL', '#FFFFFF', '趨勢線 (合理)', 'solid'), 
+    ('TL-1SD', '#0096FF', '-1SD (偏低)', 'dash'), 
+    ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
+]
+
+# --- 3. 介面佈局 (側邊欄) ---
 with st.sidebar:
     st.header("📋 追蹤清單")
     quick_pick = st.selectbox("我的收藏", options=["-- 手動輸入 --"] + st.session_state.watchlist)
+    
     st.divider()
     st.header("⚙️ 搜尋設定")
     default_val = quick_pick if quick_pick != "-- 手動輸入 --" else "2330.TW"
     ticker_input = st.text_input("股票代號", value=default_val).upper().strip()
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
 
-# 佈局主標題與按鈕
-col_title, col_btn = st.columns([4, 1])
+    # --- 自定義圖例 (側邊欄紅框位置) ---
+    st.divider()
+    st.subheader("📌 線段說明")
+    st.markdown(f'<span style="color:#00D084; font-size:18px;">●</span> 每日收盤價', unsafe_allow_html=True)
+    for col, hex_color, name_tag, line_style in lines_config:
+        line_symbol = "━━━━" if line_style == 'solid' else "----"
+        st.markdown(f'<span style="color:{hex_color}; font-weight:bold;">{line_symbol}</span> {name_tag}', unsafe_allow_html=True)
 
-with col_title:
-    st.title(f"📈 樂活五線譜: {ticker_input}")
-
-with col_btn:
-    # 這裡現在絕對不會報 NameError 了
-    if ticker_input not in st.session_state.watchlist:
-        if st.button("➕ 加入追蹤"):
-            st.session_state.watchlist.append(ticker_input)
-            save_watchlist_to_google(st.session_state.watchlist)
-            st.rerun()
-    else:
-        if st.button("➖ 移除追蹤"):
-            if len(st.session_state.watchlist) > 1:
-                st.session_state.watchlist.remove(ticker_input)
-                save_watchlist_to_google(st.session_state.watchlist)
-                st.rerun()
-# --- 2. 核心演算法 (五線譜計算) ---
+# --- 4. 核心演算法 ---
 @st.cache_data(ttl=3600)
 def get_lohas_data(ticker, years):
     try:
@@ -87,11 +87,9 @@ def get_lohas_data(ticker, years):
         df.columns = ['Date', 'Close']
         df['x'] = np.arange(len(df))
         
-        # 線性回歸
         slope, intercept, _, _, _ = stats.linregress(df['x'], df['Close'])
         df['TL'] = slope * df['x'] + intercept
         
-        # 標準差通道
         std_dev = np.std(df['Close'] - df['TL'])
         df['TL+2SD'] = df['TL'] + (2 * std_dev)
         df['TL+1SD'] = df['TL'] + (1 * std_dev)
@@ -103,6 +101,23 @@ def get_lohas_data(ticker, years):
         return None
 
 # --- 5. 數據分析與繪圖 ---
+col_title, col_btn = st.columns([4, 1])
+with col_title:
+    st.title(f"📈 樂活五線譜: {ticker_input}")
+
+with col_btn:
+    if ticker_input not in st.session_state.watchlist:
+        if st.button("➕ 加入追蹤"):
+            st.session_state.watchlist.append(ticker_input)
+            save_watchlist_to_google(st.session_state.watchlist)
+            st.rerun()
+    else:
+        if st.button("➖ 移除追蹤"):
+            if len(st.session_state.watchlist) > 1:
+                st.session_state.watchlist.remove(ticker_input)
+                save_watchlist_to_google(st.session_state.watchlist)
+                st.rerun()
+
 if ticker_input:
     result = get_lohas_data(ticker_input, years_input)
     if result:
@@ -113,48 +128,80 @@ if ticker_input:
         last_m2sd = df['TL-2SD'].iloc[-1]
         dist_pct = ((current_price - last_tl) / last_tl) * 100
 
-        # 狀態判斷
-        if current_price > last_p2sd:
-            status, color = "⚠️ 過熱 (高於 +2SD)", "red"
-        elif current_price > last_tl:
-            status, color = "📊 相對偏高", "orange"
-        elif current_price < last_m2sd:
-            status, color = "💎 特價區 (低於 -2SD)", "green"
-        else:
-            status, color = "✅ 相對便宜", "lightgreen"
-
         # 顯示關鍵指標
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("最新股價", f"{current_price:.2f}")
         m2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_pct:+.2f}%")
-        m3.metric("目前狀態", status)
+        
+        status_label = "✅ 相對便宜"
+        if current_price > last_p2sd: status_label = "⚠️ 過熱 (高於 +2SD)"
+        elif current_price > last_tl: status_label = "📊 相對偏高"
+        elif current_price < last_m2sd: status_label = "💎 特價區 (低於 -2SD)"
+        
+        m3.metric("目前狀態", status_label)
         m4.metric("趨勢斜率", f"{slope:.4f}")
 
-        # 繪製圖表
+        # --- 繪圖邏輯 (亮度提升版) ---
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='#00DDAA', width=2)))
         
-        lines = [('TL+2SD', 'red', '+2 SD (昂貴)'), ('TL+1SD', 'orange', '+1SD'), 
-                 ('TL', 'gray', '中心線'), ('TL-1SD', 'lightgreen', '-1SD'), 
-                 ('TL-2SD', 'green', '-2 SD (便宜)')]
+        # 每日收盤價 (螢光綠)
+        fig.add_trace(go.Scatter(
+            x=df['Date'], y=df['Close'], 
+            line=dict(color='#00D084', width=2),
+            hovertemplate='收盤價: %{y:.1f}<extra></extra>'
+        ))
         
-        for col, color, label in lines:
-            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=label, 
-                                     line=dict(color=color, dash='dash' if 'SD' in col else 'solid')))
+        # 五線譜線段
+        for col, hex_color, name_tag, line_style in lines_config:
+            fig.add_trace(go.Scatter(
+                x=df['Date'], y=df[col], 
+                line=dict(color=hex_color, dash=line_style, width=1.5),
+                hovertemplate=f'{name_tag}: %{{y:.1f}}<extra></extra>'
+            ))
+            
+            # 右側末端純文字標籤
+            last_val = df[col].iloc[-1]
+            fig.add_annotation(
+                x=df['Date'].iloc[-1], y=last_val,
+                text=f"<b>{last_val:.1f}</b>",
+                showarrow=False, xanchor="left", xshift=10,
+                font=dict(color=hex_color, size=13),
+                bgcolor="rgba(0,0,0,0)"
+            )
 
-        fig.update_layout(height=500, template="plotly_white", hovermode="x unified", margin=dict(l=10, r=10, t=30, b=10))
+        # 現價水平線 (高對比白色)
+        fig.add_hline(y=current_price, line_dash="dot", line_color="#FFFFFF", line_width=2)
+        fig.add_annotation(
+            x=df['Date'].iloc[-1], y=current_price,
+            text=f"現價: {current_price:.2f}",
+            showarrow=False, xanchor="left", xshift=10, yshift=15,
+            font=dict(color="#FFFFFF", size=14, family="Arial Black"),
+            bgcolor="rgba(0,0,0,0)"
+        )
 
-
-#
-        fig.add_hline(y=current_price, line_dash="dot", line_color="#00DDAA", 
-                      annotation_text=f"目前現價: {current_price:.2f}", 
-                      annotation_position="bottom right")
-
-        fig.update_layout(height=600, template="plotly_white", hovermode="x unified",
-                          xaxis_title="日期", yaxis_title="價格")
+        # --- 佈局亮度優化 ---
+        fig.update_layout(
+            height=650, 
+            plot_bgcolor='#0E1117', # 調整背景為深灰色而非全黑，能提升線條對比
+            paper_bgcolor='#0E1117',
+            hovermode="x unified",
+            showlegend=False,
+            margin=dict(l=10, r=100, t=50, b=10),
+            yaxis=dict(
+                showgrid=True, 
+                gridcolor='#333333', # 格線調亮一點
+                side="left", 
+                tickfont=dict(color='#BBBBBB')
+            ),
+            xaxis=dict(
+                showgrid=True, 
+                gridcolor='#333333',
+                tickfont=dict(color='#BBBBBB')
+            )
+        )
 
         st.plotly_chart(fig, use_container_width=True)
- #       
+
         # --- 6. 掃描概覽表 ---
         st.divider()
         st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
@@ -168,29 +215,23 @@ if ticker_input:
                         t_df, _, _ = res
                         p = float(t_df['Close'].iloc[-1])
                         t_tl = t_df['TL'].iloc[-1]
+                        t_p1 = t_df['TL+1SD'].iloc[-1]
                         t_p2 = t_df['TL+2SD'].iloc[-1]
+                        t_m1 = t_df['TL-1SD'].iloc[-1]
                         t_m2 = t_df['TL-2SD'].iloc[-1]
                         
-                        if p > t_p2: pos = "⚠️ 過熱"
-                        elif p > t_tl: pos = "📊 偏高"
-                        elif p < t_m2: pos = "💎 特價"
-                        else: pos = "✅ 便宜"
+                        if p > t_p2: pos = "🔴 +2SD (天價)"
+                        elif p > t_p1: pos = "🟠 +1SD (偏高)"
+                        elif p > t_m1: pos = "⚪ 趨勢線 (合理)"
+                        elif p > t_m2: pos = "🔵 -1SD (偏低)"
+                        else: pos = "🟢 -2SD (特價)"
                         
                         summary_data.append({
                             "代號": t,
-                            "價格": f"{p:.2f}",
-                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.2f}%",
+                            "最新價格": f"{p:.1f}",
+                            "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%",
                             "位階狀態": pos
                         })
             
             if summary_data:
-                # 簡單美化表格
                 st.table(pd.DataFrame(summary_data))
-
-    else:
-        st.error("數據獲取失敗，請確認代號是否正確。")
-
-# 詳細數據展開
-with st.expander("查看原始數據"):
-    if 'df' in locals():
-        st.dataframe(df.tail(10).sort_values('Date', ascending=False))
