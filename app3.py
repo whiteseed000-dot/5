@@ -205,17 +205,14 @@ if result:
         fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14, family="Arial Black"))
 
     # 關鍵修正：恢復 hovermode="x unified" 與顯示設定
-    fig.update_layout(
-        height=650, 
-        plot_bgcolor='#0E1117', 
-        paper_bgcolor='#0E1117', 
-        hovermode="x unified",  # 恢復橫向統一顯示
-        hoverlabel=dict(bgcolor="#1E1E1E", font_size=12, font_family="Arial"),
-        showlegend=False, 
-        margin=dict(l=10, r=100, t=10, b=10),
-        xaxis=dict(showgrid=True, gridcolor='#333333'),
-        yaxis=dict(showgrid=True, gridcolor='#333333')
-    )
+        fig.update_layout(
+            height=650, # 保留 650
+            plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
+            hovermode="x unified", showlegend=False,
+            margin=dict(l=10, r=100, t=50, b=10),
+            yaxis=dict(showgrid=True, gridcolor='#333333', side="left"),
+            xaxis=dict(showgrid=True, gridcolor='#333333')
+        )
     st.plotly_chart(fig, use_container_width=True)
 
 # --- 9. 概覽掃描 ---
