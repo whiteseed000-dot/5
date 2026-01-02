@@ -130,28 +130,24 @@ if ticker_input:
         m3.metric("目前狀態", status)
         m4.metric("趨勢斜率", f"{slope:.4f}")
 
-        # 繪製圖表
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name='收盤價', line=dict(color='#00DDAA', width=2)))
-        
-        lines = [('TL+2SD', 'red', '+2 SD (昂貴)'), ('TL+1SD', 'orange', '+1SD'), 
-                 ('TL', 'gray', '中心線'), ('TL-1SD', 'lightgreen', '-1SD'), 
-                 ('TL-2SD', 'green', '-2 SD (便宜)')]
-        
-        for col, color, label in lines:
-            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=label, 
-                                     line=dict(color=color, dash='dash' if 'SD' in col else 'solid')))
+        y=current_price, 
+            line_dash="dot", 
+            line_color="white", 
+            annotation_text=f"現價: {current_price:.2f}", 
+            annotation_position="top right",
+            annotation_font=dict(color="white", size=14)
+        )
 
-        fig.update_layout(height=500, template="plotly_white", hovermode="x unified", margin=dict(l=10, r=10, t=30, b=10))
-
-
-#
-        fig.add_hline(y=current_price, line_dash="dot", line_color="#00DDAA", 
-                      annotation_text=f"目前現價: {current_price:.2f}", 
-                      annotation_position="bottom right")
-
-        fig.update_layout(height=600, template="plotly_white", hovermode="x unified",
-                          xaxis_title="日期", yaxis_title="價格")
+        fig.update_layout(
+            height=700, 
+            template="plotly_dark", 
+            hovermode="x unified",
+            paper_bgcolor="#121212",
+            plot_bgcolor="#121212",
+            margin=dict(r=80), # 留出右側空間放標籤
+            xaxis=dict(showgrid=True, gridcolor='#333333'),
+            yaxis=dict(showgrid=True, gridcolor='#333333', side="left")
+        )
 
         st.plotly_chart(fig, use_container_width=True)
  #       
