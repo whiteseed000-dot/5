@@ -23,16 +23,41 @@ def get_user_credentials():
     except: return {"admin": "1234"}
 
 def load_watchlist_from_google(username):
+    """讀取清單，若無分頁則自動建立並預設台積電"""
     default_dict = {"2330.TW": "台積電"}
     try:
         client = get_gsheet_client()
         spreadsheet = client.open("MyWatchlist")
-        sheet = spreadsheet.worksheet(username)
-        records = sheet.get_all_values()
-        if len(records) > 1:
-            return {row[0]: row[1] if len(row) > 1 else "" for row in records[1:] if row[0]}
-    except: pass
-    return default_dict
+        
+        # 獲取所有分頁名稱，確保是最新的
+        worksheet_list = [sh.title for sh in spreadsheet.worksheets()]
+        
+        if username not in worksheet_list:
+            try:
+                # 建立新分頁
+                sheet = spreadsheet.add_worksheet(title=username, rows="100", cols="20")
+                # 預設資料
+                header_and_default = [["ticker", "name"], ["2330.TW", "台積電"]]
+                # 使用 update 寫入資料
+                sheet.update("A1", header_and_default)
+                st.toast(f"已為新使用者 {username} 建立雲端分頁！", icon="✅")
+                return default_dict
+            except Exception as e:
+                st.error(f"建立分頁失敗: {e}")
+                return default_dict
+        else:
+            # 分頁已存在，正常讀取
+            sheet = spreadsheet.worksheet(username)
+            records = sheet.get_all_values()
+            if len(records) > 1:
+                # 排除標題列並過濾空值
+                return {row[0]: row[1] if len(row) > 1 else "" for row in records[1:] if row and row[0]}
+            else:
+                return default_dict
+                
+    except Exception as e:
+        st.error(f"雲端連線異常: {e}")
+        return default_dict
 
 def save_watchlist_to_google(username, watchlist_dict):
     try:
