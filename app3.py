@@ -211,13 +211,14 @@ if ticker_input:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-# --- 6. 掃描概覽表 (維持原樣) ---
+# --- 6. 掃描概覽表 (同步顯示代號與名稱) ---
         st.divider()
         st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
         if st.button("🔄 開始掃描所有標的狀態"):
             summary_data = []
             with st.spinner('掃描中...'):
-                for t, name in st.session_state.watchlist_dict.keys():
+                # 修改此處：遍歷字典的鍵值對 (t=代號, name=名稱)
+                for t, name in st.session_state.watchlist_dict.items():
                     res = get_lohas_data(t, years_input)
                     if res:
                         t_df, _, _ = res
@@ -227,14 +228,16 @@ if ticker_input:
                         t_p2 = t_df['TL+2SD'].iloc[-1]
                         t_m1 = t_df['TL-1SD'].iloc[-1]
                         t_m2 = t_df['TL-2SD'].iloc[-1]
+                        
                         if p > t_p2: pos = "🔴 +2SD (天價)"
                         elif p > t_p1: pos = "🟠 +1SD (偏高)"
                         elif p > t_m1: pos = "⚪ 趨勢線 (合理)"
                         elif p > t_m2: pos = "🔵 -1SD (偏低)"
                         else: pos = "🟢 -2SD (特價)"
+                        
                         summary_data.append({
                             "代號": t, 
-                            "名稱": name,
+                            "名稱": name,  # 新增這一欄顯示中文名稱
                             "最新價格": f"{p:.1f}",
                             "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", 
                             "位階狀態": pos
