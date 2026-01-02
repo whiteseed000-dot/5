@@ -101,102 +101,82 @@ def get_lohas_data(ticker, years):
         return df, std_dev, slope
     except:
         return None
-
-# --- 5. 數據分析與繪圖 ---
-if ticker_input:
-    result = get_lohas_data(ticker_input, years_input)
-    if result:
-        df, std_dev, slope = result
-        current_price = float(df['Close'].iloc[-1])
-        last_tl = df['TL'].iloc[-1]
-        last_p2sd = df['TL+2SD'].iloc[-1]
-        last_m2sd = df['TL-2SD'].iloc[-1]
-        dist_pct = ((current_price - last_tl) / last_tl) * 100
-
-        # 狀態判斷
-        if current_price > last_p2sd:
-            status, color = "⚠️ 過熱 (高於 +2SD)", "red"
-        elif current_price > last_tl:
-            status, color = "📊 相對偏高", "orange"
-        elif current_price < last_m2sd:
-            status, color = "💎 特價區 (低於 -2SD)", "green"
-        else:
-            status, color = "✅ 相對便宜", "lightgreen"
-
-        # 顯示關鍵指標
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("最新股價", f"{current_price:.2f}")
-        m2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_pct:+.2f}%")
-        m3.metric("目前狀態", status)
-        m4.metric("趨勢斜率", f"{slope:.4f}")
-
-# --- Plotly 圖表 ---
+# --- 5. 數據分析與繪圖 (優化標籤顯示) ---
         fig = go.Figure()
-
-        # 五線譜顏色設定
-        line_configs = {
-            'TL+2SD': {'name': '+2SD (天價)', 'color': '#FF4B4B'}, # 紅
-            'TL+1SD': {'name': '+1SD (偏高)', 'color': '#FFA500'}, # 橘
-            'TL':      {'name': '趨勢線 (合理)', 'color': '#FFFFFF'}, # 白
-            'TL-1SD': {'name': '-1SD (偏低)', 'color': '#1E90FF'}, # 藍
-            'TL-2SD': {'name': '-2SD (特價)', 'color': '#00FF00'}  # 綠
-        }
         
-        for key, config in line_configs.items():
-            last_val = df[key].iloc[-1]
-            # 畫線
-            fig.add_trace(go.Scatter(
-                x=df['Date'], y=df[key], 
-                name=config['name'],
-                line=dict(color=config['color'], width=1.5, dash='dash' if 'SD' in key else 'solid'),
-                opacity=0.6,
-                showlegend=True
-            ))
-            # 新增：右側價格標籤 (比照參考圖)
-            fig.add_trace(go.Scatter(
-                x=[last_date],
-                y=[last_val],
-                mode='text+markers',
-                text=[f"<b> {last_val:.1f} </b>"],
-                textposition="middle right",
-                textfont=dict(color="white", size=12),
-                marker=dict(color=config['color'], size=10, symbol='square'),
-                showlegend=False,
-                hoverinfo='skip'
-            ))
-
-        # 收盤價線 (深墨綠色)
+        # 繪製主收盤價線
         fig.add_trace(go.Scatter(
             x=df['Date'], y=df['Close'], 
-            name='每日收盤價', 
-            line=dict(color='#2D5E3F', width=2.5) 
+            name='收盤價', 
+            line=dict(color='#00DDAA', width=2)
         ))
+        
+        # 定義五線譜的參數
+        lines = [
+            ('TL+2SD', 'red', '34.7', '+2 SD (昂貴)'), 
+            ('TL+1SD', 'orange', '33.0', '+1SD'), 
+            ('TL', 'gray', '31.3', '中心線'), 
+            ('TL-1SD', 'lightblue', '29.5', '-1SD'), 
+            ('TL-2SD', 'green', '27.8', '-2 SD (便宜)')
+        ]
+        
+        for col, color, _, label in lines:
+            # 1. 繪製虛線
+            fig.add_trace(go.Scatter(
+                x=df['Date'], y=df[col], 
+                name=label, 
+                line=dict(color=color, dash='dash' if 'SD' in col else 'solid'),
+                hoverinfo='skip' # 避免標籤干擾 hover
+            ))
+            
+            # 2. 在線段末端添加數值標籤 (仿照圖片右側方塊)
+            last_value = df[col].iloc[-1]
+            fig.add_annotation(
+                x=df['Date'].iloc[-1],
+                y=last_value,
+                text=f"<b>{last_value:.1f}</b>", # 顯示數值
+                showarrow=False,
+                xanchor="left",
+                xshift=10,
+                font=dict(color="white", size=12),
+                bgcolor=color, # 背景顏色與線條一致
+                bordercolor=color,
+                borderwidth=1,
+                borderpad=2
+            )
 
-        # 白色現價指示水平線
+        # 3. 繪製現價橫線與標籤 (圖片中的白色虛線與 "現價: 33.75")
         fig.add_hline(
             y=current_price, 
             line_dash="dot", 
             line_color="white", 
-            annotation_text=f"現價: {current_price:.2f}", 
-            annotation_position="top right",
-            annotation_font=dict(color="white", size=14)
+            line_width=2
+        )
+        
+        fig.add_annotation(
+            x=df['Date'].iloc[-1],
+            y=current_price,
+            text=f"現價: {current_price:.2f}",
+            showarrow=False,
+            xanchor="left",
+            xshift=10,
+            yshift=15, # 稍微往上飄，避免壓到線
+            font=dict(color="white", size=13),
+            bgcolor="rgba(0,0,0,0.5)" # 半透明黑背景
         )
 
+        # 調整版面配置，確保右側標籤不會被切掉
         fig.update_layout(
-            height=700, 
-            template="plotly_dark", 
+            height=600, 
+            template="plotly_dark", # 使用深色主題更像圖片風格
             hovermode="x unified",
-            paper_bgcolor="#121212",
-            plot_bgcolor="#121212",
-            margin=dict(r=80), # 留出右側空間放標籤
-            xaxis=dict(showgrid=True, gridcolor='#333333'),
-            yaxis=dict(showgrid=True, gridcolor='#333333', side="left")
+            margin=dict(l=10, r=80, t=30, b=10), # r=80 留白給右側標籤
+            xaxis_title="日期", 
+            yaxis_title="價格",
+            showlegend=False # 因為右邊已有標籤，可隱藏圖例讓畫面簡潔
         )
 
         st.plotly_chart(fig, use_container_width=True)
-        
-    else:
-        st.error("無法取得數據，請確認代號。")
  #       
         # --- 6. 掃描概覽表 ---
         st.divider()
