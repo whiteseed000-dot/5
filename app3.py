@@ -341,3 +341,19 @@ if st.button("🔄 開始掃描所有標的狀態"):
             else: pos = "🟢 特價"
             summary.append({"代號": t, "名稱": name, "最新價格": f"{p:.1f}", "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", "位階狀態": pos})
     if summary: st.table(pd.DataFrame(summary))
+# --- 3. UI 顯示部分 (放置於指標儀表板下方) ---
+
+# 點擊掃描按鈕後觸發
+if st.button("🔍 執行全自動多指標雷達掃描"):
+    with st.spinner("正在計算 RSI/MACD/MA/BIAS 共振訊號..."):
+        adv_alerts = check_advanced_alerts(st.session_state.watchlist_dict, years_input)
+        
+        if adv_alerts:
+            st.write("### 🔔 即時策略警示")
+            for alert in adv_alerts:
+                if alert['type'] == "BUY":
+                    st.success(f"✅ **買進建議：{alert['name']}** ({alert['reason']})")
+                else:
+                    st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
+        else:
+            st.info("目前沒有標的符合共振條件。")
