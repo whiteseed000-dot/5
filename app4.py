@@ -144,7 +144,24 @@ def get_stock_data(ticker, years):
         return df, slope
     except: return None
 
-vix_val = yf.download("^VIX", period="1d", progress=False)['Close'].iloc[-1]
+@st.cache_data(ttl=3600)
+def get_vix_index():
+    try:
+        # 下載最新一天的 VIX 數據
+        vix_data = yf.download("^VIX", period="1d", progress=False)
+        if vix_data.empty:
+            return 0.0
+        # 處理 MultiIndex 欄位問題並取最後一個 Close 值，強制轉為 float
+        if isinstance(vix_data.columns, pd.MultiIndex):
+            val = vix_data['Close'].iloc[-1].values[0]
+        else:
+            val = vix_data['Close'].iloc[-1]
+        return float(val)
+    except:
+        return 0.0
+
+# --- 在主程式邏輯中執行判定 ---
+vix_val = get_vix_index()
 
 # --- 7. UI 渲染 ---
 col_title, col_btn = st.columns([4, 1])
