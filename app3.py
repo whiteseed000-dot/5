@@ -23,7 +23,7 @@ def get_user_credentials():
     except: return {"admin": "1234"}
 
 def load_watchlist_from_google(username):
-    default_dict = {"2330.TW": "台積電", "9945.TW": "潤泰新"}
+    default_dict = {"2330.TW": "台積電"}
     try:
         client = get_gsheet_client()
         spreadsheet = client.open("MyWatchlist")
@@ -81,7 +81,7 @@ with st.sidebar:
     quick_pick = st.selectbox("我的收藏", options=["-- 手動輸入 --"] + ticker_list)
     st.divider()
     st.header("⚙️ 搜尋設定")
-    ticker_input = st.text_input("股票代號", value=quick_pick if quick_pick != "-- 手動輸入 --" else "2330.TW").upper().strip()
+    ticker_input = st.text_input("股票代號", value=quick_pick if quick_pick != "-- 手動輸入 --" else "").upper().strip()
     stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
     st.divider()
@@ -165,8 +165,8 @@ if result:
     m1.metric("最新股價", f"{curr:.2f}")
     m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%")
     m3.metric("目前狀態", status_label)
-    m4.metric("趨勢斜率", f"{slope:.5f}")
-    m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status)
+    m4.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
+    m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, help="超過60代表極度恐慌")
 
     # --- 7. 切換按鈕 ---
     st.write("")
