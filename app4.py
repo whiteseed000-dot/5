@@ -396,6 +396,13 @@ if result:
         hovermode="x unified",
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
         showlegend=False, margin=dict(l=10, r=100, t=10, b=10)
+        xaxis=dict(
+            showspikes=True, # 顯示指引線
+            spikemode="across", # 穿過整個圖表
+            spikethickness=1,
+            spikecolor="white", # 設定為白色
+            spikedash="solid"   # 實線 (若要虛線改為 dash)
+        )
     )
     st.plotly_chart(fig, use_container_width=True)
 
