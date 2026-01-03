@@ -304,7 +304,7 @@ if result:
 
     elif view_mode == "K線指標":
     # 繪製 K 線圖
-    fig.add_trace(go.Candlestick(
+        fig.add_trace(go.Candlestick(
         x=df['Date'],
         open=df['Open'], high=df['High'],
         low=df['Low'], close=df['Close'],
