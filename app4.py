@@ -216,13 +216,11 @@ def get_stock_data(ticker, years):
         
         # --- 樂活通道核心計算 (長線 100MA 邏輯) ---
         # 使用 100 日移動平均線作為長線中軸
-        df['H_TL'] = df['Close'].rolling(window=100).mean()
+        df['H_TL'] = df['Close'].rolling(window=20).mean()
         
         # 使用固定百分比帶寬，模擬五線譜的位階感
-        df['H_TL+2SD'] = df['H_TL'] * 1.20  # 通道頂部 (+20%)
         df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (+10%)
         df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (-10%)
-        df['H_TL-2SD'] = df['H_TL'] * 0.80  # 通道底部 (-20%)
         
         return df, slope
     except: return None
@@ -317,12 +315,10 @@ if result:
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"))
         
         # 通道配置：顏色與五線譜連動，方便判斷位階
-        h_lines_config = [
-            ('H_TL+2SD', '#FF3131', '通道頂部 (+20%)', 'dash'), 
+        h_lines_config = [ 
             ('H_TL+1SD', '#FFBD03', '通道上軌 (+10%)', 'dash'), 
             ('H_TL', '#FFFFFF', '趨勢中軸 (100MA)', 'solid'), 
             ('H_TL-1SD', '#0096FF', '通道下軌 (-10%)', 'dash'), 
-            ('H_TL-2SD', '#00FF00', '通道底部 (-20%)', 'dash')
         ]
         
         for col, hex_color, name_tag, line_style in h_lines_config:
