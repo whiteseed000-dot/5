@@ -242,7 +242,7 @@ vix_val = get_vix_index()
 if result:
     df, slope = result
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
-    dist_pct = ((tl_last - curr) / tl_last) * 100
+    dist_pct = ((curr - tl_last) / tl_last) * 100
 
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
