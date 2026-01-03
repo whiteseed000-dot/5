@@ -243,7 +243,7 @@ with col_btn:
 
 result = get_stock_data(ticker_input, years_input)
 #vix_val = #vix_val = get_
-vix_val = 60
+vix_val = -10
 if result:
     df, slope = result
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
@@ -258,7 +258,7 @@ if result:
     if vix_val >= 30: vix_status = "🔴 恐慌"
     elif vix_val > 15: vix_status = "🟠 警戒"
     elif round(vix_val) == 15: vix_status = "⚪ 穩定"
-    elif vix_val > 0: vix_status = "🔵 樂觀"
+    elif vix_val < 15 and vix_val > 0 : vix_status = "🔵 樂觀"
     else: vix_status = "🟢 極致樂觀"
 
     m1, m2, m3, m4, m5 = st.columns(5)
@@ -266,7 +266,7 @@ if result:
     m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
     m3.metric("目前狀態", status_label)
     m4.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
-    m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, help="超過60代表極度恐慌")
+    m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="inverse", help="超過60代表極度恐慌")
 
     # --- 7. 切換按鈕 ---
     st.divider()
