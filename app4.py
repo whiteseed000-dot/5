@@ -214,12 +214,15 @@ def get_stock_data(ticker, years):
         df['MA60'] = df['Close'].rolling(window=60).mean()
         df['MA120'] = df['Close'].rolling(window=120).mean()
         
-        df['H_MA20'] = df['Close'].rolling(window=100).mean()
+        # --- 樂活通道核心計算 (長線 100MA 邏輯) ---
+        # 使用 100 日移動平均線作為長線中軸
+        df['H_TL'] = df['Close'].rolling(window=100).mean()
         
-        # 2. 上下界線：這裡使用固定百分比 (例如 ±10%) 
-        # 註：您可以根據觀察調整 0.1 這個數值，讓它更貼合您照片中的寬度
-        df['H_UB'] = df['H_MA20'] * 1.10  # 上界線 (Upper Bound)
-        df['H_LB'] = df['H_MA20'] * 0.90  # 下界線 (Lower Bound)
+        # 使用固定百分比帶寬，模擬五線譜的位階感
+        df['H_TL+2SD'] = df['H_TL'] * 1.20  # 通道頂部 (+20%)
+        df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (+10%)
+        df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (-10%)
+        df['H_TL-2SD'] = df['H_TL'] * 0.80  # 通道底部 (-20%)
         
         return df, slope
     except: return None
@@ -310,30 +313,29 @@ if result:
             fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
 
     elif view_mode == "樂活通道":
-        # 繪製收盤價 (橘黃色，如照片所示)
-        fig.add_trace(go.Scatter(
-            x=df['Date'], y=df['Close'], 
-            line=dict(color='#FFB000', width=2), 
-            name="股價"
-        ))
+        # 繪製主收盤價線
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"))
         
-        # 三線配置 (參考照片配色)
+        # 通道配置：顏色與五線譜連動，方便判斷位階
         h_lines_config = [
-            ('H_UB', '#F3524F', 'UB (上界線)', 'solid'),   # 粉紅/紅色
-            ('H_MA20', '#4285F4', 'MA20 (中線)', 'solid'), # 藍色
-            ('H_LB', '#009B3A', 'LB (下界線)', 'solid')    # 綠色/青色
+            ('H_TL+2SD', '#FF3131', '通道頂部 (+20%)', 'dash'), 
+            ('H_TL+1SD', '#FFBD03', '通道上軌 (+10%)', 'dash'), 
+            ('H_TL', '#FFFFFF', '趨勢中軸 (100MA)', 'solid'), 
+            ('H_TL-1SD', '#0096FF', '通道下軌 (-10%)', 'dash'), 
+            ('H_TL-2SD', '#00FF00', '通道底部 (-20%)', 'dash')
         ]
         
         for col, hex_color, name_tag, line_style in h_lines_config:
+            # 確保有數據才繪圖 (100MA 需要前100天數據)
             if col in df.columns:
                 fig.add_trace(go.Scatter(
                     x=df['Date'], y=df[col], 
-                    line=dict(color=hex_color, width=1.5), 
+                    line=dict(color=hex_color, dash=line_style, width=1.5), 
                     name=name_tag,
-                    hovertemplate='%{y:.2f}'
+                    hovertemplate='%{y:.1f}'
                 ))
                 
-                # 加上右側數值標籤 (復刻照片右側方框效果)
+                # 加上右側數值標籤 (模擬截圖中的標記)
                 last_val = df[col].iloc[-1]
                 if not np.isnan(last_val):
                     fig.add_annotation(
