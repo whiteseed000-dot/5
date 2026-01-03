@@ -213,13 +213,12 @@ def get_stock_data(ticker, years):
         df['MA20'] = df['Close'].rolling(window=20).mean()
         df['MA60'] = df['Close'].rolling(window=60).mean()
         df['MA120'] = df['Close'].rolling(window=120).mean()
-        # --- 新增：樂活通道計算 (以20日均線為準，上下各 1.5SD 與 2SD 或固定比例，此處沿用五線譜邏輯計算區間) ---
-        df['H_TL'] = df['Close'].rolling(window=20).mean()
-        h_std = df['Close'].rolling(window=20).std()
-        df['H_TL+2SD'] = df['H_TL'] + 2 * h_std
-        df['H_TL+1SD'] = df['H_TL'] + 1 * h_std
-        df['H_TL-1SD'] = df['H_TL'] - 1 * h_std
-        df['H_TL-2SD'] = df['H_TL'] - 2 * h_std
+        
+        df['H_TL'] = df['Close'].rolling(window=100).mean()
+        df['H_TL+2SD'] = df['H_TL'] * 1.20  # 通道頂部 (極高)
+        df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (偏高)
+        df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (偏低)
+        df['H_TL-2SD'] = df['H_TL'] * 0.80  # 通道底部 (極低)
         return df, slope
     except: return None
 
