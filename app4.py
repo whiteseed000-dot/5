@@ -315,11 +315,11 @@ if result:
         # 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 注意：請確保 get_stock_data 函式內有計算這些 MA 欄位
         ma_list = [
-            ('MA5', '#E377C2', '5MA'), 
-            ('MA10', '#17BECF', '10MA'), 
-            ('MA20', '#FFBD03', '20MA'), 
-            ('MA60', '#9467BD', '60MA'), 
-            ('MA120', '#FFFFFF', '120MA')
+            ('MA5', '#FDDD42', '5MA'), 
+            ('MA10', '#87DCF6', '10MA'), 
+            ('MA20', '#C29ACF', '20MA'), 
+            ('MA60', '#F3524F', '60MA'), 
+            ('MA120', '#FFC869', '120MA')
         ]
         for col, color, name in ma_list:
             if col in df.columns:
