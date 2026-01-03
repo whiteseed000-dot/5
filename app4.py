@@ -214,11 +214,13 @@ def get_stock_data(ticker, years):
         df['MA60'] = df['Close'].rolling(window=60).mean()
         df['MA120'] = df['Close'].rolling(window=120).mean()
         
-        df['H_TL'] = df['Close'].rolling(window=100).mean()
-        df['H_TL+2SD'] = df['H_TL'] * 1.20  # 通道頂部 (極高)
-        df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (偏高)
-        df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (偏低)
-        df['H_TL-2SD'] = df['H_TL'] * 0.80  # 通道底部 (極低)
+        df['H_MA20'] = df['Close'].rolling(window=20).mean()
+        
+        # 2. 上下界線：這裡使用固定百分比 (例如 ±10%) 
+        # 註：您可以根據觀察調整 0.1 這個數值，讓它更貼合您照片中的寬度
+        df['H_UB'] = df['H_MA20'] * 1.10  # 上界線 (Upper Bound)
+        df['H_LB'] = df['H_MA20'] * 0.90  # 下界線 (Lower Bound)
+        
         return df, slope
     except: return None
 
@@ -313,11 +315,9 @@ if result:
         
         # 定義通道配置 (顏色與五線譜相同以保持一致性)
         h_lines_config = [
-            ('H_TL+2SD', '#FF3131', '通道頂部 (+2SD)', 'dash'), 
-            ('H_TL+1SD', '#FFBD03', '通道上軌 (+1SD)', 'dash'), 
+            ('H_UB', '#FFBD03', '通道上軌 (+1SD)', 'dash'), 
             ('H_TL', '#FFFFFF', '通道中軸 (MA20)', 'solid'), 
-            ('H_TL-1SD', '#0096FF', '通道下軌 (-1SD)', 'dash'), 
-            ('H_TL-2SD', '#00FF00', '通道底部 (-2SD)', 'dash')
+            ('H_LB', '#0096FF', '通道下軌 (-1SD)', 'dash'), 
         ]
         
         for col, hex_color, name_tag, line_style in h_lines_config:
