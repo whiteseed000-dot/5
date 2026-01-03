@@ -216,7 +216,7 @@ def get_stock_data(ticker, years):
         
         # --- 樂活通道核心計算 (長線 100MA 邏輯) ---
         # 使用 100 日移動平均線作為長線中軸
-        df['H_TL'] = df['Close'].rolling(window=35).mean()
+        df['H_TL'] = df['Close'].rolling(window=100).mean()
         
         # 使用固定百分比帶寬，模擬五線譜的位階感
         df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (+10%)
