@@ -261,6 +261,21 @@ if result:
     elif vix_val < 15 and vix_val > 0 : vix_status = "🔵 樂觀"
     else: vix_status = "🟢 極致樂觀"
 
+import streamlit as st
+
+# 1. 定義隱藏箭頭的 CSS 語法
+hide_metric_arrow = """
+    <style>
+    /* 根據 Streamlit 的元件 ID 鎖定箭頭圖示並隱藏 */
+    [data-testid="stMetricDeltaIcon"] {
+        display: none !important;
+    }
+    </style>
+"""
+
+# 2. 將 CSS 注入到 Streamlit 網頁中
+st.markdown(hide_metric_arrow, unsafe_allow_html=True)
+    
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("最新股價", f"{curr:.2f}")
     m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
