@@ -194,7 +194,8 @@ def get_stock_data(ticker, years):
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
         df = df.reset_index()
         df['x'] = np.arange(len(df))
-        slope, intercept, _, _, _ = stats.linregress(df['x'], df['Close'])
+        slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
+        r_squared = r_value**2  # 決定係數 = r 的平方
         df['TL'] = slope * df['x'] + intercept
         std = np.std(df['Close'] - df['TL'])
         df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
@@ -222,7 +223,7 @@ def get_stock_data(ticker, years):
         df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (+10%)
         df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (-10%)
         
-        return df, slope
+        return df, (slope, r_squared)
     except: return None
 
 @st.cache_data(ttl=3600)
@@ -284,7 +285,7 @@ if result:
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
-        i1, i2, i3, i4 = st.columns(4)
+        i1, i2, i3, i5 = st.columns(5)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
         
@@ -297,6 +298,9 @@ if result:
         
         ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
         i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="off")
+
+        r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("OK" if r_squared > 0.5 else "❓ 參考性低")
+        i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
     
     st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
