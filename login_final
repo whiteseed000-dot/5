@@ -177,14 +177,43 @@ def check_advanced_alerts(watchlist, years):
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
-    ticker_list = sorted(list(st.session_state.watchlist_dict.keys()))
-    quick_pick = st.selectbox("我的收藏", options=["-- 手動輸入 --"] + ticker_list)
+    
+    # 1. 先獲取排序後的代號清單
+    sorted_tickers = sorted(st.session_state.watchlist_dict.keys())
+    
+    # 2. 建立「代號 - 名稱」的顯示格式
+    display_options = [
+        f"{t} - {st.session_state.watchlist_dict[t]}" for t in sorted_tickers
+    ]
+    
+    # 3. 在下拉選單中顯示 (加上手動輸入選項)
+    selected_full_text = st.selectbox(
+        "我的收藏", 
+        options=["-- 手動輸入 --"] + display_options
+    )
+    
     st.divider()
     st.header("⚙️ 搜尋設定")
-    ticker_input = st.text_input("股票代號", value=quick_pick if quick_pick != "-- 手動輸入 --" else "").upper().strip()
+    
+    # 4. 處理選取後的代號提取
+    if selected_full_text != "-- 手動輸入 --":
+        # 提取第一個空格前的內容作為代號
+        quick_pick_ticker = selected_full_text.split(" - ")[0]
+    else:
+        quick_pick_ticker = ""
+
+    ticker_input = st.text_input(
+        "股票代號", 
+        value=quick_pick_ticker
+    ).upper().strip()
+    
+    # 自動抓取對應的中文名稱 (用於顯示)
     stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
+    
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
     st.divider()
+
+    
 # 在側邊欄的登出按鈕部分
     if st.button("🚪 登出帳號"):
     # 清理快取
