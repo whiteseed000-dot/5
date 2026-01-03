@@ -235,8 +235,14 @@ if ticker_input:
             plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
             hovermode="x unified", showlegend=False,
             margin=dict(l=10, r=100, t=50, b=10),
-            yaxis=dict(showgrid=True, gridcolor='#333333', side="left"),
-            xaxis=dict(showgrid=True, gridcolor='#333333')
+
+            xaxis=dict(
+                showspikes=True, # 顯示指引線
+                spikemode="across", # 穿過整個圖表
+                spikethickness=1,
+                spikecolor="white", # 設定為白色
+                spikedash="solid"   # 實線 (若要虛線改為 dash)
+        )
         )
         st.plotly_chart(fig, use_container_width=True)
 
