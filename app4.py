@@ -214,7 +214,7 @@ def get_stock_data(ticker, years):
         df['MA60'] = df['Close'].rolling(window=60).mean()
         df['MA120'] = df['Close'].rolling(window=120).mean()
         
-        df['H_MA20'] = df['Close'].rolling(window=20).mean()
+        df['H_MA20'] = df['Close'].rolling(window=100).mean()
         
         # 2. 上下界線：這裡使用固定百分比 (例如 ±10%) 
         # 註：您可以根據觀察調整 0.1 這個數值，讓它更貼合您照片中的寬度
@@ -340,10 +340,8 @@ if result:
                         x=df['Date'].iloc[-1], y=last_val,
                         text=f"<b>{last_val:.1f}</b>",
                         showarrow=False, xanchor="left", xshift=10,
-                        font=dict(color="white", size=11),
-                        bgcolor=hex_color, # 背景顏色與線條一致
-                        bordercolor=hex_color,
-                        borderwidth=1
+                        font=dict(color=hex_color, size=12),
+                        bgcolor="rgba(0,0,0,0.6)"
                     )
     elif view_mode == "K線指標":
         # 繪製 K 線
