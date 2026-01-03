@@ -242,8 +242,8 @@ with col_btn:
             st.rerun()
 
 result = get_stock_data(ticker_input, years_input)
-#vix_val = #vix_val = get_
-vix_val = -10
+vix_val = get_vix_index()
+
 if result:
     df, slope = result
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
@@ -258,23 +258,8 @@ if result:
     if vix_val >= 30: vix_status = "🔴 恐慌"
     elif vix_val > 15: vix_status = "🟠 警戒"
     elif round(vix_val) == 15: vix_status = "⚪ 穩定"
-    elif vix_val < 15 and vix_val > 0 : vix_status = "🔵 樂觀"
+    elif vix_val > 0: vix_status = "🔵 樂觀"
     else: vix_status = "🟢 極致樂觀"
-
-
-
-# 1. 定義隱藏箭頭的 CSS 語法
-    hide_metric_arrow = """
-    <style>
-    /* 根據 Streamlit 的元件 ID 鎖定箭頭圖示並隱藏 */
-    [data-testid="stMetricDeltaIcon"] {
-        display: none !important;
-    }
-    </style>
-    """
-
-# 2. 將 CSS 注入到 Streamlit 網頁中
-    st.markdown(hide_metric_arrow, unsafe_allow_html=True)
     
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("最新股價", f"{curr:.2f}")
