@@ -194,7 +194,8 @@ def get_stock_data(ticker, years):
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
         df = df.reset_index()
         df['x'] = np.arange(len(df))
-        slope, intercept, _, _, _ = stats.linregress(df['x'], df['Close'])
+        slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
+        r_squared = r_value**2  # 決定係數 = r 的平方
         df['TL'] = slope * df['x'] + intercept
         std = np.std(df['Close'] - df['TL'])
         df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
@@ -213,7 +214,16 @@ def get_stock_data(ticker, years):
         df['MA20'] = df['Close'].rolling(window=20).mean()
         df['MA60'] = df['Close'].rolling(window=60).mean()
         df['MA120'] = df['Close'].rolling(window=120).mean()
-        return df, slope
+        
+        # --- 樂活通道核心計算 (長線 100MA 邏輯) ---
+        # 使用 100 日移動平均線作為長線中軸
+        df['H_TL'] = df['Close'].rolling(window=100).mean()
+        
+        # 使用固定百分比帶寬，模擬五線譜的位階感
+        df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (+10%)
+        df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (-10%)
+        
+        return df, (slope, r_squared)
     except: return None
 
 @st.cache_data(ttl=3600)
@@ -245,7 +255,7 @@ result = get_stock_data(ticker_input, years_input)
 vix_val = get_vix_index()
 
 if result:
-    df, slope = result
+    df, (slope, r_squared) = result
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
@@ -275,7 +285,7 @@ if result:
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
-        i1, i2, i3, i4 = st.columns(4)
+        i1, i2, i3, i4, i5 = st.columns(5)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
         
@@ -288,10 +298,12 @@ if result:
         
         ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
         i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="off")
+
+        r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
+        i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
     
     st.write("")
-    view_mode = st.radio("分析視圖", ["樂活五線譜", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-
+    view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
 # --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
     fig = go.Figure()
     
@@ -302,6 +314,37 @@ if result:
             last_val = df[col].iloc[-1]
             fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
 
+    elif view_mode == "樂活通道":
+        # 繪製主收盤價線
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"))
+        
+        # 通道配置：顏色與五線譜連動，方便判斷位階
+        h_lines_config = [ 
+            ('H_TL+1SD', '#FFBD03', '通道上軌 (+10%)', 'dash'), 
+            ('H_TL', '#FFFFFF', '趨勢中軸 (100MA)', 'solid'), 
+            ('H_TL-1SD', '#0096FF', '通道下軌 (-10%)', 'dash'), 
+        ]
+        
+        for col, hex_color, name_tag, line_style in h_lines_config:
+            # 確保有數據才繪圖 (100MA 需要前100天數據)
+            if col in df.columns:
+                fig.add_trace(go.Scatter(
+                    x=df['Date'], y=df[col], 
+                    line=dict(color=hex_color, dash=line_style, width=1.5), 
+                    name=name_tag,
+                    hovertemplate='%{y:.1f}'
+                ))
+                
+                # 加上右側數值標籤 (模擬截圖中的標記)
+                last_val = df[col].iloc[-1]
+                if not np.isnan(last_val):
+                    fig.add_annotation(
+                        x=df['Date'].iloc[-1], y=last_val,
+                        text=f"<b>{last_val:.1f}</b>",
+                        showarrow=False, xanchor="left", xshift=10,
+                        font=dict(color=hex_color, size=12),
+                        bgcolor="rgba(0,0,0,0.6)"
+                    )
     elif view_mode == "K線指標":
         # 繪製 K 線
         fig.add_trace(go.Candlestick(
@@ -352,7 +395,16 @@ if result:
         height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
-        showlegend=False, margin=dict(l=10, r=100, t=10, b=10)
+        showlegend=False, 
+        margin=dict(l=10, r=100, t=10, b=10),
+        
+        xaxis=dict(
+            showspikes=True, # 顯示指引線
+            spikemode="across", # 穿過整個圖表
+            spikethickness=1,
+            spikecolor="white", # 設定為白色
+            spikedash="solid"   # 實線 (若要虛線改為 dash)
+        )
     )
     st.plotly_chart(fig, use_container_width=True)
 
