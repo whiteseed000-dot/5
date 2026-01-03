@@ -331,7 +331,8 @@ if result:
         ))
     
     # 關閉下方預設的 Range Slider 以節省空間
-    fig.update_layout(xaxis_rangeslider_visible=False)
+        fig.update_layout(xaxis_rangeslider_visible=False)
+        
     elif view_mode == "KD指標":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131', width=2), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF', width=2), hovertemplate='%{y:.1f}'))
