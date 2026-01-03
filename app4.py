@@ -255,7 +255,7 @@ result = get_stock_data(ticker_input, years_input)
 vix_val = get_vix_index()
 
 if result:
-    df, slope = result
+    df, (slope, r_squared) = result
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
