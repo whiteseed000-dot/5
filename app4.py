@@ -245,7 +245,7 @@ result = get_stock_data(ticker_input, years_input)
 vix_val = get_vix_index()
 
 if result:
-    df, slope = result
+    df, slope, r_squared = result
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
@@ -288,6 +288,8 @@ if result:
         
         ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
         i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="off")
+        
+        i5.metric("線性相關係數 (R²)", f"{r_squared:.2f}", help="越接近 1 代表趨勢越明顯")
     
     st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
