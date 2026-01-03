@@ -70,7 +70,7 @@ def save_watchlist_to_google(username, watchlist_dict):
 
 # --- 2. 登入系統 ---
 if "authenticated" not in st.session_state:
-    st.set_page_config(page_title="登入 - 股市五線譜", page_icon="🔐")
+    st.set_page_config(page_title="登入 - 股市五線譜")
     st.title("🔐 樂活五線譜 Pro")
     with st.form("login"):
         user = st.text_input("帳號")
@@ -261,7 +261,7 @@ if result:
     m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
     m3.metric("目前狀態", status_label)
     m4.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
-    m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, help="超過60代表極度恐慌")
+    m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="off", help="超過60代表極度恐慌")
 
     # --- 7. 切換按鈕 ---
     st.divider()
