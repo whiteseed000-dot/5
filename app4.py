@@ -200,7 +200,10 @@ def get_stock_data(ticker, years):
         df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
         df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
         # 加入技術指標計算
-        df = get_technical_indicators(df)        
+        df = get_technical_indicators(df)    
+        # 計算線性回歸，取得 r_value
+        slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
+        r_squared = r_value**2 # 計算 R2
         # 指標
         low_9 = df['Low'].rolling(9).min(); high_9 = df['High'].rolling(9).max()
         rsv = 100 * (df['Close'] - low_9) / (high_9 - low_9)
