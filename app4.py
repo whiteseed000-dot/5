@@ -310,23 +310,41 @@ if result:
             fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
 
     elif view_mode == "樂活通道":
-        # 繪製收盤價
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
+        # 繪製收盤價 (橘黃色，如照片所示)
+        fig.add_trace(go.Scatter(
+            x=df['Date'], y=df['Close'], 
+            line=dict(color='#FFB000', width=2), 
+            name="股價"
+        ))
         
-        # 定義通道配置 (顏色與五線譜相同以保持一致性)
+        # 三線配置 (參考照片配色)
         h_lines_config = [
-            ('H_UB', '#FFBD03', '通道上軌 (+1SD)', 'dash'), 
-            ('H_TL', '#FFFFFF', '通道中軸 (MA20)', 'solid'), 
-            ('H_LB', '#0096FF', '通道下軌 (-1SD)', 'dash'), 
+            ('H_UB', '#F3524F', 'UB (上界線)', 'solid'),   # 粉紅/紅色
+            ('H_MA20', '#4285F4', 'MA20 (中線)', 'solid'), # 藍色
+            ('H_LB', '#009B3A', 'LB (下界線)', 'solid')    # 綠色/青色
         ]
         
         for col, hex_color, name_tag, line_style in h_lines_config:
-            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag, hovertemplate='%{y:.1f}'))
-            
-            # 加上右側數值標籤
-            last_val = df[col].iloc[-1]
-            if not np.isnan(last_val):
-                fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
+            if col in df.columns:
+                fig.add_trace(go.Scatter(
+                    x=df['Date'], y=df[col], 
+                    line=dict(color=hex_color, width=1.5), 
+                    name=name_tag,
+                    hovertemplate='%{y:.2f}'
+                ))
+                
+                # 加上右側數值標籤 (復刻照片右側方框效果)
+                last_val = df[col].iloc[-1]
+                if not np.isnan(last_val):
+                    fig.add_annotation(
+                        x=df['Date'].iloc[-1], y=last_val,
+                        text=f"<b>{last_val:.1f}</b>",
+                        showarrow=False, xanchor="left", xshift=10,
+                        font=dict(color="white", size=11),
+                        bgcolor=hex_color, # 背景顏色與線條一致
+                        bordercolor=hex_color,
+                        borderwidth=1
+                    )
     elif view_mode == "K線指標":
         # 繪製 K 線
         fig.add_trace(go.Candlestick(
