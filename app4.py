@@ -132,7 +132,7 @@ def check_advanced_alerts(watchlist, years):
     for ticker, name in watchlist.items():
         data = get_stock_data(ticker, years)
         if data:
-            df, _, _ = data
+            df, _ = data
             df = get_technical_indicators(df)
             
             # 取得最新一筆與前一筆數據 (判斷交叉)
@@ -200,10 +200,7 @@ def get_stock_data(ticker, years):
         df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
         df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
         # 加入技術指標計算
-        df = get_technical_indicators(df)    
-        # 計算線性回歸，取得 r_value
-        slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
-        r_squared = r_value**2 # 計算 R2
+        df = get_technical_indicators(df)        
         # 指標
         low_9 = df['Low'].rolling(9).min(); high_9 = df['High'].rolling(9).max()
         rsv = 100 * (df['Close'] - low_9) / (high_9 - low_9)
@@ -216,6 +213,13 @@ def get_stock_data(ticker, years):
         df['MA20'] = df['Close'].rolling(window=20).mean()
         df['MA60'] = df['Close'].rolling(window=60).mean()
         df['MA120'] = df['Close'].rolling(window=120).mean()
+        # --- 新增：樂活通道計算 (以20日均線為準，上下各 1.5SD 與 2SD 或固定比例，此處沿用五線譜邏輯計算區間) ---
+        df['H_TL'] = df['Close'].rolling(window=20).mean()
+        h_std = df['Close'].rolling(window=20).std()
+        df['H_TL+2SD'] = df['H_TL'] + 2 * h_std
+        df['H_TL+1SD'] = df['H_TL'] + 1 * h_std
+        df['H_TL-1SD'] = df['H_TL'] - 1 * h_std
+        df['H_TL-2SD'] = df['H_TL'] - 2 * h_std
         return df, slope
     except: return None
 
@@ -248,7 +252,7 @@ result = get_stock_data(ticker_input, years_input)
 vix_val = get_vix_index()
 
 if result:
-    df, slope, r_squared = result
+    df, slope = result
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
@@ -278,7 +282,7 @@ if result:
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
-        i1, i2, i3, i4, i5 = st.columns(5)
+        i1, i2, i3, i4 = st.columns(4)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
         
@@ -291,12 +295,9 @@ if result:
         
         ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
         i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="off")
-
-        i5.metric("線性相關係數 (R²)", f"{r_squared:.2f}", help="越接近 1 代表趨勢越明顯")
     
     st.write("")
-    view_mode = st.radio("分析視圖", ["樂活五線譜", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-
+    view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
 # --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
     fig = go.Figure()
     
@@ -307,6 +308,26 @@ if result:
             last_val = df[col].iloc[-1]
             fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
 
+    elif view_mode == "樂活通道":
+        # 繪製收盤價
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
+        
+        # 定義通道配置 (顏色與五線譜相同以保持一致性)
+        h_lines_config = [
+            ('H_TL+2SD', '#FF3131', '通道頂部 (+2SD)', 'dash'), 
+            ('H_TL+1SD', '#FFBD03', '通道上軌 (+1SD)', 'dash'), 
+            ('H_TL', '#FFFFFF', '通道中軸 (MA20)', 'solid'), 
+            ('H_TL-1SD', '#0096FF', '通道下軌 (-1SD)', 'dash'), 
+            ('H_TL-2SD', '#00FF00', '通道底部 (-2SD)', 'dash')
+        ]
+        
+        for col, hex_color, name_tag, line_style in h_lines_config:
+            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag, hovertemplate='%{y:.1f}'))
+            
+            # 加上右側數值標籤
+            last_val = df[col].iloc[-1]
+            if not np.isnan(last_val):
+                fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
     elif view_mode == "K線指標":
         # 繪製 K 線
         fig.add_trace(go.Candlestick(
@@ -368,7 +389,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
     for t, name in st.session_state.watchlist_dict.items():
         res = get_stock_data(t, years_input)
         if res:
-            tdf, _, _ = res; p = float(tdf['Close'].iloc[-1]); t_tl = tdf['TL'].iloc[-1]
+            tdf, _ = res; p = float(tdf['Close'].iloc[-1]); t_tl = tdf['TL'].iloc[-1]
             if p > tdf['TL+2SD'].iloc[-1]: pos = "🔴 天價"
             elif p > tdf['TL+1SD'].iloc[-1]: pos = "🟠 偏高"
             elif p > tdf['TL-1SD'].iloc[-1]: pos = "⚪ 合理"
