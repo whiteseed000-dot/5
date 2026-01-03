@@ -170,7 +170,7 @@ if ticker_input:
         m2.metric("趨勢中心 (TL)", f"{last_tl:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
         m3.metric("目前狀態", status_label)
         m4.metric("趨勢斜率", f"{slope:.2f}" , help="正值代表長期趨勢向上")
-        m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", delta_color="off", vix_status, help="超過60代表極度恐慌")
+        m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="off", help="超過60代表極度恐慌")
 
         # --- 繪圖邏輯 (維持原樣，保留所有小數點與高度設定) ---
         fig = go.Figure()
