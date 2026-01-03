@@ -395,7 +395,9 @@ if result:
         height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
-        showlegend=False, margin=dict(l=10, r=100, t=10, b=10)
+        showlegend=False, 
+        margin=dict(l=10, r=100, t=10, b=10),
+        
         xaxis=dict(
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
