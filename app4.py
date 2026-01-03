@@ -64,9 +64,20 @@ def save_watchlist_to_google(username, watchlist_dict):
         client = get_gsheet_client()
         sheet = client.open("MyWatchlist").worksheet(username)
         sheet.clear()
-        data = [["ticker", "name"]] + [[t, n] for t, n in watchlist_dict.items()]
+        
+        # --- 新增排序邏輯 ---
+        # 將 dict 轉換為 list，並根據第一個元素 (ticker) 進行排序
+        sorted_items = sorted(watchlist_dict.items(), key=lambda x: x[0])
+        
+        # 重新組合資料，加入標題列
+        data = [["ticker", "name"]] + [[t, n] for t, n in sorted_items]
+        
         sheet.update("A1", data)
-    except: pass
+        
+        # 同步更新 session_state，確保 UI 上的下拉選單也會立即排序
+        st.session_state.watchlist_dict = dict(sorted_items)
+    except Exception as e:
+        st.error(f"儲存並排序失敗: {e}")
 
 # --- 2. 登入系統 ---
 if "authenticated" not in st.session_state:
