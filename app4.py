@@ -242,8 +242,8 @@ with col_btn:
             st.rerun()
 
 result = get_stock_data(ticker_input, years_input)
-vix_val = get_vix_index()
-
+#vix_val = #vix_val = get_
+vix_val = 60
 if result:
     df, slope = result
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
