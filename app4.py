@@ -319,7 +319,7 @@ if result:
             ('MA10', '#87DCF6', '10MA'), 
             ('MA20', '#C29ACF', '20MA'), 
             ('MA60', '#F3524F', '60MA'), 
-            ('MA120', '#FFFFFF', '120MA')
+            ('MA120', '#009B3A', '120MA')
         ]
         for col, color, name in ma_list:
             if col in df.columns:
