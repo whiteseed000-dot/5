@@ -34,11 +34,19 @@ def save_watchlist_to_google(watchlist_dict):
         sheet = client.open("MyWatchlist").sheet1
         sheet.clear()
         # 存入 A, B 兩欄
-        data = [["ticker", "name"]] + [[t, n] for t, n in watchlist_dict.items()]
+        # --- 新增排序邏輯 ---
+        # 將 dict 轉換為 list，並根據第一個元素 (ticker) 進行排序
+        sorted_items = sorted(watchlist_dict.items(), key=lambda x: x[0])
+        
+        # 重新組合資料，加入標題列
+        data = [["ticker", "name"]] + [[t, n] for t, n in sorted_items]
+        
         sheet.update("A1", data)
-        st.success("成功儲存至 Google 雲端！")
+        
+        # 同步更新 session_state，確保 UI 上的下拉選單也會立即排序
+        st.session_state.watchlist_dict = dict(sorted_items)
     except Exception as e:
-        st.error(f"儲存失敗: {e}")
+        st.error(f"儲存並排序失敗: {e}")
 
 # --- 2. 初始化 ---
 st.set_page_config(page_title="股市五線譜 Pro", layout="wide")
@@ -58,16 +66,37 @@ lines_config = [
 # --- 3. 介面佈局 (側邊欄) ---
 with st.sidebar:
     st.header("📋 追蹤清單")
-    # 從字典提取代號
-    tickers = list(st.session_state.watchlist_dict.keys())
-    quick_pick = st.selectbox("我的收藏", options=["-- 手動輸入 --"] + tickers)
+    
+    # 1. 先獲取排序後的代號清單
+    sorted_tickers = sorted(st.session_state.watchlist_dict.keys())
+    
+    # 2. 建立「代號 - 名稱」的顯示格式
+    display_options = [
+        f"{t} - {st.session_state.watchlist_dict[t]}" for t in sorted_tickers
+    ]
+    
+    # 3. 在下拉選單中顯示 (加上手動輸入選項)
+    selected_full_text = st.selectbox(
+        "我的收藏", 
+        options=["-- 手動輸入 --"] + display_options
+    )
     
     st.divider()
     st.header("⚙️ 搜尋設定")
-    default_val = quick_pick if quick_pick != "-- 手動輸入 --" else "2330.TW"
-    ticker_input = st.text_input("股票代號", value=default_val).upper().strip()
     
-    # 取得名稱
+    # 4. 處理選取後的代號提取
+    if selected_full_text != "-- 手動輸入 --":
+        # 提取第一個空格前的內容作為代號
+        quick_pick_ticker = selected_full_text.split(" - ")[0]
+    else:
+        quick_pick_ticker = ""
+
+    ticker_input = st.text_input(
+        "股票代號", 
+        value=quick_pick_ticker
+    ).upper().strip()
+    
+    # 自動抓取對應的中文名稱 (用於顯示)
     stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
     
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
@@ -206,8 +235,14 @@ if ticker_input:
             plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
             hovermode="x unified", showlegend=False,
             margin=dict(l=10, r=100, t=50, b=10),
-            yaxis=dict(showgrid=True, gridcolor='#333333', side="left"),
-            xaxis=dict(showgrid=True, gridcolor='#333333')
+
+            xaxis=dict(
+                showspikes=True, # 顯示指引線
+                spikemode="across", # 穿過整個圖表
+                spikethickness=1,
+                spikecolor="white", # 設定為白色
+                spikedash="solid"   # 實線 (若要虛線改為 dash)
+        )
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -215,6 +250,7 @@ if ticker_input:
         st.divider()
         st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
         if st.button("🔄 開始掃描所有標的狀態"):
+            st.cache_data.clear() 
             summary_data = []
             with st.spinner('掃描中...'):
                 # 修改此處：遍歷字典的鍵值對 (t=代號, name=名稱)
