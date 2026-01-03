@@ -250,6 +250,7 @@ if ticker_input:
         st.divider()
         st.subheader("📋 全球追蹤標的 - 位階概覽掃描")
         if st.button("🔄 開始掃描所有標的狀態"):
+            st.cache_data.clear() 
             summary_data = []
             with st.spinner('掃描中...'):
                 # 修改此處：遍歷字典的鍵值對 (t=代號, name=名稱)
