@@ -299,7 +299,7 @@ if result:
         ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
         i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="off")
 
-        r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("OK" if r_squared > 0.5 else "❓ 參考性低")
+        r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
         i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
     
     st.write("")
@@ -395,7 +395,16 @@ if result:
         height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
-        showlegend=False, margin=dict(l=10, r=100, t=10, b=10)
+        showlegend=False, 
+        margin=dict(l=10, r=100, t=10, b=10),
+        
+        xaxis=dict(
+            showspikes=True, # 顯示指引線
+            spikemode="across", # 穿過整個圖表
+            spikethickness=1,
+            spikecolor="white", # 設定為白色
+            spikedash="solid"   # 實線 (若要虛線改為 dash)
+        )
     )
     st.plotly_chart(fig, use_container_width=True)
 
