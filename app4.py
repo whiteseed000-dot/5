@@ -166,7 +166,7 @@ def check_advanced_alerts(watchlist, years):
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
-    ticker_list = list(st.session_state.watchlist_dict.keys())
+    ticker_list = sorted(list(st.session_state.watchlist_dict.keys()))
     quick_pick = st.selectbox("我的收藏", options=["-- 手動輸入 --"] + ticker_list)
     st.divider()
     st.header("⚙️ 搜尋設定")
