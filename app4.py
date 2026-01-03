@@ -291,11 +291,14 @@ if result:
     
     st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-    # --- 8. 圖表核心 (修正文字重複問題) ---
+
+# --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
+    st.write("")
+    view_mode = st.radio("分析視圖", ["樂活五線譜", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
+
     fig = go.Figure()
     
     if view_mode == "樂活五線譜":
-        # 修正：hovertemplate 移除手寫文字，直接使用 %{y} 即可，因為文字會由 name 自動提供
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         for col, hex_color, name_tag, line_style in lines_config:
             fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag, hovertemplate='%{y:.1f}'))
@@ -303,40 +306,35 @@ if result:
             fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
 
     elif view_mode == "K線指標":
-    # 繪製 K 線圖
+        # 繪製 K 線
         fig.add_trace(go.Candlestick(
-        x=df['Date'],
-        open=df['Open'], high=df['High'],
-        low=df['Low'], close=df['Close'],
-        name="K線",
-        increasing_line_color='#FF3131', # 漲: 紅色
-        decreasing_line_color='#00FF00'  # 跌: 綠色
-    ))
-    
-    # 疊加 MA 線段
-    ma_settings = [
-        ('MA5', '#E377C2', '5MA'),   # 粉色
-        ('MA10', '#17BECF', '10MA'),  # 青色
-        ('MA20', '#FFBD03', '20MA'),  # 橘色
-        ('MA60', '#9467BD', '60MA'),  # 紫色
-        ('MA120', '#FFFFFF', '120MA') # 白色
-    ]
-    
-    for col, color, label in ma_settings:
-        fig.add_trace(go.Scatter(
-            x=df['Date'], y=df[col], 
-            name=label, 
-            line=dict(color=color, width=1.2),
-            hovertemplate=f'{label}: %{{y:.1f}}'
+            x=df['Date'],
+            open=df['Open'], high=df['High'],
+            low=df['Low'], close=df['Close'],
+            name="K線",
+            increasing_line_color='#FF3131', # 漲：紅
+            decreasing_line_color='#00FF00'  # 跌：綠
         ))
-    
-    # 關閉下方預設的 Range Slider 以節省空間
-        fig.update_layout(xaxis_rangeslider_visible=False)
+        # 疊加 MA 線段 (5, 10, 20, 60, 120)
+        # 注意：請確保 get_stock_data 函式內有計算這些 MA 欄位
+        ma_list = [
+            ('MA5', '#E377C2', '5MA'), 
+            ('MA10', '#17BECF', '10MA'), 
+            ('MA20', '#FFBD03', '20MA'), 
+            ('MA60', '#9467BD', '60MA'), 
+            ('MA120', '#FFFFFF', '120MA')
+        ]
+        for col, color, name in ma_list:
+            if col in df.columns:
+                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'))
         
+        fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
+
     elif view_mode == "KD指標":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131', width=2), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF', width=2), hovertemplate='%{y:.1f}'))
-        fig.add_hline(y=80, line_dash="dot", line_color="rgba(255,255,255,0.3)"); fig.add_hline(y=20, line_dash="dot", line_color="rgba(255,255,255,0.3)")
+        fig.add_hline(y=80, line_dash="dot", line_color="rgba(255,255,255,0.3)")
+        fig.add_hline(y=20, line_dash="dot", line_color="rgba(255,255,255,0.3)")
 
     elif view_mode == "布林通道":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2), hovertemplate='%{y:.1f}'))
@@ -348,7 +346,7 @@ if result:
         bar_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
         fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量", hovertemplate='%{y}'))
 
-    # 共同設定
+    # 共同佈局設定
     if view_mode not in ["成交量", "KD指標"]:
         fig.add_hline(y=curr, line_dash="dot", line_color="#FFFFFF", line_width=2)
         fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14, family="Arial Black"))
