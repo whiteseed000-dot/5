@@ -70,7 +70,7 @@ def save_watchlist_to_google(username, watchlist_dict):
 
 # --- 2. 登入系統 ---
 if "authenticated" not in st.session_state:
-    st.set_page_config(page_title="登入 - 股市五線譜", page_icon="🔐")
+    st.set_page_config(page_title="登入 - 股市五線譜")
     st.title("🔐 樂活五線譜 Pro")
     with st.form("login"):
         user = st.text_input("帳號")
@@ -247,7 +247,7 @@ vix_val = get_vix_index()
 if result:
     df, slope = result
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
-    dist_pct = ((curr - tl_last) / tl_last) * 100
+    dist_pct = ((tl_last - curr) / tl_last) * 100
 
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
