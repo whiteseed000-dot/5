@@ -293,9 +293,6 @@ if result:
     view_mode = st.radio("分析視圖", ["樂活五線譜", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
 
 # --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
-    st.write("")
-    view_mode = st.radio("分析視圖", ["樂活五線譜", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-
     fig = go.Figure()
     
     if view_mode == "樂活五線譜":
