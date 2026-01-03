@@ -275,7 +275,7 @@ if result:
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
-        i1, i2, i3, i4 = st.columns(4)
+        i1, i2, i3, i4, i5 = st.columns(5)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
         
