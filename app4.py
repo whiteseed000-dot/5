@@ -104,6 +104,64 @@ lines_config = [
     ('TL-1SD', '#0096FF', '-1SD (偏低)', 'dash'), 
     ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
 ]
+def get_technical_indicators(df):
+    """計算 RSI, MACD, BIAS, MA60"""
+    # RSI (14)
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+    
+    # MACD (12, 26, 9)
+    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = exp1 - exp2
+    df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    
+    # BIAS (20) & MA20
+    df['MA20'] = df['Close'].rolling(window=20).mean()
+    df['BIAS'] = ((df['Close'] - df['MA20']) / df['MA20']) * 100
+    
+    # MA 季線 (60)
+    df['MA60'] = df['Close'].rolling(window=60).mean()
+    return df
+
+def check_advanced_alerts(watchlist, years):
+    alerts = []
+    for ticker, name in watchlist.items():
+        data = get_stock_data(ticker, years)
+        if data:
+            df, _ = data
+            df = get_technical_indicators(df)
+            
+            # 取得最新一筆與前一筆數據 (判斷交叉)
+            curr = df.iloc[-1]
+            prev = df.iloc[-2]
+            
+            # --- 買進訊號條件 ---
+            # 1. 五線譜在偏低或特價區
+            is_cheap = curr['Close'] <= curr['TL-1SD']
+            # 2. 技術面轉強 (滿足其一即可)
+            tech_strong = (
+                (prev['RSI'] < 30 and curr['RSI'] > 30) or       # RSI 低檔回升
+                (prev['MACD'] < prev['Signal'] and curr['MACD'] > curr['Signal']) or # MACD 金叉
+                (prev['Close'] < curr['MA60'] and curr['Close'] > curr['MA60'])      # 站上季線
+            )
+            
+            # --- 賣出訊號條件 ---
+            is_expensive = curr['Close'] >= curr['TL+1SD']
+            tech_weak = (
+                (prev['RSI'] > 70 and curr['RSI'] < 70) or       # RSI 高檔反轉
+                (prev['MACD'] > prev['Signal'] and curr['MACD'] < curr['Signal'])    # MACD 死叉
+            )
+
+            if is_cheap and tech_strong:
+                alerts.append({"name": name, "type": "BUY", "reason": "位階偏低 + 技術面轉強"})
+            elif is_expensive and tech_weak:
+                alerts.append({"name": name, "type": "SELL", "reason": "位階偏高 + 技術面轉弱"})
+                
+    return alerts
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -141,7 +199,8 @@ def get_stock_data(ticker, years):
         std = np.std(df['Close'] - df['TL'])
         df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
         df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
-        
+        # 加入技術指標計算
+        df = get_technical_indicators(df)        
         # 指標
         low_9 = df['Low'].rolling(9).min(); high_9 = df['High'].rolling(9).max()
         rsv = 100 * (df['Close'] - low_9) / (high_9 - low_9)
@@ -149,6 +208,11 @@ def get_stock_data(ticker, years):
         df['MA20'] = df['Close'].rolling(20).mean()
         df['BB_up'] = df['MA20'] + 2 * df['Close'].rolling(20).std()
         df['BB_low'] = df['MA20'] - 2 * df['Close'].rolling(20).std()
+        df['MA5'] = df['Close'].rolling(window=5).mean()
+        df['MA10'] = df['Close'].rolling(window=10).mean()
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        df['MA60'] = df['Close'].rolling(window=60).mean()
+        df['MA120'] = df['Close'].rolling(window=120).mean()
         return df, slope
     except: return None
 
@@ -199,16 +263,34 @@ if result:
 
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("最新股價", f"{curr:.2f}")
-    m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%")
+    m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
     m3.metric("目前狀態", status_label)
     m4.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
     m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, help="超過60代表極度恐慌")
 
     # --- 7. 切換按鈕 ---
+    st.divider()
+    with st.container():
+        c_rsi = df['RSI'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
+        c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
+        ma60_last = df['MA60'].iloc[-1]
+        
+        i1, i2, i3, i4 = st.columns(4)
+        rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
+        i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
+        
+        macd_delta = c_macd - c_sig
+        macd_status = "📈 金叉" if macd_delta > 0 else "📉 死叉"
+        i2.metric("MACD 趨勢", f"{c_macd:.2f}", macd_status, delta_color="off")
+        
+        bias_status = "⚠️ 乖離大" if abs(c_bias) > 5 else "✅ 穩定"
+        i3.metric("月線乖離 (BIAS)", f"{c_bias:+.2f}%", bias_status, delta_color="off")
+        
+        ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
+        i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="off")
+    
     st.write("")
-    view_mode = st.radio("分析視圖", ["樂活五線譜", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-    st.write("")
-
+    view_mode = st.radio("分析視圖", ["樂活五線譜", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
     # --- 8. 圖表核心 (修正文字重複問題) ---
     fig = go.Figure()
     
@@ -220,6 +302,36 @@ if result:
             last_val = df[col].iloc[-1]
             fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=13))
 
+    elif view_mode == "K線指標":
+    # 繪製 K 線圖
+    fig.add_trace(go.Candlestick(
+        x=df['Date'],
+        open=df['Open'], high=df['High'],
+        low=df['Low'], close=df['Close'],
+        name="K線",
+        increasing_line_color='#FF3131', # 漲: 紅色
+        decreasing_line_color='#00FF00'  # 跌: 綠色
+    ))
+    
+    # 疊加 MA 線段
+    ma_settings = [
+        ('MA5', '#E377C2', '5MA'),   # 粉色
+        ('MA10', '#17BECF', '10MA'),  # 青色
+        ('MA20', '#FFBD03', '20MA'),  # 橘色
+        ('MA60', '#9467BD', '60MA'),  # 紫色
+        ('MA120', '#FFFFFF', '120MA') # 白色
+    ]
+    
+    for col, color, label in ma_settings:
+        fig.add_trace(go.Scatter(
+            x=df['Date'], y=df[col], 
+            name=label, 
+            line=dict(color=color, width=1.2),
+            hovertemplate=f'{label}: %{{y:.1f}}'
+        ))
+    
+    # 關閉下方預設的 Range Slider 以節省空間
+    fig.update_layout(xaxis_rangeslider_visible=False)
     elif view_mode == "KD指標":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131', width=2), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF', width=2), hovertemplate='%{y:.1f}'))
@@ -263,3 +375,20 @@ if st.button("🔄 開始掃描所有標的狀態"):
             else: pos = "🟢 特價"
             summary.append({"代號": t, "名稱": name, "最新價格": f"{p:.1f}", "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", "位階狀態": pos})
     if summary: st.table(pd.DataFrame(summary))
+# --- 3. UI 顯示部分 (放置於指標儀表板下方) ---
+
+# 點擊掃描按鈕後觸發
+if st.button("🔍 執行全自動多指標雷達掃描"):
+    st.cache_data.clear() 
+    with st.spinner("正在計算 RSI/MACD/MA/BIAS 共振訊號..."):
+        adv_alerts = check_advanced_alerts(st.session_state.watchlist_dict, years_input)
+        
+        if adv_alerts:
+            st.write("### 🔔 即時策略警示")
+            for alert in adv_alerts:
+                if alert['type'] == "BUY":
+                    st.success(f"✅ **買進建議：{alert['name']}** ({alert['reason']})")
+                else:
+                    st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
+        else:
+            st.info("目前沒有標的符合共振條件。")
