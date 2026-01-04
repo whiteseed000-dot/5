@@ -521,7 +521,7 @@ if result:
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
     #
-    patterns = detect_market_pattern(df)
+    patterns = detect_market_pattern(df, slope)
     
     if patterns:
         st.markdown("### 🧠 AI 市場型態判讀")
