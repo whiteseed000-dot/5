@@ -394,10 +394,12 @@ if result:
             name="K線",
             increasing_line_color='#FF3131', # 漲：紅
             decreasing_line_color='#00FF00',  # 跌：綠
-            hovertemplate='%{open:.1f}',
-            hovertemplate='%{high:.1f}',
-            hovertemplate='%{low:.1f}',
-            hovertemplate='%{close:.1f}'
+            hovertemplate=(
+                "開盤: %{open:.1f}<br>" +
+                "最高: %{high:.1f}<br>" +
+                "最低: %{low:.1f}<br>" +
+                "收盤: %{close:.1f}<extra></extra>"
+            )
         ))
         # 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 注意：請確保 get_stock_data 函式內有計算這些 MA 欄位
