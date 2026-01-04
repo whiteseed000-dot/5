@@ -328,7 +328,7 @@ if result:
     st.divider()
     show_detailed_metrics = st.checkbox("顯示詳細技術指標儀表板", value=False)
     if show_detailed_metrics:
-    with st.container():
+
         c_rsi = df['RSI14'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
