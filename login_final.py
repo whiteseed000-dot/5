@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
-
+from plotly.subplots import make_subplots
 # --- 1. 核心雲端邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -344,8 +344,21 @@ if result:
     
     st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-# --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
-    fig = go.Figure()
+
+    col_sub1, col_sub2 = st.columns([1, 4])
+    with col_sub1: show_sub_chart = st.toggle("開啟副圖", value=False)
+    with col_sub2: sub_mode = st.selectbox("選擇副圖指標", ["KD指標", "成交量", "RSI", "MACD"], label_visibility="collapsed")
+
+    # --- 8. 繪圖核心 ---
+    t_row = 1 if show_sub_chart else None
+    t_col = 1 if show_sub_chart else None
+
+    if show_sub_chart:
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.7, 0.3])
+    else:
+        fig = go.Figure()
+    
+    # --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
     
     if view_mode == "樂活五線譜":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
@@ -438,6 +451,22 @@ if result:
         fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14, family="Arial Black"))
 
 
+    if show_sub_chart:
+        if sub_mode == "KD指標":
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131'), hovertemplate='%{y:.1f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF'), hovertemplate='%{y:.1f}'), row=2, col=1)
+        elif sub_mode == "成交量":
+            v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
+            fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量", hovertemplate='%{y:.0f}'), row=2, col=1)
+        elif sub_mode == "RSI":
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name="RSI", line=dict(color='#FDDD42'), hovertemplate='%{y:.2f}'), row=2, col=1)
+        elif sub_mode == "MACD":
+            m_diff = df['MACD'] - df['Signal']
+            m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
+            fig.add_trace(go.Bar(x=df['Date'], y=m_diff, marker_color=m_colors, name="柱狀圖"), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], line=dict(color='white'), name="MACD", hovertemplate='%{y:.2f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='yellow'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
+    
     # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
     dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
     # 透過差集 (difference) 直接找出缺失日期
