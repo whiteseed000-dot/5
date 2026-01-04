@@ -237,7 +237,7 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
-def get_stock_data(ticker, years, time_frame="日 (Day)"): # 新增參數
+def get_stock_data(ticker, years, time_frame="日"): # 新增參數
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
@@ -245,16 +245,36 @@ def get_stock_data(ticker, years, time_frame="日 (Day)"): # 新增參數
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
-# --- 新增：數據重採樣邏輯 ---
-        if "週" in time_frame:
-            df = df.resample('W', label='left', closed='left').agg({
-                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+        # --- 新增：數據重採樣邏輯（符合金融慣例） ---
+        if time_frame == "週":
+    # 週線：週一～週五，K棒時間放在「週五」
+            df = df.resample(
+                'W-FRI',
+                label='right',     # 時間標籤放在區間右側（週五）
+                closed='right'     # 包含週五當天
+            ).agg({
+                'Open': 'first',   # 週一開盤
+                'High': 'max',     # 全週最高
+                'Low': 'min',      # 全週最低
+                'Close': 'last',   # 週五收盤
+                'Volume': 'sum'    # 全週成交量
             }).dropna()
+
+        elif time_frame == "月":
+    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
+            df = df.resample(
+                'M',
+                label='right',     # 標記在月底
+                closed='right'     # 包含月底最後交易日
+            ).agg({
+                'Open': 'first',   # 月初開盤
+                'High': 'max',     # 當月最高
+                'Low': 'min',      # 當月最低
+                'Close': 'last',   # 月底收盤
+                'Volume': 'sum'    # 當月成交量
+            }).dropna()
+# ----------------------------------------------
         
-        elif "月" in time_frame:
-            df = df.resample('MS').agg({
-            'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
-            }).dropna()
         # ---------------------------
         
         df = df.reset_index()
@@ -503,14 +523,22 @@ if result:
             fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='#E066FF'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
     
     # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
-    dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
-    # 透過差集 (difference) 直接找出缺失日期
-    dt_breaks = dt_all.difference(df['Date'])
-    if not dt_breaks.empty:
-        fig.update_xaxes(rangebreaks=[dict(values=dt_breaks.tolist())])
-    
-    fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
 
+    # --- X 軸缺口處理（只適用於日線） ---
+    if time_frame == "日":
+        dt_all = pd.date_range(
+            start=df['Date'].min(),
+            end=df['Date'].max(),
+            freq='D'
+        )
+        dt_breaks = dt_all.difference(df['Date'])
+
+        if not dt_breaks.empty:
+            fig.update_xaxes(
+                rangebreaks=[dict(values=dt_breaks.tolist())]
+            )
+# 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
+# -----------------------------------
 
 
     fig.update_layout(
