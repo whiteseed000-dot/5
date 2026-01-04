@@ -249,7 +249,7 @@ def detect_market_pattern(df):
 
     if (
         curr['Close'] > curr['TL+1SD'] and
-        curr['Slope'] > 0 and
+        curr['slope'] > 0 and
         curr['RSI14'] > 60
     ):
         patterns.append("🟡 強勢趨勢延伸（高檔鈍化）")
