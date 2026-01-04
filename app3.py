@@ -324,7 +324,10 @@ if result:
     m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="off", help="超過60代表極度恐慌")
 
     # --- 7. 切換按鈕 ---
+    
     st.divider()
+    show_detailed_metrics = st.checkbox("顯示詳細技術指標儀表板", value=False)
+    if show_detailed_metrics:
     with st.container():
         c_rsi = df['RSI14'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
@@ -347,7 +350,8 @@ if result:
         r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
         i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
     
-    st.write("")
+        st.write("")
+    
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
 
     col_sub1, col_sub2 = st.columns([1, 4])
