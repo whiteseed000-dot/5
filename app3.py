@@ -225,6 +225,20 @@ def calc_resonance_score(df):
 
     return min(score, 100)
 
+def get_monthly_valuation_light(df):
+    c = df.iloc[-1]['Close']
+    if c < df.iloc[-1]['TL-2SD']:
+        return "🟢 超便宜（長線布局）"
+    elif c < df.iloc[-1]['TL-1SD']:
+        return "🔵 便宜（分批）"
+    elif c < df.iloc[-1]['TL+1SD']:
+        return "⚪ 合理（持有）"
+    elif c < df.iloc[-1]['TL+2SD']:
+        return "🟠 偏貴（留意）"
+    else:
+        return "🔴 過熱（風險高）"
+
+
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
