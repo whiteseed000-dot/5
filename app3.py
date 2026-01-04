@@ -237,7 +237,7 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
-def get_stock_data(ticker, years, time_frame="日 (Day)"): # 新增參數
+def get_stock_data(ticker, years, time_frame="日"): # 新增參數
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
@@ -245,17 +245,36 @@ def get_stock_data(ticker, years, time_frame="日 (Day)"): # 新增參數
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
-# --- 新增：數據重採樣邏輯 ---
+        # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
-        # label='right' 會讓日期顯示在週五，closed='right' 確保包含週五當天數據
-            df = df.resample('W-FRI', label='right', closed='right').agg({
-                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+    # 週線：週一～週五，K棒時間放在「週五」
+            df = df.resample(
+                'W-FRI',
+                label='right',     # 時間標籤放在區間右側（週五）
+                closed='right'     # 包含週五當天
+            ).agg({
+                'Open': 'first',   # 週一開盤
+                'High': 'max',     # 全週最高
+                'Low': 'min',      # 全週最低
+                'Close': 'last',   # 週五收盤
+                'Volume': 'sum'    # 全週成交量
             }).dropna()
-        
+
         elif time_frame == "月":
-            df = df.resample('ME', label='right', closed='right').agg({
-                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
+            df = df.resample(
+                'M',
+                label='right',     # 標記在月底
+                closed='right'     # 包含月底最後交易日
+            ).agg({
+                'Open': 'first',   # 月初開盤
+                'High': 'max',     # 當月最高
+                'Low': 'min',      # 當月最低
+                'Close': 'last',   # 月底收盤
+                'Volume': 'sum'    # 當月成交量
             }).dropna()
+# ----------------------------------------------
+        
         # ---------------------------
         
         df = df.reset_index()
