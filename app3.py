@@ -124,9 +124,20 @@ def get_technical_indicators(df):
         rs = gain / loss
         return 100 - (100 / (1 + rs))
 
-    # 新增短、長週期 RSI
-    df['RSI7'] = calc_rsi(df['Close'], 7)
-    df['RSI14'] = calc_rsi(df['Close'], 14)
+
+    # --- RSI 依時間週期切換 ---
+    if time_frame == "日":
+        rsi_periods = [7, 14]
+    elif time_frame == "週":
+        rsi_periods = [6, 12]
+    elif time_frame == "月":
+        rsi_periods = [6]
+    
+    for p in rsi_periods:
+        df[f'RSI{p}'] = calc_rsi(df['Close'], p)
+    
+    df.attrs['rsi_periods'] = rsi_periods
+    # --------------------------
 
     
     # MACD (12, 26, 9)
@@ -554,12 +565,18 @@ if result:
             v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
             fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量", hovertemplate='%{y:.0f}'), row=2, col=1)
         elif sub_mode == "RSI":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI7'], name="RSI7", 
-                                     line=dict(color='#00BFFF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
-            # 畫出 RSI 14 (粉紫線，如照片所示)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI14'], name="RSI14", 
-                                     line=dict(color='#E066FF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
-
+            rsi_periods = df.attrs.get('rsi_periods', [])
+            for p, color in zip(rsi_periods, ['#00BFFF', '#E066FF']):
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['Date'],
+                        y=df[f'RSI{p}'],
+                        name=f'RSI{p}',
+                        line=dict(color=color, width=1.5),
+                        hovertemplate='%{y:.2f}'
+                    ),
+                    row=2, col=1
+                )
         elif sub_mode == "MACD":
             m_diff = df['MACD'] - df['Signal']
             m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
