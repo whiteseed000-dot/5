@@ -286,6 +286,8 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
 
         for p in ma_periods:
             df[f'MA{p}'] = df['Close'].rolling(window=p).mean()
+
+        df.attrs['ma_periods'] = ma_periods
 # ----------------------------------        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
@@ -473,11 +475,15 @@ if result:
         ))
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
+        # 從 df 取回 MA 週期（不會 NameError）
+        ma_periods = df.attrs.get('ma_periods', [])
+        ma_colors = ['#FDDD42', '#87DCF6', '#C29ACF', '#F3524F', '#009B3A']
 
-        ma_list = [(f'MA{p}', color, f'{p}MA') for p, color in zip(
-            ma_periods,
-            ['#FDDD42', '#87DCF6', '#C29ACF', '#F3524F', '#009B3A']
-        )]
+        ma_list = [
+            (f'MA{p}', ma_colors[i % len(ma_colors)], f'{p}MA')
+            for i, p in enumerate(ma_periods)
+        ]
+
         
         for col, color, name in ma_list:
             if col in df.columns:
