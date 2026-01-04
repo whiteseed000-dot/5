@@ -366,7 +366,7 @@ if result:
     # --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
     
     if view_mode == "樂活五線譜":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#F08C8C', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         for col, hex_color, name_tag, line_style in lines_config:
             fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag, hovertemplate='%{y:.1f}'))
             last_val = df[col].iloc[-1]
@@ -374,7 +374,7 @@ if result:
 
     elif view_mode == "樂活通道":
         # 繪製主收盤價線
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#F08C8C', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         
         # 通道配置：顏色與五線譜連動，方便判斷位階
         h_lines_config = [ 
@@ -441,7 +441,7 @@ if result:
         fig.add_hline(y=20, line_dash="dot", line_color="rgba(255,255,255,0.3)")
 
     elif view_mode == "布林通道":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2), hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#F08C8C', width=2), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash'), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['MA20'], name="20MA", line=dict(color='#FFBD03'), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash'), hovertemplate='%{y:.1f}'))
@@ -499,6 +499,8 @@ if result:
             spikecolor="white", # 設定為白色
             spikedash="solid"   # 實線 (若要虛線改為 dash)
         ),
+        # 如果有開啟副圖，額外設定副圖的 Y 軸指引線顏色為白色
+    if show_sub_chart:
         xaxis2=dict(
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
