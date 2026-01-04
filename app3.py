@@ -218,7 +218,15 @@ with st.sidebar:
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
     st.divider()
 
-    
+
+    st.header("📊 顯示設定")
+    # 新增：時間週期選擇
+    time_frame = st.selectbox(
+        "時間週期 (K線頻率)",
+        options=["日 (Day)", "周 (Week)", "月 (Month)"],
+        index=0
+    )
+    st.divider()
 # 在側邊欄的登出按鈕部分
     if st.button("🚪 登出帳號"):
     # 清理快取
@@ -230,13 +238,25 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
-def get_stock_data(ticker, years):
+def get_stock_data(ticker, years, time_frame="日 (Day)"): # 新增參數
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
         df = yf.download(ticker, start=start, end=end, progress=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
+
+        # --- 新增：數據重採樣邏輯 ---
+        if "周" in time_frame:
+            df = df.resample('W').agg({
+                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+            }).dropna()
+        elif "月" in time_frame:
+            df = df.resample('ME').agg({ # 使用 ME 代表 Month End
+                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+            }).dropna()
+        # ---------------------------
+        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
         slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
@@ -296,7 +316,8 @@ with col_btn:
             save_watchlist_to_google(username, st.session_state.watchlist_dict)
             st.rerun()
 
-result = get_stock_data(ticker_input, years_input)
+result = get_stock_data(ticker_input, years_input, time_frame)
+
 vix_val = get_vix_index()
 
 if result:
