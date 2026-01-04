@@ -344,21 +344,30 @@ if result:
     
     st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-# --- 8. 圖表核心 (UI 整合優化版) ---
+# --- 8. 圖表核心 (修正 NameError 與 UI 重複問題) ---
 from plotly.subplots import make_subplots
 
 st.divider()
 
-# 1. 統一 UI 配置 (移除舊有的 radio，改用並列 layout)
+# 1. 核心繪圖輔助函式 (必須放在最前面，確保不會出現 NameError)
+def add_main_trace(fig, trace, show_subplot):
+    """
+    根據是否有副圖，自動決定將軌跡加入到全圖或是第一列
+    """
+    if show_subplot:
+        fig.add_trace(trace, row=1, col=1)
+    else:
+        fig.add_trace(trace)
+
+# 2. 統一 UI 配置 (移除舊有的單行 radio，改用新版並列 layout)
 ui_col1, ui_col2, ui_col3 = st.columns([2.5, 1, 2.5])
 
 with ui_col1:
-    # 主圖指標選擇
     view_mode = st.radio(
         "主圖指標", 
         ["樂活五線譜", "樂活通道", "K線指標", "布林通道"], 
         horizontal=True,
-        index=0
+        key="main_plot_selector" # 加上 key 避免 Streamlit 內部衝突
     )
 
 with ui_col2:
@@ -367,17 +376,16 @@ with ui_col2:
     show_subplot = st.toggle("開啟副圖", value=True)
 
 with ui_col3:
-    # 副圖指標選擇 (僅在開啟時顯示)
     if show_subplot:
         sub_mode = st.selectbox(
             "選擇副圖指標", 
             ["KD指標", "成交量", "RSI", "MACD"],
-            index=0
+            key="sub_plot_selector"
         )
     else:
         sub_mode = None
 
-# 2. 建立圖表畫布
+# 3. 初始化圖表畫布
 if show_subplot:
     fig = make_subplots(
         rows=2, cols=1, 
@@ -385,89 +393,66 @@ if show_subplot:
         vertical_spacing=0.05, 
         row_heights=[0.7, 0.3]
     )
-    row_main = 1
+    row_idx = 1
 else:
     fig = go.Figure()
-    row_main = None
+    row_idx = None
 
-# 封裝繪圖輔助函式，簡化邏輯
-def add_main_trace(trace):
-    if show_subplot:
-        fig.add_trace(trace, row=1, col=1)
-    else:
-        fig.add_trace(trace)
-
-# 3. 繪製主圖 (Row 1)
+# 4. 繪製主圖 (使用修正後的函式呼叫)
 if view_mode == "樂活五線譜":
-    add_main_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"))
+    add_main_trace(fig, go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), show_subplot)
     for col, hex_color, name_tag, line_style in lines_config:
-        add_main_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag))
-        # 加上右側數值標籤
+        add_main_trace(fig, go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag), show_subplot)
+        # 數值標籤
         last_val = df[col].iloc[-1]
-        fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=12), row=row_main, col=1 if show_subplot else None)
+        fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=12), row=row_idx, col=1 if show_subplot else None)
 
 elif view_mode == "樂活通道":
-    add_main_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"))
-    h_lines_config = [('H_TL+1SD', '#FFBD03', '通道上軌', 'dash'), ('H_TL', '#FFFFFF', '100MA', 'solid'), ('H_TL-1SD', '#0096FF', '通道下軌', 'dash')]
-    for col, hex_color, name_tag, line_style in h_lines_config:
-        add_main_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag))
+    add_main_trace(fig, go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), show_subplot)
+    h_lines = [('H_TL+1SD', '#FFBD03', '通道上軌'), ('H_TL', '#FFFFFF', '100MA'), ('H_TL-1SD', '#0096FF', '通道下軌')]
+    for col, color, name_tag in h_lines:
+        add_main_trace(fig, go.Scatter(x=df['Date'], y=df[col], line=dict(color=color, dash='dash' if '軌' in name_tag else 'solid', width=1.5), name=name_tag), show_subplot)
 
 elif view_mode == "K線指標":
-    add_main_trace(go.Candlestick(x=df['Date'], open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name="K線", increasing_line_color='#FF3131', decreasing_line_color='#00FF00'))
-    ma_list = [('MA5', '#FDDD42', '5MA'), ('MA20', '#C29ACF', '20MA'), ('MA60', '#F3524F', '60MA')]
-    for col, color, name in ma_list:
-        add_main_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2)))
+    add_main_trace(fig, go.Candlestick(x=df['Date'], open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name="K線", increasing_line_color='#FF3131', decreasing_line_color='#00FF00'), show_subplot)
+    for ma_col, ma_color, ma_name in [('MA5', '#FDDD42', '5MA'), ('MA20', '#C29ACF', '20MA'), ('MA60', '#F3524F', '60MA')]:
+        add_main_trace(fig, go.Scatter(x=df['Date'], y=df[ma_col], name=ma_name, line=dict(color=ma_color, width=1.2)), show_subplot)
 
 elif view_mode == "布林通道":
-    add_main_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2)))
-    add_main_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash')))
-    add_main_trace(go.Scatter(x=df['Date'], y=df['MA20'], name="20MA", line=dict(color='#FFBD03')))
-    add_main_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash')))
+    add_main_trace(fig, go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2)), show_subplot)
+    add_main_trace(fig, go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash')), show_subplot)
+    add_main_trace(fig, go.Scatter(x=df['Date'], y=df['MA20'], name="20MA", line=dict(color='#FFBD03')), show_subplot)
+    add_main_trace(fig, go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash')), show_subplot)
 
-# 4. 繪製副圖 (Row 2)
+# 5. 繪製副圖
 if show_subplot:
     if sub_mode == "KD指標":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131')), row=2, col=1)
         fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF')), row=2, col=1)
-        fig.add_hline(y=80, line_dash="dot", line_color="rgba(255,255,255,0.2)", row=2, col=1)
-        fig.add_hline(y=20, line_dash="dot", line_color="rgba(255,255,255,0.2)", row=2, col=1)
-    
     elif sub_mode == "成交量":
-        bar_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
-        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量"), row=2, col=1)
-    
+        v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
+        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量"), row=2, col=1)
     elif sub_mode == "RSI":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name="RSI(14)", line=dict(color='#FDDD42')), row=2, col=1)
-        fig.add_hline(y=70, line_dash="dot", line_color="#FF3131", row=2, col=1)
-        fig.add_hline(y=30, line_dash="dot", line_color="#00FF00", row=2, col=1)
-
     elif sub_mode == "MACD":
-        # 繪製 MACD 柱狀圖 (OSC)
         osc = df['MACD'] - df['Signal']
-        osc_colors = ['#FF3131' if val >= 0 else '#00FF00' for val in osc]
-        fig.add_trace(go.Bar(x=df['Date'], y=osc, name="OSC", marker_color=osc_colors), row=2, col=1)
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], name="MACD", line=dict(color='white', width=1)), row=2, col=1)
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], name="Signal", line=dict(color='orange', width=1)), row=2, col=1)
+        fig.add_trace(go.Bar(x=df['Date'], y=osc, name="OSC", marker_color=['#FF3131' if x>=0 else '#00FF00' for x in osc]), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], name="MACD", line=dict(color='white')), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], name="Signal", line=dict(color='orange')), row=2, col=1)
 
-# 5. 全域設定
-# 現價線 (僅限主圖)
-fig.add_hline(y=curr, line_dash="dot", line_color="#FFFFFF", line_width=1, row=1, col=1 if show_subplot else None)
-fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14), row=1, col=1 if show_subplot else None)
+# 6. 最後修飾 (現價線與佈局)
+fig.add_hline(y=curr, line_dash="dot", line_color="#FFFFFF", row=1, col=1 if show_subplot else None)
 
-# 日期斷點處理
-dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
-dt_breaks = dt_all.difference(df['Date'])
+# 跳過休假日
+dt_breaks = pd.date_range(df['Date'].min(), df['Date'].max()).difference(df['Date'])
 if not dt_breaks.empty:
     fig.update_xaxes(rangebreaks=[dict(values=dt_breaks.tolist())])
 
 fig.update_layout(
     height=800 if show_subplot else 650,
-    plot_bgcolor='#0E1117', 
-    paper_bgcolor='#0E1117',
-    hovermode="x unified",
-    xaxis_rangeslider_visible=False,
-    showlegend=False,
-    margin=dict(l=10, r=100, t=20, b=20)
+    plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
+    hovermode="x unified", xaxis_rangeslider_visible=False,
+    showlegend=False, margin=dict(l=10, r=100, t=20, b=20)
 )
 
 st.plotly_chart(fig, use_container_width=True)
