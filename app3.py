@@ -468,6 +468,13 @@ if result:
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
+    patterns = detect_market_pattern(df)
+    
+    if patterns:
+        st.markdown("### 🧠 AI 市場型態判讀")
+        for p in patterns:
+            st.write(p)
+    
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
@@ -745,9 +752,4 @@ if st.button("🔍 執行全自動多指標雷達掃描"):
             st.info("目前沒有標的符合共振條件。")
 
 
-patterns = detect_market_pattern(df)
 
-if patterns:
-    st.markdown("### 🧠 AI 市場型態判讀")
-    for p in patterns:
-        st.write(p)
