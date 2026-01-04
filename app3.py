@@ -397,7 +397,7 @@ if result:
             hovertemplate='%{open:.1f}',
             hovertemplate='%{high:.1f}',
             hovertemplate='%{low:.1f}',
-            hovertemplate='%{close:.1f}',
+            hovertemplate='%{close:.1f}'
         ))
         # 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 注意：請確保 get_stock_data 函式內有計算這些 MA 欄位
