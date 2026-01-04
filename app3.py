@@ -774,7 +774,7 @@ for ticker, name in st.session_state.watchlist_dict.items():
     resonance_rows.append({
         "代號": ticker,
         "名稱": name,
-        "共振分數": score,
+        "共振分數": patterns,
         "最新價格": f"{curr_price:.1f}",
         "偏離 TL": f"{dist_pct:+.1f}%",
         "狀態": score_label(score),
