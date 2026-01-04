@@ -277,6 +277,12 @@ def build_resonance_rank(stock_list, time_frame):
 
     return pd.DataFrame(results).sort_values("共振分數", ascending=False)
 
+def score_label(score):
+    if score >= 80: return "🟢 強烈偏多"
+    if score >= 60: return "🟡 偏多"
+    if score >= 40: return "⚪ 中性"
+    if score >= 20: return "🟠 偏弱"
+    return "🔴 高風險"
 
 
 
@@ -770,7 +776,8 @@ for ticker, name in st.session_state.watchlist_dict.items():
         "名稱": name,
         "共振分數": score,
         "最新價格": f"{curr_price:.1f}",
-        "偏離 TL": f"{dist_pct:+.1f}%",
+        "偏離 TL": f"{dist_pct:+.1f}%"
+        "狀態": score_label(score)
     })
 
 if resonance_rows:
