@@ -245,11 +245,15 @@ def get_stock_data(ticker, years, time_frame="日 (Day)"): # 新增參數
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
-        # --- 新增：數據重採樣邏輯 ---
-    if time_frame == "週":
-        df = df.resample('W', label='left', closed='left').agg({
-            'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
-        }).dropna()
+# --- 新增：數據重採樣邏輯 ---
+        if "周" in time_frame:
+            df = df.resample('W').agg({
+                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+            }).dropna()
+        elif "月" in time_frame:
+            df = df.resample('ME').agg({ # 使用 ME 代表 Month End
+                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+            }).dropna()
     elif time_frame == "月":
         # 使用 MS (Month Start) 確保標籤在月初，視覺上更整齊
         df = df.resample('MS').agg({
