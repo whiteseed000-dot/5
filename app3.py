@@ -498,7 +498,7 @@ if result:
             spikethickness=1,
             spikecolor="white", # 設定為白色
             spikedash="solid"   # 實線 (若要虛線改為 dash)
-        )
+        ),
         xaxis2=dict(
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
