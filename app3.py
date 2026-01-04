@@ -214,18 +214,17 @@ with st.sidebar:
     
     # 自動抓取對應的中文名稱 (用於顯示)
     stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
-    
-    years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
+   
     st.divider()
-
-
     st.header("📊 顯示設定")
     # 新增：時間週期選擇
     time_frame = st.selectbox(
         "時間週期 (K線頻率)",
-        options=["日 (Day)", "周 (Week)", "月 (Month)"],
+        options=["日", "週", "月"],
         index=0
     )
+    years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
+
     st.divider()
 # 在側邊欄的登出按鈕部分
     if st.button("🚪 登出帳號"):
@@ -247,14 +246,15 @@ def get_stock_data(ticker, years, time_frame="日 (Day)"): # 新增參數
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
         # --- 新增：數據重採樣邏輯 ---
-        if "周" in time_frame:
-            df = df.resample('W').agg({
-                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
-            }).dropna()
-        elif "月" in time_frame:
-            df = df.resample('ME').agg({ # 使用 ME 代表 Month End
-                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
-            }).dropna()
+        if time_frame == "週":
+        df = df.resample('W', label='left', closed='left').agg({
+            'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+        }).dropna()
+        elif time_frame == "月":
+        # 使用 MS (Month Start) 確保標籤在月初，視覺上更整齊
+        df = df.resample('MS').agg({
+            'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+        }).dropna()
         # ---------------------------
         
         df = df.reset_index()
