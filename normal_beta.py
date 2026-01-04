@@ -103,7 +103,7 @@ with st.sidebar:
 
     st.divider()
     st.subheader("📌 線段說明")
-    st.markdown(f'<span style="color:#00D084; font-size:18px;">●</span> 每日收盤價', unsafe_allow_html=True)
+    st.markdown(f'<span style="color:#00FFFF; font-size:18px;">●</span> 每日收盤價', unsafe_allow_html=True)
     for col, hex_color, name_tag, line_style in lines_config:
         line_symbol = "━━━━" if line_style == 'solid' else "----"
         st.markdown(f'<span style="color:{hex_color}; font-weight:bold;">{line_symbol}</span> {name_tag}', unsafe_allow_html=True)
@@ -205,7 +205,7 @@ if ticker_input:
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=df['Date'], y=df['Close'], 
-            line=dict(color='#00D084', width=2),
+            line=dict(color='#00FFFF', width=2),
             hovertemplate='收盤價: %{y:.1f}<extra></extra>'
         ))
         for col, hex_color, name_tag, line_style in lines_config:
@@ -230,6 +230,13 @@ if ticker_input:
             font=dict(color="#FFFFFF", size=14, family="Arial Black"),
             bgcolor="rgba(0,0,0,0)"
         )
+        # 日期斷點處理
+        dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
+        dt_breaks = dt_all.difference(df['Date'])
+        if not dt_breaks.empty:
+            fig.update_xaxes(rangebreaks=[dict(values=dt_breaks.tolist())])
+
+        
         fig.update_layout(
             height=650, # 保留 650
             plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
