@@ -124,9 +124,20 @@ def get_technical_indicators(df):
         rs = gain / loss
         return 100 - (100 / (1 + rs))
 
-    # 新增短、長週期 RSI
-    df['RSI7'] = calc_rsi(df['Close'], 7)
-    df['RSI14'] = calc_rsi(df['Close'], 14)
+
+    # --- RSI 依時間週期切換 ---
+    if time_frame == "日":
+        rsi_periods = [7, 14]
+    elif time_frame == "週":
+        rsi_periods = [7, 14]
+    elif time_frame == "月":
+        rsi_periods = [7, 14]
+    
+    for p in rsi_periods:
+        df[f'RSI{p}'] = calc_rsi(df['Close'], p)
+    
+    df.attrs['rsi_periods'] = rsi_periods
+    # --------------------------
 
     
     # MACD (12, 26, 9)
@@ -178,6 +189,56 @@ def check_advanced_alerts(watchlist, years):
                 alerts.append({"name": name, "type": "SELL", "reason": "位階偏高 + 技術面轉弱"})
                 
     return alerts
+
+def calc_resonance_score(df):
+    score = 0
+    curr = df.iloc[-1]
+
+    # --- 五線譜位階（40）---
+    if curr['Close'] < curr['TL-2SD']:
+        score += 40
+    elif curr['Close'] < curr['TL-1SD']:
+        score += 30
+    elif curr['Close'] < curr['TL']:
+        score += 20
+    elif curr['Close'] < curr['TL+1SD']:
+        score += 10
+
+    # --- MA 趨勢（30）---
+    ma_periods = df.attrs.get('ma_periods', [])
+    if ma_periods:
+        ma_mid = df[f'MA{ma_periods[len(ma_periods)//2]}'].iloc[-1]
+        if curr['Close'] > ma_mid:
+            score += 30
+        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
+            score += 15
+
+    # --- MACD 動能（30）---
+    macd = curr['MACD']
+    signal = curr['Signal']
+    if macd > signal and macd > 0:
+        score += 30
+    elif macd > signal:
+        score += 20
+    elif macd > 0:
+        score += 10
+
+    return min(score, 100)
+
+def get_monthly_valuation_light(df):
+    c = df.iloc[-1]['Close']
+    if c < df.iloc[-1]['TL-2SD']:
+        return "🟢 超便宜（長線布局）"
+    elif c < df.iloc[-1]['TL-1SD']:
+        return "🔵 便宜（分批）"
+    elif c < df.iloc[-1]['TL+1SD']:
+        return "⚪ 合理（持有）"
+    elif c < df.iloc[-1]['TL+2SD']:
+        return "🟠 偏貴（留意）"
+    else:
+        return "🔴 過熱（風險高）"
+
+
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -417,7 +478,7 @@ if result:
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
-        i1, i2, i3, i4, i5 = st.columns(5)
+        i1, i2, i3, i4, i5, i6 = st.columns(6)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
         
@@ -433,7 +494,17 @@ if result:
 
         r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
         i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
-    
+
+        res_score = calc_resonance_score(df)
+        res_label = (
+            "🟢 強烈偏多" if res_score >= 80 else
+            "🟡 偏多" if res_score >= 60 else
+            "⚪ 中性" if res_score >= 40 else
+            "🟠 偏弱" if res_score >= 20 else
+            "🔴 高風險"
+        )     
+        i6.metric("多指標共振分數", f"{res_score}/100", res_label, delta_color="off")
+        
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
@@ -554,12 +625,18 @@ if result:
             v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
             fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量", hovertemplate='%{y:.0f}'), row=2, col=1)
         elif sub_mode == "RSI":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI7'], name="RSI7", 
-                                     line=dict(color='#00BFFF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
-            # 畫出 RSI 14 (粉紫線，如照片所示)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI14'], name="RSI14", 
-                                     line=dict(color='#E066FF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
-
+            rsi_periods = df.attrs.get('rsi_periods', [])
+            for p, color in zip(rsi_periods, ['#00BFFF', '#E066FF']):
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['Date'],
+                        y=df[f'RSI{p}'],
+                        name=f'RSI{p}',
+                        line=dict(color=color, width=1.5),
+                        hovertemplate='%{y:.2f}'
+                    ),
+                    row=2, col=1
+                )
         elif sub_mode == "MACD":
             m_diff = df['MACD'] - df['Signal']
             m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
@@ -647,3 +724,4 @@ if st.button("🔍 執行全自動多指標雷達掃描"):
                     st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
         else:
             st.info("目前沒有標的符合共振條件。")
+            
