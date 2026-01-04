@@ -511,19 +511,8 @@ if result:
     
     fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
 
-    if not df.empty:
-    # 讓 X 軸範圍剛好等於數據的起點與終點
-        fig.update_xaxes(
-            range=[df['Date'].min(), df['Date'].max()],
-            autorange=False
-        )
-        # 針對周與月，微調 K 線柱體的寬度 (以毫秒計算)
-    if time_frame == "週":
-        # 約 5 天的寬度，讓 K 線看起來粗細適中
-        fig.update_traces(selector=dict(type='candlestick'), width=1000*60*60*24*5)
-    elif time_frame == "月":
-        # 約 20 天的寬度
-        fig.update_traces(selector=dict(type='candlestick'), width=1000*60*60*24*20)
+
+
     fig.update_layout(
         height=800 if show_sub_chart else 650,
         plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
