@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
-
+from plotly.subplots import make_subplots
 # --- 1. 核心雲端邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
