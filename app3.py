@@ -326,7 +326,7 @@ if result:
     # --- 7. 切換按鈕 ---
     
     st.divider()
-    show_detailed_metrics = st.checkbox("顯示詳細技術指標儀表板", value=False)
+    show_detailed_metrics = st.toggle("顯示詳細指標", value=False)
     if show_detailed_metrics:
 
         c_rsi = df['RSI14'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
