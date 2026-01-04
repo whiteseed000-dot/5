@@ -103,7 +103,7 @@ with st.sidebar:
 
     st.divider()
     st.subheader("📌 線段說明")
-    st.markdown(f'<span style="color:#00D084; font-size:18px;">●</span> 每日收盤價', unsafe_allow_html=True)
+    st.markdown(f'<span style="color:#00FFFF; font-size:18px;">●</span> 每日收盤價', unsafe_allow_html=True)
     for col, hex_color, name_tag, line_style in lines_config:
         line_symbol = "━━━━" if line_style == 'solid' else "----"
         st.markdown(f'<span style="color:{hex_color}; font-weight:bold;">{line_symbol}</span> {name_tag}', unsafe_allow_html=True)
@@ -205,7 +205,7 @@ if ticker_input:
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=df['Date'], y=df['Close'], 
-            line=dict(color='#00D084', width=2),
+            line=dict(color='#00FFFF', width=2),
             hovertemplate='收盤價: %{y:.1f}<extra></extra>'
         ))
         for col, hex_color, name_tag, line_style in lines_config:
