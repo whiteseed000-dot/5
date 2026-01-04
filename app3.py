@@ -497,17 +497,7 @@ if result:
         for p in patterns:
             st.write(p)
     #--
-    st.markdown("## 📊 共振選股排行榜")
-    
-    watchlist = st.text_input(
-        "輸入股票（逗號分隔）",
-        "2330,2317,2454,2412,6505"
-    )
-    
-    if watchlist:
-        stocks = [s.strip() for s in watchlist.split(",")]
-        rank_df = build_resonance_rank(stocks, time_frame)
-        st.dataframe(rank_df, use_container_width=True)
+
 
 
     #--
