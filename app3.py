@@ -129,9 +129,9 @@ def get_technical_indicators(df):
     if time_frame == "日":
         rsi_periods = [7, 14]
     elif time_frame == "週":
-        rsi_periods = [6, 12]
+        rsi_periods = [7, 14]
     elif time_frame == "月":
-        rsi_periods = [6]
+        rsi_periods = [7, 14]
     
     for p in rsi_periods:
         df[f'RSI{p}'] = calc_rsi(df['Close'], p)
