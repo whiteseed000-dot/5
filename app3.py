@@ -510,6 +510,13 @@ if result:
         fig.update_xaxes(rangebreaks=[dict(values=dt_breaks.tolist())])
     
     fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
+
+    if not df.empty:
+    # 讓 X 軸範圍剛好等於數據的起點與終點
+    fig.update_xaxes(
+        range=[df['Date'].min(), df['Date'].max()],
+        autorange=False
+    )
     fig.update_layout(
         height=800 if show_sub_chart else 650,
         plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
