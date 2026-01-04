@@ -560,14 +560,14 @@ if result:
     )
 
 # 統一設定 hovermode
-fig.update_layout(
-    hovermode="x", # 確保滑鼠移動時只對應 X 軸上的那一根柱子
-    xaxis=dict(
-        type='date',
-        # 禁止滑鼠懸浮時出現自動生成的日期，強制使用數據內的日期
-        hoverformat='%Y-%m-%d'
+    fig.update_layout(
+        hovermode="x", # 確保滑鼠移動時只對應 X 軸上的那一根柱子
+        xaxis=dict(
+            type='date',
+            # 禁止滑鼠懸浮時出現自動生成的日期，強制使用數據內的日期
+            hoverformat='%Y-%m-%d'
+        )
     )
-)
     st.plotly_chart(fig, use_container_width=True)
 
 # --- 9. 掃描 ---
