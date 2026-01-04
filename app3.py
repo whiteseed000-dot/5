@@ -345,6 +345,70 @@ if result:
     st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
 # --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
+    # --- 新增：副圖控制 UI ---
+    st.write("")
+    col_ui1, col_ui2 = st.columns([1, 2])
+    with col_ui1:
+        show_subplot = st.toggle("開啟副圖指標", value=False)
+    with col_ui2:
+        if show_subplot:
+            sub_view_mode = st.selectbox(
+                "選擇副圖內容", 
+                ["KD指標", "成交量", "RSI", "MACD"], 
+                label_visibility="collapsed"
+            )
+        else:
+            sub_view_mode = None    
+            from plotly.subplots import make_subplots
+
+# 根據是否有副圖決定佈局
+if show_subplot:
+    fig = make_subplots(
+        rows=2, cols=1, 
+        shared_xaxes=True, 
+        vertical_spacing=0.05, 
+        row_heights=[0.7, 0.3] # 主圖 70%, 副圖 30%
+    )
+else:
+    fig = go.Figure()
+
+# --- 主圖繪製 (將原本的 fig.add_trace 改為指定 row=1) ---
+row_main = 1 if show_subplot else None
+
+if view_mode == "樂活五線譜":
+    fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), row=row_main, col=1 if show_subplot else None)
+    for col, hex_color, name_tag, line_style in lines_config:
+        fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag), row=row_main, col=1 if show_subplot else None)
+
+elif view_mode == "樂活通道":
+    fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), row=row_main, col=1 if show_subplot else None)
+    h_lines_config = [('H_TL+1SD', '#FFBD03', '通道上軌 (+10%)', 'dash'), ('H_TL', '#FFFFFF', '趨勢中軸 (100MA)', 'solid'), ('H_TL-1SD', '#0096FF', '通道下軌 (-10%)', 'dash')]
+    for col, hex_color, name_tag, line_style in h_lines_config:
+        fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag), row=row_main, col=1 if show_subplot else None)
+
+elif view_mode == "K線指標":
+    fig.add_trace(go.Candlestick(x=df['Date'], open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], increasing_line_color='#FF3131', decreasing_line_color='#00FF00'), row=row_main, col=1 if show_subplot else None)
+    # ... MA 線段同理加 row=row_main ...
+
+# --- 副圖繪製 (固定在 row=2) ---
+if show_subplot:
+    if sub_view_mode == "KD指標":
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131')), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF')), row=2, col=1)
+    
+    elif sub_view_mode == "成交量":
+        bar_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
+        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量"), row=2, col=1)
+    
+    elif sub_view_mode == "RSI":
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name="RSI(14)", line=dict(color='#FFA500')), row=2, col=1)
+        fig.add_hline(y=70, line_dash="dot", row=2, col=1); fig.add_hline(y=30, line_dash="dot", row=2, col=1)
+
+    elif sub_view_mode == "MACD":
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], name="MACD", line=dict(color='#FFFFFF')), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], name="Signal", line=dict(color='#FFA500')), row=2, col=1)
+    
+    
     fig = go.Figure()
     
     if view_mode == "樂活五線譜":
