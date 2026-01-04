@@ -393,7 +393,7 @@ if result:
             high=df['High'].apply(lambda x: round(x, 1)),
             low=df['Low'].apply(lambda x: round(x, 1)), 
             close=df['Close'].apply(lambda x: round(x, 1)),
-            #name="K線",
+            name="",
             increasing_line_color='#FF3131', # 漲：紅
             decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
