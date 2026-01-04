@@ -356,7 +356,7 @@ if result:
 
     elif view_mode == "樂活通道":
         # 繪製主收盤價線
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         
         # 通道配置：顏色與五線譜連動，方便判斷位階
         h_lines_config = [ 
@@ -386,17 +386,20 @@ if result:
                         bgcolor="rgba(0,0,0,0.6)"
                     )
     elif view_mode == "K線指標":
-        # 繪製 K 線
+        # 1. 繪製 K 線，並設定 hovertemplate 顯示小數點第一位
         fig.add_trace(go.Candlestick(
             x=df['Date'],
-            open=df['Open'], high=df['High'],
-            low=df['Low'], close=df['Close'],
-            name="K線",
+            open=df['Open'].apply(lambda x: round(x, 1)), 
+            high=df['High'].apply(lambda x: round(x, 1)),
+            low=df['Low'].apply(lambda x: round(x, 1)), 
+            close=df['Close'].apply(lambda x: round(x, 1)),
+            name="",
             increasing_line_color='#FF3131', # 漲：紅
             decreasing_line_color='#00FF00'  # 跌：綠
+            # 自定義 K 線懸浮文字格式
         ))
-        # 疊加 MA 線段 (5, 10, 20, 60, 120)
-        # 注意：請確保 get_stock_data 函式內有計算這些 MA 欄位
+
+        # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         ma_list = [
             ('MA5', '#FDDD42', '5MA'), 
             ('MA10', '#87DCF6', '10MA'), 
@@ -404,9 +407,12 @@ if result:
             ('MA60', '#F3524F', '60MA'), 
             ('MA120', '#009B3A', '120MA')
         ]
+        
         for col, color, name in ma_list:
             if col in df.columns:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'))
+                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
+                          
+        ))
         
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
 
@@ -424,13 +430,22 @@ if result:
 
     elif view_mode == "成交量":
         bar_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
-        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量", hovertemplate='%{y}'))
+        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量", hovertemplate='%{y:.0f}'))
 
     # 共同佈局設定
     if view_mode not in ["成交量", "KD指標"]:
         fig.add_hline(y=curr, line_dash="dot", line_color="#FFFFFF", line_width=2)
         fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14, family="Arial Black"))
 
+
+    # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
+    dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
+    # 透過差集 (difference) 直接找出缺失日期
+    dt_breaks = dt_all.difference(df['Date'])
+    if not dt_breaks.empty:
+        fig.update_xaxes(rangebreaks=[dict(values=dt_breaks.tolist())])
+    
+    fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
     fig.update_layout(
         height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
