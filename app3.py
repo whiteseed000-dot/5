@@ -523,14 +523,22 @@ if result:
             fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='#E066FF'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
     
     # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
-    dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
-    # 透過差集 (difference) 直接找出缺失日期
-    dt_breaks = dt_all.difference(df['Date'])
-    if not dt_breaks.empty:
-        fig.update_xaxes(rangebreaks=[dict(values=dt_breaks.tolist())])
-    
-    fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
 
+    # --- X 軸缺口處理（只適用於日線） ---
+    if time_frame == "日":
+        dt_all = pd.date_range(
+            start=df['Date'].min(),
+            end=df['Date'].max(),
+            freq='D'
+        )
+        dt_breaks = dt_all.difference(df['Date'])
+
+        if not dt_breaks.empty:
+            fig.update_xaxes(
+                rangebreaks=[dict(values=dt_breaks.tolist())]
+            )
+# 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
+# -----------------------------------
 
 
     fig.update_layout(
