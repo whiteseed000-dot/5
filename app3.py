@@ -394,11 +394,6 @@ if result:
             name="K線",
             increasing_line_color='#FF3131', # 漲：紅
             decreasing_line_color='#00FF00',  # 跌：綠
-            hovertemplate=
-                "開盤: %{open:.1f}<br>" +
-                "最高: %{high:.1f}<br>" +
-                "最低: %{low:.1f}<br>" +
-                "收盤: %{close:.1f}",
         ))
         # 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 注意：請確保 get_stock_data 函式內有計算這些 MA 欄位
@@ -411,7 +406,13 @@ if result:
         ]
         for col, color, name in ma_list:
             if col in df.columns:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'))
+                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), 
+                    hovertemplate='%{y:.1f}'
+                        "開盤: %{open:.1f}<br>" +
+                        "最高: %{high:.1f}<br>" +
+                        "最低: %{low:.1f}<br>" +
+                        "收盤: %{close:.1f}",                           
+        ))
         
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
 
