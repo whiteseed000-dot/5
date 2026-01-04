@@ -116,13 +116,18 @@ lines_config = [
     ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
 ]
 def get_technical_indicators(df):
-    """計算 RSI, MACD, BIAS, MA60"""
-    # RSI (14)
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    df['RSI'] = 100 - (100 / (1 + rs))
+
+    def calc_rsi(series, period):
+        delta = series.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        return 100 - (100 / (1 + rs))
+
+    # 新增短、長週期 RSI
+    df['RSI6'] = calc_rsi(df['Close'], 6)
+    df['RSI12'] = calc_rsi(df['Close'], 12)
+
     
     # MACD (12, 26, 9)
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
@@ -321,7 +326,7 @@ if result:
     # --- 7. 切換按鈕 ---
     st.divider()
     with st.container():
-        c_rsi = df['RSI'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
+        c_rsi = df['RSI12'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
@@ -459,7 +464,12 @@ if result:
             v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
             fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量", hovertemplate='%{y:.0f}'), row=2, col=1)
         elif sub_mode == "RSI":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name="RSI", line=dict(color='#FDDD42'), hovertemplate='%{y:.2f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI6'], name="RSI6", 
+                                     line=dict(color='#00BFFF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
+            # 畫出 RSI 12 (粉紫線，如照片所示)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI12'], name="RSI12", 
+                                     line=dict(color='#E066FF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
+ 
         elif sub_mode == "MACD":
             m_diff = df['MACD'] - df['Signal']
             m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
@@ -483,6 +493,13 @@ if result:
         margin=dict(l=10, r=100, t=10, b=10),
         
         xaxis=dict(
+            showspikes=True, # 顯示指引線
+            spikemode="across", # 穿過整個圖表
+            spikethickness=1,
+            spikecolor="white", # 設定為白色
+            spikedash="solid"   # 實線 (若要虛線改為 dash)
+        )
+        xaxis2=dict(
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
             spikethickness=1,
