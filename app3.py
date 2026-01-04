@@ -428,7 +428,7 @@ if result:
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
-        i1, i2, i3, i4, i5 = st.columns(5)
+        i1, i2, i3, i4, i5, i6 = st.columns(6)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
         
@@ -444,7 +444,17 @@ if result:
 
         r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
         i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
-    
+
+        res_score = calc_resonance_score(df)
+        res_label = (
+            "🟢 強烈偏多" if res_score >= 80 else
+            "🟡 偏多" if res_score >= 60 else
+            "⚪ 中性" if res_score >= 40 else
+            "🟠 偏弱" if res_score >= 20 else
+            "🔴 高風險"
+        )     
+        i6.metric("多指標共振分數", f"{res_score}/100", res_label)
+        
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
@@ -664,3 +674,38 @@ if st.button("🔍 執行全自動多指標雷達掃描"):
                     st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
         else:
             st.info("目前沒有標的符合共振條件。")
+            
+def calc_resonance_score(df):
+    score = 0
+    curr = df.iloc[-1]
+
+    # --- 五線譜位階（40）---
+    if curr['Close'] < curr['TL-2SD']:
+        score += 40
+    elif curr['Close'] < curr['TL-1SD']:
+        score += 30
+    elif curr['Close'] < curr['TL']:
+        score += 20
+    elif curr['Close'] < curr['TL+1SD']:
+        score += 10
+
+    # --- MA 趨勢（30）---
+    ma_periods = df.attrs.get('ma_periods', [])
+    if ma_periods:
+        ma_mid = df[f'MA{ma_periods[len(ma_periods)//2]}'].iloc[-1]
+        if curr['Close'] > ma_mid:
+            score += 30
+        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
+            score += 15
+
+    # --- MACD 動能（30）---
+    macd = curr['MACD']
+    signal = curr['Signal']
+    if macd > signal and macd > 0:
+        score += 30
+    elif macd > signal:
+        score += 20
+    elif macd > 0:
+        score += 10
+
+    return min(score, 100)
