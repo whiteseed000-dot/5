@@ -543,11 +543,11 @@ if result:
 
     if not df.empty and time_frame != "日":
     # 計算半個週期的偏移量 (毫秒)
-    offset = (1000 * 60 * 60 * 24 * 3.5) if time_frame == "週" else (1000 * 60 * 60 * 24 * 15)
+        offset = (1000 * 60 * 60 * 24 * 3.5) if time_frame == "週" else (1000 * 60 * 60 * 24 * 15)
     
     # 將 X 軸顯示範圍往左移半個週期，讓柱狀圖看起來像是在刻度中間
-    current_min = df['Date'].min().timestamp() * 1000
-    current_max = df['Date'].max().timestamp() * 1000
+        current_min = df['Date'].min().timestamp() * 1000
+        current_max = df['Date'].max().timestamp() * 1000
     
     fig.update_xaxes(
         range=[current_min - offset, current_max + offset],
