@@ -247,6 +247,13 @@ def detect_market_pattern(df):
             if curr['MACD'] > curr['Signal']:
                 patterns.append("🟡 趨勢轉折")
 
+    if (
+        curr['Close'] > curr['TL+1SD'] and
+        curr['Slope'] > 0 and
+        curr['RSI14'] > 60
+    ):
+        patterns.append("🟡 強勢趨勢延伸（高檔鈍化）")
+
     # --- 過熱反轉 ---
     if (
         curr['Close'] > curr['TL+2SD'] and
@@ -255,6 +262,25 @@ def detect_market_pattern(df):
         patterns.append("🔴 過熱風險")
 
     return patterns
+
+def build_resonance_rank(stock_list, time_frame):
+    results = []
+
+    for stock_id in stock_list:
+        df = get_stock_data(stock_id, time_frame)
+        if df is None or len(df) < 50:
+            continue
+
+        score = calc_resonance_score(df)
+        price = df.iloc[-1]['Close']
+
+        results.append({
+            "股票": stock_id,
+            "價格": round(price, 2),
+            "共振分數": score
+        })
+
+    return pd.DataFrame(results).sort_values("共振分數", ascending=False)
 
 
 
@@ -468,13 +494,27 @@ if result:
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
+    #--
     patterns = detect_market_pattern(df)
     
     if patterns:
         st.markdown("### 🧠 AI 市場型態判讀")
         for p in patterns:
             st.write(p)
+    #--
+    st.markdown("## 📊 共振選股排行榜")
     
+    watchlist = st.text_input(
+        "輸入股票（逗號分隔）",
+        "2330,2317,2454,2412,6505"
+    )
+    
+    if watchlist:
+        stocks = [s.strip() for s in watchlist.split(",")]
+        rank_df = build_resonance_rank(stocks, time_frame)
+        st.dataframe(rank_df, use_container_width=True)
+
+    #--
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
