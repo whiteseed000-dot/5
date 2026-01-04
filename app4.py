@@ -386,17 +386,20 @@ if result:
                         bgcolor="rgba(0,0,0,0.6)"
                     )
     elif view_mode == "K線指標":
-        # 繪製 K 線
+        # 1. 繪製 K 線，並設定 hovertemplate 顯示小數點第一位
         fig.add_trace(go.Candlestick(
             x=df['Date'],
-            open=df['Open'], high=df['High'],
-            low=df['Low'], close=df['Close'],
-            name="K線",
+            open=df['Open'].apply(lambda x: round(x, 1)), 
+            high=df['High'].apply(lambda x: round(x, 1)),
+            low=df['Low'].apply(lambda x: round(x, 1)), 
+            close=df['Close'].apply(lambda x: round(x, 1)),
+            name="",
             increasing_line_color='#FF3131', # 漲：紅
-            decreasing_line_color='#00FF00',  # 跌：綠
+            decreasing_line_color='#00FF00'  # 跌：綠
+            # 自定義 K 線懸浮文字格式
         ))
-        # 疊加 MA 線段 (5, 10, 20, 60, 120)
-        # 注意：請確保 get_stock_data 函式內有計算這些 MA 欄位
+
+        # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         ma_list = [
             ('MA5', '#FDDD42', '5MA'), 
             ('MA10', '#87DCF6', '10MA'), 
@@ -404,6 +407,7 @@ if result:
             ('MA60', '#F3524F', '60MA'), 
             ('MA120', '#009B3A', '120MA')
         ]
+        
         for col, color, name in ma_list:
             if col in df.columns:
                 fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
