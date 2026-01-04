@@ -160,7 +160,7 @@ def check_advanced_alerts(watchlist, years):
             is_cheap = curr['Close'] <= curr['TL-1SD']
             # 2. 技術面轉強 (滿足其一即可)
             tech_strong = (
-                (prev['RSI'] < 30 and curr['RSI'] > 30) or       # RSI 低檔回升
+                (prev['RSI14'] < 30 and curr['RSI14'] > 30) or       # RSI 低檔回升
                 (prev['MACD'] < prev['Signal'] and curr['MACD'] > curr['Signal']) or # MACD 金叉
                 (prev['Close'] < curr['MA60'] and curr['Close'] > curr['MA60'])      # 站上季線
             )
@@ -168,7 +168,7 @@ def check_advanced_alerts(watchlist, years):
             # --- 賣出訊號條件 ---
             is_expensive = curr['Close'] >= curr['TL+1SD']
             tech_weak = (
-                (prev['RSI'] > 70 and curr['RSI'] < 70) or       # RSI 高檔反轉
+                (prev['RSI14'] > 70 and curr['RSI14'] < 70) or       # RSI 高檔反轉
                 (prev['MACD'] > prev['Signal'] and curr['MACD'] < curr['Signal'])    # MACD 死叉
             )
 
@@ -469,13 +469,13 @@ if result:
             # 畫出 RSI 14 (粉紫線，如照片所示)
             fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI14'], name="RSI14", 
                                      line=dict(color='#E066FF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
-            fig.update_yaxes(range=[20, 80], row=2, col=1)
+
         elif sub_mode == "MACD":
             m_diff = df['MACD'] - df['Signal']
             m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
             fig.add_trace(go.Bar(x=df['Date'], y=m_diff, marker_color=m_colors, name="柱狀圖"), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], line=dict(color='white'), name="MACD", hovertemplate='%{y:.2f}'), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='yellow'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], line=dict(color='#00BFFF'), name="MACD", hovertemplate='%{y:.2f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='#E066FF'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
     
     # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
     dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
