@@ -246,14 +246,15 @@ def get_stock_data(ticker, years, time_frame="日 (Day)"): # 新增參數
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
 # --- 新增：數據重採樣邏輯 ---
-        if "週" in time_frame:
-            df = df.resample('W', label='left', closed='left').agg({
+        if time_frame == "週":
+        # label='right' 會讓日期顯示在週五，closed='right' 確保包含週五當天數據
+            df = df.resample('W-FRI', label='right', closed='right').agg({
                 'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
             }).dropna()
         
-        elif "月" in time_frame:
-            df = df.resample('MS').agg({
-            'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+        elif time_frame == "月":
+            df = df.resample('ME', label='right', closed='right').agg({
+                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
             }).dropna()
         # ---------------------------
         
@@ -538,34 +539,6 @@ if result:
             spikethickness=1,
             spikecolor="white", # 設定為白色
             spikedash="solid"   # 實線 (若要虛線改為 dash)
-        )
-    )
-
-    if not df.empty and time_frame != "日":
-    # 計算半個週期的偏移量 (毫秒)
-        offset = (1000 * 60 * 60 * 24 * 3.5) if time_frame == "週" else (1000 * 60 * 60 * 24 * 15)
-    
-    # 將 X 軸顯示範圍往左移半個週期，讓柱狀圖看起來像是在刻度中間
-        current_min = df['Date'].min().timestamp() * 1000
-        current_max = df['Date'].max().timestamp() * 1000
-    
-        fig.update_xaxes(
-            range=[current_min - offset, current_max + offset],
-            autorange=False,
-            showspikes=True,
-            spikemode="across",
-            spikesnap="data",  # 強制指引線吸附在數據點上
-            spikethickness=1,
-            spikecolor="white"
-        )
-
-# 統一設定 hovermode
-    fig.update_layout(
-        hovermode="x", # 確保滑鼠移動時只對應 X 軸上的那一根柱子
-        xaxis=dict(
-            type='date',
-            # 禁止滑鼠懸浮時出現自動生成的日期，強制使用數據內的日期
-            hoverformat='%Y-%m-%d'
         )
     )
     st.plotly_chart(fig, use_container_width=True)
