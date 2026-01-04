@@ -225,7 +225,7 @@ def calc_resonance_score(df):
 
     return min(score, 100)
 
-def detect_market_pattern(df):
+def detect_market_pattern(df, slope):
     curr = df.iloc[-1]
     prev = df.iloc[-2]
 
@@ -247,7 +247,13 @@ def detect_market_pattern(df):
             if curr['MACD'] > curr['Signal']:
                 patterns.append("🟡 趨勢轉折")
 
-
+    if (
+        curr['Close'] > curr['TL+1SD'] and
+        slope > 0 and
+        curr['RSI14'] > 60 and
+        curr['MACD'] > curr['Signal']
+    ):
+        patterns.append("🟡 強勢趨勢延伸（高檔鈍化）")
 
     # --- 過熱反轉 ---
     if (
