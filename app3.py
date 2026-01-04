@@ -291,12 +291,43 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
 # ----------------------------------        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
-        slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
-        r_squared = r_value**2  # 決定係數 = r 的平方
-        df['TL'] = slope * df['x'] + intercept
+
+
+        # --- 趨勢線計算（週線使用加權回歸） ---
+        x = df['x'].values
+        y = df['Close'].values
+
+        if time_frame == "週":
+            # 權重：越近權重越大（平方加權）
+            w = np.linspace(0.3, 1.0, len(x)) ** 2
+            slope, intercept = np.polyfit(x, y, 1, w=w)
+            # 加權 R²
+            y_hat = slope * x + intercept
+            r_squared = 1 - np.sum(w * (y - y_hat)**2) / np.sum(w * (y - np.average(y, weights=w))**2)
+        else:
+            slope, intercept, r_value, _, _ = stats.linregress(x, y)
+            r_squared = r_value ** 2
+
+        df['TL'] = slope * x + intercept
+# ---------------------------------------
+
+        
+        # --- 五線譜 SD 倍數依時間尺度調整 ---
+        if time_frame == "日":
+            sd1, sd2 = 1.0, 2.0
+        elif time_frame == "週":
+            sd1, sd2 = 1.2, 2.4
+        elif time_frame == "月":
+            sd1, sd2 = 1.5, 3.0
+
         std = np.std(df['Close'] - df['TL'])
-        df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
-        df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
+        df['TL+1SD'] = df['TL'] + sd1 * std
+        df['TL-1SD'] = df['TL'] - sd1 * std
+        df['TL+2SD'] = df['TL'] + sd2 * std
+        df['TL-2SD'] = df['TL'] - sd2 * std
+        # ------------------------------------
+
+        
         # 加入技術指標計算
         df = get_technical_indicators(df)        
         # 指標
