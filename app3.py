@@ -743,7 +743,13 @@ if result:
         )
     )
     st.plotly_chart(fig, use_container_width=True)
-
+    
+    patterns = detect_market_pattern(df)
+    
+    if patterns:
+        st.markdown("### 🧠 AI 市場型態判讀")
+        for p in patterns:
+            st.write(p)
 # --- 9. 掃描 ---
 st.divider()
 if st.button("🔄 開始掃描所有標的狀態"):
