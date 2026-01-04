@@ -436,7 +436,9 @@ if result:
     if view_mode not in ["成交量", "KD指標"]:
         fig.add_hline(y=curr, line_dash="dot", line_color="#FFFFFF", line_width=2)
         fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14, family="Arial Black"))
-
+    dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
+    dt_breaks = [d for d in dt_all if d not in df['Date'].tolist()]
+    fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
     fig.update_layout(
         height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
