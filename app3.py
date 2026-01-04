@@ -473,7 +473,7 @@ if result:
         elif sub_mode == "MACD":
             m_diff = df['MACD'] - df['Signal']
             m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
-            fig.add_trace(go.Bar(x=df['Date'], y=m_diff, marker_color=m_colors, name="柱狀圖"), row=2, col=1)
+            fig.add_trace(go.Bar(x=df['Date'], y=m_diff, marker_color=m_colors, name="柱狀圖", hovertemplate='%{y:.2f}'), row=2, col=1)
             fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], line=dict(color='#00BFFF'), name="MACD", hovertemplate='%{y:.2f}'), row=2, col=1)
             fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='#E066FF'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
     
