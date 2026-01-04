@@ -225,18 +225,37 @@ def calc_resonance_score(df):
 
     return min(score, 100)
 
-def get_monthly_valuation_light(df):
-    c = df.iloc[-1]['Close']
-    if c < df.iloc[-1]['TL-2SD']:
-        return "🟢 超便宜（長線布局）"
-    elif c < df.iloc[-1]['TL-1SD']:
-        return "🔵 便宜（分批）"
-    elif c < df.iloc[-1]['TL+1SD']:
-        return "⚪ 合理（持有）"
-    elif c < df.iloc[-1]['TL+2SD']:
-        return "🟠 偏貴（留意）"
-    else:
-        return "🔴 過熱（風險高）"
+def detect_market_pattern(df):
+    curr = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    patterns = []
+
+    # --- 結構性底部 ---
+    if (
+        curr['Close'] < curr['TL-1SD'] and
+        curr['RSI7'] > prev['RSI7'] and
+        curr['MACD'] > prev['MACD']
+    ):
+        patterns.append("🟢 結構性底部")
+
+    # --- 趨勢轉折 ---
+    ma_periods = df.attrs.get('ma_periods', [])
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+        if prev['Close'] < ma_mid.iloc[-2] and curr['Close'] > ma_mid.iloc[-1]:
+            if curr['MACD'] > curr['Signal']:
+                patterns.append("🟡 趨勢轉折")
+
+    # --- 過熱反轉 ---
+    if (
+        curr['Close'] > curr['TL+2SD'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 過熱風險")
+
+    return patterns
+
 
 
 
@@ -724,4 +743,11 @@ if st.button("🔍 執行全自動多指標雷達掃描"):
                     st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
         else:
             st.info("目前沒有標的符合共振條件。")
-            
+
+
+patterns = detect_market_pattern(df)
+
+if patterns:
+    st.markdown("### 🧠 AI 市場型態判讀")
+    for p in patterns:
+        st.write(p)
