@@ -549,15 +549,15 @@ if result:
         current_min = df['Date'].min().timestamp() * 1000
         current_max = df['Date'].max().timestamp() * 1000
     
-    fig.update_xaxes(
-        range=[current_min - offset, current_max + offset],
-        autorange=False,
-        showspikes=True,
-        spikemode="across",
-        spikesnap="data",  # 強制指引線吸附在數據點上
-        spikethickness=1,
-        spikecolor="white"
-    )
+        fig.update_xaxes(
+            range=[current_min - offset, current_max + offset],
+            autorange=False,
+            showspikes=True,
+            spikemode="across",
+            spikesnap="data",  # 強制指引線吸附在數據點上
+            spikethickness=1,
+            spikecolor="white"
+        )
 
 # 統一設定 hovermode
     fig.update_layout(
