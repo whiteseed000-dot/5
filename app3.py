@@ -190,6 +190,42 @@ def check_advanced_alerts(watchlist, years):
                 
     return alerts
 
+def calc_resonance_score(df):
+    score = 0
+    curr = df.iloc[-1]
+
+    # --- 五線譜位階（40）---
+    if curr['Close'] < curr['TL-2SD']:
+        score += 40
+    elif curr['Close'] < curr['TL-1SD']:
+        score += 30
+    elif curr['Close'] < curr['TL']:
+        score += 20
+    elif curr['Close'] < curr['TL+1SD']:
+        score += 10
+
+    # --- MA 趨勢（30）---
+    ma_periods = df.attrs.get('ma_periods', [])
+    if ma_periods:
+        ma_mid = df[f'MA{ma_periods[len(ma_periods)//2]}'].iloc[-1]
+        if curr['Close'] > ma_mid:
+            score += 30
+        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
+            score += 15
+
+    # --- MACD 動能（30）---
+    macd = curr['MACD']
+    signal = curr['Signal']
+    if macd > signal and macd > 0:
+        score += 30
+    elif macd > signal:
+        score += 20
+    elif macd > 0:
+        score += 10
+
+    return min(score, 100)
+
+
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -675,37 +711,3 @@ if st.button("🔍 執行全自動多指標雷達掃描"):
         else:
             st.info("目前沒有標的符合共振條件。")
             
-def calc_resonance_score(df):
-    score = 0
-    curr = df.iloc[-1]
-
-    # --- 五線譜位階（40）---
-    if curr['Close'] < curr['TL-2SD']:
-        score += 40
-    elif curr['Close'] < curr['TL-1SD']:
-        score += 30
-    elif curr['Close'] < curr['TL']:
-        score += 20
-    elif curr['Close'] < curr['TL+1SD']:
-        score += 10
-
-    # --- MA 趨勢（30）---
-    ma_periods = df.attrs.get('ma_periods', [])
-    if ma_periods:
-        ma_mid = df[f'MA{ma_periods[len(ma_periods)//2]}'].iloc[-1]
-        if curr['Close'] > ma_mid:
-            score += 30
-        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
-            score += 15
-
-    # --- MACD 動能（30）---
-    macd = curr['MACD']
-    signal = curr['Signal']
-    if macd > signal and macd > 0:
-        score += 30
-    elif macd > signal:
-        score += 20
-    elif macd > 0:
-        score += 10
-
-    return min(score, 100)
