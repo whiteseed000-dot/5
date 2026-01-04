@@ -489,18 +489,15 @@ if result:
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
-    #--
+    #
     patterns = detect_market_pattern(df)
     
     if patterns:
         st.markdown("### 🧠 AI 市場型態判讀")
         for p in patterns:
             st.write(p)
-    #--
-
-
-
-    #--
+    #
+    
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
@@ -744,12 +741,52 @@ if result:
     )
     st.plotly_chart(fig, use_container_width=True)
     
-    patterns = detect_market_pattern(df)
-    
-    if patterns:
-        st.markdown("### 🧠 AI 市場型態判讀")
-        for p in patterns:
-            st.write(p)
+# ==================================================
+# 二、Watchlist「共振排行榜」（全收藏掃描）
+# ==================================================
+st.divider()
+st.markdown("## 🏆 Watchlist 共振排行榜")
+
+resonance_rows = []
+
+for ticker, name in st.session_state.watchlist_dict.items():
+    res = get_stock_data(ticker, years_input, time_frame)
+    if not res:
+        continue
+
+    tdf, _ = res
+
+    # 至少要有足夠資料
+    if len(tdf) < 50:
+        continue
+
+    score = calc_resonance_score(tdf)
+    curr_price = float(tdf['Close'].iloc[-1])
+    tl_last = tdf['TL'].iloc[-1]
+    dist_pct = ((curr_price - tl_last) / tl_last) * 100
+
+    resonance_rows.append({
+        "代號": ticker,
+        "名稱": name,
+        "共振分數": score,
+        "最新價格": f"{curr_price:.1f}",
+        "偏離 TL": f"{dist_pct:+.1f}%",
+    })
+
+if resonance_rows:
+    df_rank = pd.DataFrame(resonance_rows)
+
+    # 依共振分數排序（高 → 低）
+    df_rank = df_rank.sort_values("共振分數", ascending=False)
+
+    st.dataframe(
+        df_rank,
+        use_container_width=True,
+        hide_index=True
+    )
+else:
+    st.info("目前收藏清單中沒有可計算共振分數的股票。")
+
 # --- 9. 掃描 ---
 st.divider()
 if st.button("🔄 開始掃描所有標的狀態"):
