@@ -343,11 +343,12 @@ if result:
         i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
     
     st.write("")
+    # --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-# --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
-    fig = go.Figure()
-from plotly.subplots import make_subplots    
-            # 1. 建立雙層子圖 (主圖佔 75%，下方副圖佔 25%)
+    
+    from plotly.subplots import make_subplots    
+    
+    # 1. 建立雙層子圖 (主圖佔 75%，下方副圖佔 25%)
     fig = make_subplots(
         rows=2, cols=1, 
         shared_xaxes=True, 
@@ -355,46 +356,47 @@ from plotly.subplots import make_subplots
         row_heights=[0.75, 0.25]
     )
 
-# --- 上層：主價格圖 (五線譜 / K線 / 通道) ---
-        if view_mode == "樂活五線譜":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), row=1, col=1)
-            for col, hex_color, name_tag, line_style in lines_config:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag), row=1, col=1)
-                last_val = df[col].iloc[-1]
-                fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=12), row=1, col=1)
+    # --- 上層：主價格圖 (五線譜 / K線 / 通道) ---
+    if view_mode == "樂活五線譜":
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), row=1, col=1)
+        for col, hex_color, name_tag, line_style in lines_config:
+            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag), row=1, col=1)
+            last_val = df[col].iloc[-1]
+            fig.add_annotation(x=df['Date'].iloc[-1], y=last_val, text=f"<b>{last_val:.1f}</b>", showarrow=False, xanchor="left", xshift=10, font=dict(color=hex_color, size=12), row=1, col=1)
 
-        elif view_mode == "K線指標":
-            fig.add_trace(go.Candlestick(x=df['Date'], Open=df['Open'], High=df['High'], Low=df['Low'], Close=df['Close'], name="K線", increasing_line_color='#FF3131', decreasing_line_color='#00FF00'), row=1, col=1)
-            for col, color, name in [('MA5', '#FDDD42', '5MA'), ('MA20', '#C29ACF', '20MA'), ('MA60', '#F3524F', '60MA')]:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2)), row=1, col=1)
+    elif view_mode == "K線指標":
+        fig.add_trace(go.Candlestick(x=df['Date'], Open=df['Open'], High=df['High'], Low=df['Low'], Close=df['Close'], name="K線", increasing_line_color='#FF3131', decreasing_line_color='#00FF00'), row=1, col=1)
+        for col, color, name in [('MA5', '#FDDD42', '5MA'), ('MA20', '#C29ACF', '20MA'), ('MA60', '#F3524F', '60MA')]:
+            fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2)), row=1, col=1)
 
-# --- 下層：副圖 (預設顯示成交量，若在KD模式則顯示KD) ---
-        if view_mode == "KD指標":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131')), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF')), row=2, col=1)
-        else:
-    # 預設下層顯示成交量
-            bar_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
-            fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量"), row=2, col=1)
+    # --- 下層：副圖 (預設顯示成交量，若在KD模式則顯示KD) ---
+    if view_mode == "KD指標":
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131')), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF')), row=2, col=1)
+    else:
+        # 預設下層顯示成交量
+        bar_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
+        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量"), row=2, col=1)
 
-# --- 共同優化設定 ---
-# 1. 剔除假日 (X軸縮排)
-        dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
-        dt_breaks = [d for d in dt_all if d not in df['Date'].tolist()]
-        fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
+    # --- 共同優化設定 ---
+    # 1. 剔除假日 (X軸縮排)
+    dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
+    dt_breaks = [d for d in dt_all if d not in df['Date'].tolist()]
+    fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
 
-# 2. 佈局調整
-        fig.update_layout(
-            height=750, 
-            plot_bgcolor='#0E1117', 
-            paper_bgcolor='#0E1117',
-            hovermode="x unified",
-            showlegend=False,
-            xaxis2_rangeslider_visible=False, # 隱藏下方的滑桿
-            margin=dict(l=10, r=100, t=10, b=10)
-        )
+    # 2. 佈局調整
+    fig.update_layout(
+        height=750, 
+        plot_bgcolor='#0E1117', 
+        paper_bgcolor='#0E1117',
+        hovermode="x unified",
+        showlegend=False,
+        xaxis_rangeslider_visible=False, # 隱藏主圖滑桿
+        xaxis2_rangeslider_visible=False, # 隱藏副圖滑桿
+        margin=dict(l=10, r=100, t=10, b=10)
+    )
 
-        st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True)
 
 # --- 9. 掃描 ---
 st.divider()
