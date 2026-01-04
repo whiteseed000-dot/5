@@ -389,10 +389,10 @@ if result:
         # 1. 繪製 K 線，並設定 hovertemplate 顯示小數點第一位
         fig.add_trace(go.Candlestick(
             x=df['Date'],
-            開=df['Open'].apply(lambda x: round(x, 1)), 
-            高=df['High'].apply(lambda x: round(x, 1)),
-            低=df['Low'].apply(lambda x: round(x, 1)), 
-            收=df['Close'].apply(lambda x: round(x, 1)),
+            Open=df['Open'].apply(lambda x: round(x, 1)), 
+            High=df['High'].apply(lambda x: round(x, 1)),
+            Low=df['Low'].apply(lambda x: round(x, 1)), 
+            Close=df['Close'].apply(lambda x: round(x, 1)),
             name="",
             increasing_line_color='#FF3131', # 漲：紅
             decreasing_line_color='#00FF00'  # 跌：綠
