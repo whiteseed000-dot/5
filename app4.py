@@ -274,17 +274,60 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
                 'Volume': 'sum'    # 當月成交量
             }).dropna()
 # ----------------------------------------------
-        
+            
         # ---------------------------
-        
+# --- 依時間週期自動切換 MA 參數 ---
+        if time_frame == "日":
+            ma_periods = [5, 10, 20, 60, 120]
+        elif time_frame == "週":
+            ma_periods = [4, 13, 26, 52]
+        elif time_frame == "月":
+            ma_periods = [3, 6, 12, 24]
+
+        for p in ma_periods:
+            df[f'MA{p}'] = df['Close'].rolling(window=p).mean()
+
+        df.attrs['ma_periods'] = ma_periods
+# ----------------------------------        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
-        slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
-        r_squared = r_value**2  # 決定係數 = r 的平方
-        df['TL'] = slope * df['x'] + intercept
+
+
+        # --- 趨勢線計算（週線使用加權回歸） ---
+        x = df['x'].values
+        y = df['Close'].values
+
+        if time_frame == "週":
+            # 權重：越近權重越大（平方加權）
+            w = np.linspace(0.3, 1.0, len(x)) ** 2
+            slope, intercept = np.polyfit(x, y, 1, w=w)
+            # 加權 R²
+            y_hat = slope * x + intercept
+            r_squared = 1 - np.sum(w * (y - y_hat)**2) / np.sum(w * (y - np.average(y, weights=w))**2)
+        else:
+            slope, intercept, r_value, _, _ = stats.linregress(x, y)
+            r_squared = r_value ** 2
+
+        df['TL'] = slope * x + intercept
+# ---------------------------------------
+
+        
+        # --- 五線譜 SD 倍數依時間尺度調整 ---
+        if time_frame == "日":
+            sd1, sd2 = 1.0, 2.0
+        elif time_frame == "週":
+            sd1, sd2 = 1.2, 2.4
+        elif time_frame == "月":
+            sd1, sd2 = 1.5, 3.0
+
         std = np.std(df['Close'] - df['TL'])
-        df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
-        df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
+        df['TL+1SD'] = df['TL'] + sd1 * std
+        df['TL-1SD'] = df['TL'] - sd1 * std
+        df['TL+2SD'] = df['TL'] + sd2 * std
+        df['TL-2SD'] = df['TL'] - sd2 * std
+        # ------------------------------------
+
+        
         # 加入技術指標計算
         df = get_technical_indicators(df)        
         # 指標
@@ -463,13 +506,15 @@ if result:
         ))
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
+        # 從 df 取回 MA 週期（不會 NameError）
+        ma_periods = df.attrs.get('ma_periods', [])
+        ma_colors = ['#FDDD42', '#87DCF6', '#C29ACF', '#F3524F', '#009B3A']
+
         ma_list = [
-            ('MA5', '#FDDD42', '5MA'), 
-            ('MA10', '#87DCF6', '10MA'), 
-            ('MA20', '#C29ACF', '20MA'), 
-            ('MA60', '#F3524F', '60MA'), 
-            ('MA120', '#009B3A', '120MA')
+            (f'MA{p}', ma_colors[i % len(ma_colors)], f'{p}MA')
+            for i, p in enumerate(ma_periods)
         ]
+
         
         for col, color, name in ma_list:
             if col in df.columns:
