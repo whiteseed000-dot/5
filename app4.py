@@ -356,7 +356,7 @@ if result:
 
     elif view_mode == "樂活通道":
         # 繪製主收盤價線
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         
         # 通道配置：顏色與五線譜連動，方便判斷位階
         h_lines_config = [ 
@@ -393,7 +393,7 @@ if result:
             low=df['Low'], close=df['Close'],
             name="K線",
             increasing_line_color='#FF3131', # 漲：紅
-            decreasing_line_color='#00FF00'  # 跌：綠
+            decreasing_line_color='#00FF00',  # 跌：綠
         ))
         # 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 注意：請確保 get_stock_data 函式內有計算這些 MA 欄位
@@ -406,7 +406,9 @@ if result:
         ]
         for col, color, name in ma_list:
             if col in df.columns:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'))
+                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
+                          
+        ))
         
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
 
@@ -424,7 +426,7 @@ if result:
 
     elif view_mode == "成交量":
         bar_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
-        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量", hovertemplate='%{y}'))
+        fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=bar_colors, name="成交量", hovertemplate='%{y:.0f}'))
 
     # 共同佈局設定
     if view_mode not in ["成交量", "KD指標"]:
