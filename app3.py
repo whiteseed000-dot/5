@@ -125,8 +125,8 @@ def get_technical_indicators(df):
         return 100 - (100 / (1 + rs))
 
     # 新增短、長週期 RSI
-    df['RSI6'] = calc_rsi(df['Close'], 6)
-    df['RSI12'] = calc_rsi(df['Close'], 12)
+    df['RSI7'] = calc_rsi(df['Close'], 7)
+    df['RSI14'] = calc_rsi(df['Close'], 14)
 
     
     # MACD (12, 26, 9)
@@ -326,7 +326,7 @@ if result:
     # --- 7. 切換按鈕 ---
     st.divider()
     with st.container():
-        c_rsi = df['RSI12'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
+        c_rsi = df['RSI14'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
@@ -464,12 +464,12 @@ if result:
             v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
             fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量", hovertemplate='%{y:.0f}'), row=2, col=1)
         elif sub_mode == "RSI":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI6'], name="RSI6", 
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI7'], name="RSI7", 
                                      line=dict(color='#00BFFF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
-            # 畫出 RSI 12 (粉紫線，如照片所示)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI12'], name="RSI12", 
+            # 畫出 RSI 14 (粉紫線，如照片所示)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI14'], name="RSI14", 
                                      line=dict(color='#E066FF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
- 
+            fig.update_yaxes(range=[20, 80], row=2, col=1)
         elif sub_mode == "MACD":
             m_diff = df['MACD'] - df['Signal']
             m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
@@ -499,9 +499,11 @@ if result:
             spikethickness=1,
             spikecolor="white", # 設定為白色
             spikedash="solid"   # 實線 (若要虛線改為 dash)
-        ),
+        )
+    )    
         # 如果有開啟副圖，額外設定副圖的 Y 軸指引線顏色為白色
-
+    if show_sub_chart:
+        fig.update_layout(
         xaxis2=dict(
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
