@@ -356,7 +356,7 @@ if result:
 
     elif view_mode == "樂活通道":
         # 繪製主收盤價線
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價",, hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         
         # 通道配置：顏色與五線譜連動，方便判斷位階
         h_lines_config = [ 
