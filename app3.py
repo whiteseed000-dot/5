@@ -486,7 +486,8 @@ if result:
     
     fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
     fig.update_layout(
-        height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
+        height=800 if show_sub_chart else 650,
+        plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
         showlegend=False, 
@@ -500,7 +501,7 @@ if result:
             spikedash="solid"   # 實線 (若要虛線改為 dash)
         ),
         # 如果有開啟副圖，額外設定副圖的 Y 軸指引線顏色為白色
-    if show_sub_chart:
+
         xaxis2=dict(
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
