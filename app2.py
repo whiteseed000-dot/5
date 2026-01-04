@@ -230,6 +230,13 @@ if ticker_input:
             font=dict(color="#FFFFFF", size=14, family="Arial Black"),
             bgcolor="rgba(0,0,0,0)"
         )
+        # 日期斷點處理
+        dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
+        dt_breaks = dt_all.difference(df['Date'])
+        if not dt_breaks.empty:
+            fig.update_xaxes(rangebreaks=[dict(values=dt_breaks.tolist())])
+
+        
         fig.update_layout(
             height=650, # 保留 650
             plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
