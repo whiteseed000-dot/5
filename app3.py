@@ -274,9 +274,19 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
                 'Volume': 'sum'    # 當月成交量
             }).dropna()
 # ----------------------------------------------
-        
+            
         # ---------------------------
-        
+# --- 依時間週期自動切換 MA 參數 ---
+        if time_frame == "日":
+            ma_periods = [5, 10, 20, 60, 120]
+        elif time_frame == "週":
+            ma_periods = [4, 13, 26, 52]
+        elif time_frame == "月":
+            ma_periods = [3, 6, 12, 24]
+
+        for p in ma_periods:
+            df[f'MA{p}'] = df['Close'].rolling(window=p).mean()
+# ----------------------------------        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
         slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
@@ -463,13 +473,11 @@ if result:
         ))
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
-        ma_list = [
-            ('MA5', '#FDDD42', '5MA'), 
-            ('MA10', '#87DCF6', '10MA'), 
-            ('MA20', '#C29ACF', '20MA'), 
-            ('MA60', '#F3524F', '60MA'), 
-            ('MA120', '#009B3A', '120MA')
-        ]
+
+        ma_list = [(f'MA{p}', color, f'{p}MA') for p, color in zip(
+            ma_periods,
+            ['#FDDD42', '#87DCF6', '#C29ACF', '#F3524F', '#009B3A']
+        )]
         
         for col, color, name in ma_list:
             if col in df.columns:
