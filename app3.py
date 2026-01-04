@@ -785,7 +785,7 @@ for ticker, name in st.session_state.watchlist_dict.items():
     if not res:
         continue
 
-    tdf, _ = res
+    tdf, (slope, _) = res
 
     # 至少要有足夠資料
     if len(tdf) < 50:
