@@ -395,7 +395,12 @@ if result:
             increasing_line_color='#FF3131', # 漲：紅
             decreasing_line_color='#00FF00',  # 跌：綠
             # 自定義 K 線懸浮文字格式
-            hovertemplate='開: %{open:.1f}<br>高: %{high:.1f}<br>低: %{low:.1f}<br>收: %{close:.1f}<extra></extra>'
+            hovertemplate=(
+                "開: %{open:.1f}<br>" +
+                "高: %{high:.1f}<br>" +
+                "低: %{low:.1f}<br>" +
+                "收: %{close:.1f}<extra></extra>"
+            )
         ))
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
