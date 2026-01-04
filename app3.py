@@ -406,12 +406,8 @@ if result:
         ]
         for col, color, name in ma_list:
             if col in df.columns:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), 
-                    hovertemplate='%{y:.1f}'
-                        "開盤: %{open:.1f}<br>" +
-                        "最高: %{high:.1f}<br>" +
-                        "最低: %{low:.1f}<br>" +
-                        "收盤: %{close:.1f}",                           
+                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
+                          
         ))
         
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
