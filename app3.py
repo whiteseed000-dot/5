@@ -393,11 +393,10 @@ if result:
             high=df['High'].apply(lambda x: round(x, 1)),
             low=df['Low'].apply(lambda x: round(x, 1)), 
             close=df['Close'].apply(lambda x: round(x, 1)),
-            name="K線",
+            #name="K線",
             increasing_line_color='#FF3131', # 漲：紅
-            decreasing_line_color='#00FF00',  # 跌：綠
+            decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
-            hovertemplate='<b>開盤價:</b> %{open:.1f}<br><b>最高價:</b> %{high:.1f}<br><b>最低價:</b> %{low:.1f}<br><b>收盤價:</b> %{close:.1f}<extra></extra>',
         ))
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
@@ -411,14 +410,9 @@ if result:
         
         for col, color, name in ma_list:
             if col in df.columns:
-                fig.add_trace(go.Scatter(
-                    x=df['Date'], 
-                    y=df[col], 
-                    name=name, 
-                    line=dict(color=color, width=1.2), 
-                    # 改為 :.1f 以顯示小數點後第一位
-                    hovertemplate=f'{name}: %{{y:.1f}}<extra></extra>' 
-                ))
+                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
+                          
+        ))
         
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
 
