@@ -342,57 +342,57 @@ if result:
         r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
         i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
     
-# --- 8. 圖表核心 (新增副圖支援) ---
+# --- 8. 圖表核心 (修正版) ---
 from plotly.subplots import make_subplots
 
-# A. UI 控制項：副圖開關與選擇 (放在分析視圖下方)
+# 1. UI 佈置：副圖控制項
 st.write("")
-view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "布林通道"], horizontal=True, label_visibility="collapsed")
-
 col_sub1, col_sub2 = st.columns([1, 3])
 with col_sub1:
     show_sub_chart = st.toggle("開啟副圖", value=False)
 with col_sub2:
     sub_mode = st.selectbox("選擇副圖指標", ["KD指標", "成交量", "RSI", "MACD"], label_visibility="collapsed")
 
-# B. 初始化圖表佈局
+# 2. 初始化圖表與參數
+# 預先定義 row/col，若不開啟副圖則設為 None，Plotly 會自動忽略 None 參數
+t_row = 1 if show_sub_chart else None
+t_col = 1 if show_sub_chart else None
+
 if show_sub_chart:
     fig = make_subplots(
         rows=2, cols=1, 
         shared_xaxes=True, 
-        vertical_spacing=0.05, 
-        row_heights=[0.7, 0.3]
+        vertical_spacing=0.08, 
+        row_heights=[0.7, 0.3],
+        subplot_titles=(f"{ticker_input} 主圖", sub_mode)
     )
 else:
     fig = go.Figure()
 
-# C. 繪製主圖 (原本的邏輯加上 row=1, col=1)
-target_row = 1 if show_sub_chart else None
-target_col = 1 if show_sub_chart else None
-
+# 3. 繪製主圖邏輯
 if view_mode == "樂活五線譜":
-    fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), row=target_row, col=target_col)
+    fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), row=t_row, col=t_col)
     for col, hex_color, name_tag, line_style in lines_config:
-        fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag), row=target_row, col=target_col)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag), row=t_row, col=t_col)
 
 elif view_mode == "樂活通道":
-    fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), row=target_row, col=target_col)
+    fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價"), row=t_row, col=t_col)
     h_lines_config = [('H_TL+1SD', '#FFBD03', '通道上軌'), ('H_TL', '#FFFFFF', '中軸'), ('H_TL-1SD', '#0096FF', '通道下軌')]
     for col, hex_color, name_tag, line_style in h_lines_config:
-        fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style), name=name_tag), row=target_row, col=target_col)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style), name=name_tag), row=t_row, col=t_col)
 
 elif view_mode == "K線指標":
-    fig.add_trace(go.Candlestick(x=df['Date'], open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name="K線"), row=target_row, col=target_col)
+    fig.add_trace(go.Candlestick(x=df['Date'], open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name="K線"), row=t_row, col=t_col)
     ma_list = [('MA5', '#FDDD42', '5MA'), ('MA20', '#C29ACF', '20MA'), ('MA60', '#F3524F', '60MA')]
     for col, color, name in ma_list:
-        fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2)), row=target_row, col=target_col)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2)), row=t_row, col=t_col)
 
 elif view_mode == "布林通道":
-    fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084')), row=target_row, col=target_col)
-    fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash')), row=target_row, col=target_col)
-    fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash')), row=target_row, col=target_col)
+    fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084')), row=t_row, col=t_col)
+    fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash')), row=t_row, col=t_col)
+    fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash')), row=t_row, col=t_col)
 
-# D. 繪製副圖 (當開關開啟時)
+# 4. 繪製副圖邏輯 (僅在開啟時執行)
 if show_sub_chart:
     if sub_mode == "KD指標":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131')), row=2, col=1)
@@ -408,12 +408,26 @@ if show_sub_chart:
         fig.add_hline(y=70, line_dash="dot", row=2, col=1); fig.add_hline(y=30, line_dash="dot", row=2, col=1)
 
     elif sub_mode == "MACD":
-        fig.add_trace(go.Bar(x=df['Date'], y=df['MACD']-df['Signal'], name="柱狀圖"), row=2, col=1)
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], name="MACD", line=dict(color='#FF3131')), row=2, col=1)
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], name="Signal", line=dict(color='#0096FF')), row=2, col=1)
+        diff = df['MACD'] - df['Signal']
+        bar_colors = ['#FF3131' if val > 0 else '#00FF00' for val in diff]
+        fig.add_trace(go.Bar(x=df['Date'], y=diff, name="柱狀圖", marker_color=bar_colors), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], name="MACD", line=dict(color='#FFFFFF')), row=2, col=1)
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], name="Signal", line=dict(color='#FFBD03')), row=2, col=1)
 
-# E. 共同佈局更新
-fig.update_layout(xaxis_rangeslider_visible=False, height=750 if show_sub_chart else 600)
+# 5. 全域佈局設定
+fig.update_layout(
+    height=800 if show_sub_chart else 650,
+    xaxis_rangeslider_visible=False,
+    template="plotly_dark",
+    hovermode="x unified"
+)
+
+# 修正：處理非交易日空白 (維持原有優化)
+dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
+dt_breaks = dt_all.difference(df['Date'])
+if not dt_breaks.empty:
+    fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
+
 st.plotly_chart(fig, use_container_width=True)
 
 # --- 9. 掃描 ---
