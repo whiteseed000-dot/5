@@ -503,7 +503,7 @@ if result:
             "🟠 偏弱" if res_score >= 20 else
             "🔴 高風險"
         )     
-        i6.metric("多指標共振分數", f"{res_score}/100", res_label)
+        i6.metric("多指標共振分數", f"{res_score}/100", res_label, delta_color="off")
         
         st.write("")
     
