@@ -290,6 +290,25 @@ def score_label(score):
     if score >= 20: return "🟠 偏弱"
     return "🔴 高風險"
 
+def summarize_patterns(patterns):
+    if not patterns:
+        return "⚪ 無明顯型態"
+
+    # 優先順序（越上面越重要）
+    priority = [
+        "🟢 結構性底部",
+        "🟡 趨勢轉折",
+        "🟡 強勢趨勢延伸（高檔鈍化）",
+        "🔴 過熱風險"
+    ]
+
+    for p in priority:
+        for pat in patterns:
+            if p in pat:
+                return p
+
+    # 其他型態合併顯示（最多兩個）
+    return " / ".join(patterns[:2])
 
 
 # --- 4. 側邊欄 ---
@@ -773,6 +792,9 @@ for ticker, name in st.session_state.watchlist_dict.items():
         continue
 
     score = calc_resonance_score(tdf)
+        # AI 市場型態判讀
+    patterns = detect_market_pattern(tdf, slope)
+    pattern_label = summarize_patterns(patterns)
     curr_price = float(tdf['Close'].iloc[-1])
     tl_last = tdf['TL'].iloc[-1]
     dist_pct = ((curr_price - tl_last) / tl_last) * 100
@@ -784,6 +806,7 @@ for ticker, name in st.session_state.watchlist_dict.items():
         "最新價格": f"{curr_price:.1f}",
         "偏離 TL": f"{dist_pct:+.1f}%",
         "狀態": score_label(score),
+        "AI 市場型態": pattern_label,
     })
 
 if resonance_rows:
