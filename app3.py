@@ -453,19 +453,19 @@ if result:
 
     if show_sub_chart:
         if sub_mode == "KD指標":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131')), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF')), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131'), hovertemplate='%{y:.1f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF'), hovertemplate='%{y:.1f}'), row=2, col=1)
         elif sub_mode == "成交量":
             v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
-            fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量"), row=2, col=1)
+            fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量", hovertemplate='%{y:.0f}'), row=2, col=1)
         elif sub_mode == "RSI":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name="RSI", line=dict(color='#FDDD42')), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI'], name="RSI", line=dict(color='#FDDD42'), hovertemplate='%{y:.2f}'), row=2, col=1)
         elif sub_mode == "MACD":
             m_diff = df['MACD'] - df['Signal']
             m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
             fig.add_trace(go.Bar(x=df['Date'], y=m_diff, marker_color=m_colors, name="柱狀圖"), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], line=dict(color='white'), name="MACD"), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='yellow'), name="Signal"), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], line=dict(color='white'), name="MACD", hovertemplate='%{y:.2f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='yellow'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
     
     # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
     dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
