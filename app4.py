@@ -225,19 +225,90 @@ def calc_resonance_score(df):
 
     return min(score, 100)
 
-def get_monthly_valuation_light(df):
-    c = df.iloc[-1]['Close']
-    if c < df.iloc[-1]['TL-2SD']:
-        return "🟢 超便宜（長線布局）"
-    elif c < df.iloc[-1]['TL-1SD']:
-        return "🔵 便宜（分批）"
-    elif c < df.iloc[-1]['TL+1SD']:
-        return "⚪ 合理（持有）"
-    elif c < df.iloc[-1]['TL+2SD']:
-        return "🟠 偏貴（留意）"
-    else:
-        return "🔴 過熱（風險高）"
+def detect_market_pattern(df, slope):
+    curr = df.iloc[-1]
+    prev = df.iloc[-2]
 
+    patterns = []
+
+    # --- 結構性底部 ---
+    if (
+        curr['Close'] < curr['TL-1SD'] and
+        curr['RSI7'] > prev['RSI7'] and
+        curr['MACD'] > prev['MACD']
+    ):
+        patterns.append("🟢 結構性底部")
+
+    # --- 趨勢轉折 ---
+    ma_periods = df.attrs.get('ma_periods', [])
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+        if prev['Close'] < ma_mid.iloc[-2] and curr['Close'] > ma_mid.iloc[-1]:
+            if curr['MACD'] > curr['Signal']:
+                patterns.append("🟡 趨勢轉折")
+
+    if (
+        curr['Close'] > curr['TL+1SD'] and
+        slope > 0 and
+        curr['RSI14'] > 60 and
+        curr['MACD'] > curr['Signal']
+    ):
+        patterns.append("🟡 強勢趨勢延伸（高檔鈍化）")
+
+    # --- 過熱反轉 ---
+    if (
+        curr['Close'] > curr['TL+2SD'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 過熱風險")
+
+    return patterns
+
+def build_resonance_rank(stock_list, time_frame):
+    results = []
+
+    for stock_id in stock_list:
+        df = get_stock_data(stock_id, time_frame)
+        if df is None or len(df) < 50:
+            continue
+
+        score = calc_resonance_score(df)
+        price = df.iloc[-1]['Close']
+
+        results.append({
+            "股票": stock_id,
+            "價格": round(price, 2),
+            "共振分數": score
+        })
+
+    return pd.DataFrame(results).sort_values("共振分數", ascending=False)
+
+def score_label(score):
+    if score >= 80: return "🟢 強烈偏多"
+    if score >= 60: return "🟡 偏多"
+    if score >= 40: return "⚪ 中性"
+    if score >= 20: return "🟠 偏弱"
+    return "🔴 高風險"
+
+def summarize_patterns(patterns):
+    if not patterns:
+        return "⚪ 無明顯型態"
+
+    # 優先順序（越上面越重要）
+    priority = [
+        "🟢 結構性底部",
+        "🟡 趨勢轉折",
+        "🟡 強勢趨勢延伸（高檔鈍化）",
+        "🔴 過熱風險"
+    ]
+
+    for p in priority:
+        for pat in patterns:
+            if p in pat:
+                return p
+
+    # 其他型態合併顯示（最多兩個）
+    return " / ".join(patterns[:2])
 
 
 # --- 4. 側邊欄 ---
@@ -449,6 +520,15 @@ if result:
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
+    #
+    patterns = detect_market_pattern(df, slope)
+    
+    if patterns:
+        st.markdown("### 🧠 AI 市場型態判讀")
+        for p in patterns:
+            st.write(p)
+    #
+    
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
@@ -691,6 +771,57 @@ if result:
         )
     )
     st.plotly_chart(fig, use_container_width=True)
+    
+# ==================================================
+# 二、Watchlist「共振排行榜」（全收藏掃描）
+# ==================================================
+st.divider()
+st.markdown("## 🏆 Watchlist 共振排行榜")
+
+resonance_rows = []
+
+for ticker, name in st.session_state.watchlist_dict.items():
+    res = get_stock_data(ticker, years_input, time_frame)
+    if not res:
+        continue
+
+    tdf, (slope, _) = res
+
+    # 至少要有足夠資料
+    if len(tdf) < 50:
+        continue
+
+    score = calc_resonance_score(tdf)
+        # AI 市場型態判讀
+    patterns = detect_market_pattern(tdf, slope)
+    pattern_label = summarize_patterns(patterns)
+    curr_price = float(tdf['Close'].iloc[-1])
+    tl_last = tdf['TL'].iloc[-1]
+    dist_pct = ((curr_price - tl_last) / tl_last) * 100
+
+    resonance_rows.append({
+        "代號": ticker,
+        "名稱": name,
+        "共振分數": score,
+        "最新價格": f"{curr_price:.1f}",
+        "偏離 TL": f"{dist_pct:+.1f}%",
+        "狀態": score_label(score),
+        "AI 市場型態": pattern_label,
+    })
+
+if resonance_rows:
+    df_rank = pd.DataFrame(resonance_rows)
+
+    # 依共振分數排序（高 → 低）
+    df_rank = df_rank.sort_values("共振分數", ascending=False)
+
+    st.dataframe(
+        df_rank,
+        use_container_width=True,
+        hide_index=True
+    )
+else:
+    st.info("目前收藏清單中沒有可計算共振分數的股票。")
 
 # --- 9. 掃描 ---
 st.divider()
@@ -724,4 +855,6 @@ if st.button("🔍 執行全自動多指標雷達掃描"):
                     st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
         else:
             st.info("目前沒有標的符合共振條件。")
-            
+
+
+
