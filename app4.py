@@ -261,7 +261,70 @@ def detect_market_pattern(df, slope):
         curr['MACD'] < prev['MACD']
     ):
         patterns.append("🔴 過熱風險")
+        
+    if curr['Close'] < curr['TL-1SD'] and slope < 0 and curr['Close'] > curr['TL-2SD']:
+        patterns.append("🔴 弱勢趨勢延續")
 
+    if curr['RSI14'] < 20 and curr['Close'] < curr['TL-2SD']:
+        patterns.append("🟢 超跌反彈觀察")
+        
+    # --- 底部背離（價格破底、動能回升） ---
+    if (
+        curr['Close'] < prev['Close'] and
+        curr['RSI14'] > prev['RSI14'] and
+        curr['MACD'] > prev['MACD'] and
+        curr['Close'] < curr['TL-1SD']
+    ):
+        patterns.append("🟢 底部背離（潛在反轉）")
+
+    # --- 回檔不破 TL（多頭續行） ---
+    if (
+        curr['Close'] > curr['TL'] and
+        prev['Close'] < curr['TL+1SD'] and
+        slope > 0 and
+        curr['RSI14'] > 45
+    ):
+        patterns.append("🟡 回檔不破趨勢")
+
+    # --- 均線糾結突破 ---
+    if ma_periods:
+        ma_short = df[f"MA{ma_periods[0]}"]
+        ma_long = df[f"MA{ma_periods[-1]}"]
+    
+        if (
+            abs(ma_short.iloc[-1] - ma_long.iloc[-1]) / ma_long.iloc[-1] < 0.01 and
+            curr['Close'] > ma_short.iloc[-1] and
+            curr['MACD'] > curr['Signal']
+        ):
+            patterns.append("🟡 均線糾結突破")
+
+        # --- 多頭疲勞 ---
+    if (
+        curr['Close'] > curr['TL+1SD'] and
+        curr['RSI14'] < prev['RSI14'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 多頭趨勢疲勞")
+
+        # --- 跌破關鍵均線 ---
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+    
+        if (
+            prev['Close'] > ma_mid.iloc[-2] and
+            curr['Close'] < ma_mid.iloc[-1] and
+            slope < 0
+        ):
+            patterns.append("🔴 跌破關鍵均線")
+
+        # --- 盤整收斂 ---
+    if (
+        abs(curr['Close'] - curr['TL']) / curr['TL'] < 0.01 and
+        abs(curr['RSI14'] - 50) < 5 and
+        abs(curr['MACD']) < abs(prev['MACD'])
+    ):
+        patterns.append("⚪ 盤整收斂")
+    
     return patterns
 
 def build_resonance_rank(stock_list, time_frame):
@@ -296,11 +359,19 @@ def summarize_patterns(patterns):
 
     # 優先順序（越上面越重要）
     priority = [
-        "🟢 結構性底部",
-        "🟡 趨勢轉折",
-        "🟡 強勢趨勢延伸（高檔鈍化）",
-        "🔴 過熱風險"
-    ]
+    "🟢 結構性底部",
+    "🟢 底部背離（潛在反轉）",
+    "🟡 趨勢轉折",
+    "🟡 回檔不破趨勢",
+    "🟡 均線糾結突破",
+    "🟡 強勢趨勢延伸（高檔鈍化）",
+    "⚪ 盤整收斂",
+    "🔴 多頭趨勢疲勞",
+    "🔴 過熱風險",
+    "🔴 跌破關鍵均線",
+    "🔴 弱勢趨勢延續",
+    "🟢 超跌反彈觀察"
+]
 
     for p in priority:
         for pat in patterns:
@@ -310,6 +381,23 @@ def summarize_patterns(patterns):
     # 其他型態合併顯示（最多兩個）
     return " / ".join(patterns[:2])
 
+def update_pattern_history(ticker, patterns):
+    if "pattern_history" not in st.session_state:
+        st.session_state.pattern_history = {}
+
+    hist = st.session_state.pattern_history.get(ticker, [])
+    hist.append(" | ".join(patterns))
+
+    hist = hist[-3:]  # 只留 3 期
+    st.session_state.pattern_history[ticker] = hist
+
+    if len(hist) < 3:
+        return None
+
+    if hist.count(hist[-1]) == 3:
+        return hist[-1]
+
+    return None
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -785,16 +873,26 @@ for ticker, name in st.session_state.watchlist_dict.items():
     if not res:
         continue
 
-    tdf, (slope, _) = res
-
-    # 至少要有足夠資料
-    if len(tdf) < 50:
+    tdf, trend_info = res
+    if trend_info is None or len(tdf) < 50:
         continue
 
+    slope = trend_info[0]
+
+    # ========= 原本共振分數 =========
     score = calc_resonance_score(tdf)
-        # AI 市場型態判讀
+
+    # ========= AI 市場型態（穩定版） =========
     patterns = detect_market_pattern(tdf, slope)
+    stable_pattern = update_pattern_history(ticker, patterns)
     pattern_label = summarize_patterns(patterns)
+    # 🔴 連續 3 期未穩定 → 不列入排行榜
+    if stable_pattern is None:
+        continue
+
+
+
+    # ========= 價格 / TL =========
     curr_price = float(tdf['Close'].iloc[-1])
     tl_last = tdf['TL'].iloc[-1]
     dist_pct = ((curr_price - tl_last) / tl_last) * 100
@@ -803,12 +901,14 @@ for ticker, name in st.session_state.watchlist_dict.items():
         "代號": ticker,
         "名稱": name,
         "共振分數": score,
+        "狀態": score_label(score),
         "最新價格": f"{curr_price:.1f}",
         "偏離 TL": f"{dist_pct:+.1f}%",
-        "狀態": score_label(score),
-        "AI 市場型態": pattern_label,
+        "AI 市場型態(三周)": stable_pattern,
+        "AI 市場型態(單周)": pattern_label,
     })
 
+# ========= 顯示排行榜 =========
 if resonance_rows:
     df_rank = pd.DataFrame(resonance_rows)
 
@@ -822,6 +922,7 @@ if resonance_rows:
     )
 else:
     st.info("目前收藏清單中沒有可計算共振分數的股票。")
+
 
 # --- 9. 掃描 ---
 st.divider()
