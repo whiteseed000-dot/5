@@ -8,8 +8,6 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 from plotly.subplots import make_subplots
-
-
 # --- 1. 核心雲端邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -357,31 +355,38 @@ def score_label(score):
 
 def summarize_patterns(patterns):
     if not patterns:
-        return "⚪ 無明顯型態"
+        return ["⚪ 無明顯型態"]
 
     # 優先順序（越上面越重要）
     priority = [
-    "🟢 結構性底部",
-    "🟢 底部背離（潛在反轉）",
-    "🟡 趨勢轉折",
-    "🟡 回檔不破趨勢",
-    "🟡 均線糾結突破",
-    "🟡 強勢趨勢延伸（高檔鈍化）",
-    "⚪ 盤整收斂",
-    "🔴 多頭趨勢疲勞",
-    "🔴 過熱風險",
-    "🔴 跌破關鍵均線",
-    "🔴 弱勢趨勢延續",
-    "🟢 超跌反彈觀察"
-]
+        "🟢 結構性底部",
+        "🟢 底部背離（潛在反轉）",
+        "🟡 趨勢轉折",
+        "🟡 回檔不破趨勢",
+        "🟡 均線糾結突破",
+        "🟡 強勢趨勢延伸（高檔鈍化）",
+        "⚪ 盤整收斂",
+        "🔴 多頭趨勢疲勞",
+        "🔴 過熱風險",
+        "🔴 跌破關鍵均線",
+        "🔴 弱勢趨勢延續",
+        "🟢 超跌反彈觀察"
+    ]
+
+    result = []
 
     for p in priority:
         for pat in patterns:
-            if p in pat:
-                return p
+            if p in pat and p not in result:
+                result.append(p)
 
-    # 其他型態合併顯示（最多兩個）
-    return " / ".join(patterns[:2])
+    # 如果 patterns 有新型態但不在 priority 裡
+    for pat in patterns:
+        if pat not in result:
+            result.append(pat)
+
+    return result
+
 
 def update_pattern_history(ticker, patterns):
     if "pattern_history" not in st.session_state:
@@ -400,7 +405,6 @@ def update_pattern_history(ticker, patterns):
         return hist[-1]
 
     return None
-    
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -430,18 +434,13 @@ with st.sidebar:
     else:
         quick_pick_ticker = ""
 
-    if "ticker_input" not in st.session_state:
-        st.session_state.ticker_input = quick_pick_ticker
-
-        ticker_input = st.text_input(
-         "股票代號",
-         key="ticker_input",
-        watchlist = st.session_state.get("watchlist_dict", {}),
-        stock_name = watchlist.get(ticker_input, "")
+    ticker_input = st.text_input(
+        "股票代號", 
+        value=quick_pick_ticker
     ).upper().strip()
     
     # 自動抓取對應的中文名稱 (用於顯示)
-
+    stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
    
     st.divider()
     st.header("📊 顯示設定")
@@ -924,22 +923,10 @@ if resonance_rows:
     df_rank = df_rank.sort_values("共振分數", ascending=False)
 
     st.dataframe(
-    df_rank,
-    use_container_width=True,
-    hide_index=True,
-    selection_mode="single-row",
-    on_select="rerun",
-    key="resonance_rank"
-)
-# ===== 點擊排行榜 → 切換股票（穩定版）=====
-selection = st.session_state.get("resonance_rank")
-
-if selection and selection.get("selection", {}).get("rows"):
-    selected_row = selection["selection"]["rows"][0]
-    selected_ticker = df_rank.iloc[selected_row]["代號"]
-
-    st.session_state.ticker_input = selected_ticker
-    st.rerun()
+        df_rank,
+        use_container_width=True,
+        hide_index=True
+    )
 else:
     st.info("目前收藏清單中沒有可計算共振分數的股票。")
 
