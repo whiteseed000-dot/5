@@ -427,9 +427,12 @@ with st.sidebar:
     else:
         quick_pick_ticker = ""
 
-    ticker_input = st.text_input(
-        "股票代號", 
-        value=quick_pick_ticker
+    if "ticker_input" not in st.session_state:
+    st.session_state.ticker_input = quick_pick_ticker
+
+        ticker_input = st.text_input(
+         "股票代號",
+         key="ticker_input"
     ).upper().strip()
     
     # 自動抓取對應的中文名稱 (用於顯示)
@@ -915,11 +918,20 @@ if resonance_rows:
     # 依共振分數排序（高 → 低）
     df_rank = df_rank.sort_values("共振分數", ascending=False)
 
-    st.dataframe(
-        df_rank,
-        use_container_width=True,
-        hide_index=True
+    event = st.dataframe(
+    df_rank,
+    use_container_width=True,
+    hide_index=True,
+    on_select="rerun",
+    selection_mode="single-row"
     )
+if event and event.selection.rows:
+    selected_row = event.selection.rows[0]
+    selected_ticker = df_rank.iloc[selected_row]["代號"]
+
+    # 更新目前主分析股票
+    st.session_state.ticker_input = selected_ticker
+    st.rerun()
 else:
     st.info("目前收藏清單中沒有可計算共振分數的股票。")
 
