@@ -389,22 +389,11 @@ def summarize_patterns(patterns):
 
 
 def update_pattern_history(ticker, patterns):
-    if "pattern_history" not in st.session_state:
-        st.session_state.pattern_history = {}
-
-    hist = st.session_state.pattern_history.get(ticker, [])
-    hist.append(" | ".join(patterns))
-
-    hist = hist[-3:]  # 只留 3 期
-    st.session_state.pattern_history[ticker] = hist
-
-    if len(hist) < 3:
+    if not patterns:
         return None
 
-    if hist.count(hist[-1]) == 3:
-        return hist[-1]
-
-    return None
+    # 直接顯示本週全部型態
+    return " | ".join(patterns)
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -892,7 +881,7 @@ for ticker, name in st.session_state.watchlist_dict.items():
     # ========= AI 市場型態（穩定版） =========
     patterns = detect_market_pattern(tdf, slope)
     stable_pattern = update_pattern_history(ticker, patterns)
-    pattern_label = summarize_patterns(patterns)
+    
     # 🔴 連續 3 期未穩定 → 不列入排行榜
     if stable_pattern is None:
         continue
@@ -911,8 +900,7 @@ for ticker, name in st.session_state.watchlist_dict.items():
         "狀態": score_label(score),
         "最新價格": f"{curr_price:.1f}",
         "偏離 TL": f"{dist_pct:+.1f}%",
-        "AI 市場型態(三周)": stable_pattern,
-        "AI 市場型態(單周)": pattern_label,
+        "AI 市場型態": stable_pattern,
     })
 
 # ========= 顯示排行榜 =========
