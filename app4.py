@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
-
+from plotly.subplots import make_subplots
 # --- 1. 核心雲端邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -116,13 +116,18 @@ lines_config = [
     ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
 ]
 def get_technical_indicators(df):
-    """計算 RSI, MACD, BIAS, MA60"""
-    # RSI (14)
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    df['RSI'] = 100 - (100 / (1 + rs))
+
+    def calc_rsi(series, period):
+        delta = series.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        return 100 - (100 / (1 + rs))
+
+    # 新增短、長週期 RSI
+    df['RSI7'] = calc_rsi(df['Close'], 7)
+    df['RSI14'] = calc_rsi(df['Close'], 14)
+
     
     # MACD (12, 26, 9)
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
@@ -155,7 +160,7 @@ def check_advanced_alerts(watchlist, years):
             is_cheap = curr['Close'] <= curr['TL-1SD']
             # 2. 技術面轉強 (滿足其一即可)
             tech_strong = (
-                (prev['RSI'] < 30 and curr['RSI'] > 30) or       # RSI 低檔回升
+                (prev['RSI14'] < 30 and curr['RSI14'] > 30) or       # RSI 低檔回升
                 (prev['MACD'] < prev['Signal'] and curr['MACD'] > curr['Signal']) or # MACD 金叉
                 (prev['Close'] < curr['MA60'] and curr['Close'] > curr['MA60'])      # 站上季線
             )
@@ -163,7 +168,7 @@ def check_advanced_alerts(watchlist, years):
             # --- 賣出訊號條件 ---
             is_expensive = curr['Close'] >= curr['TL+1SD']
             tech_weak = (
-                (prev['RSI'] > 70 and curr['RSI'] < 70) or       # RSI 高檔反轉
+                (prev['RSI14'] > 70 and curr['RSI14'] < 70) or       # RSI 高檔反轉
                 (prev['MACD'] > prev['Signal'] and curr['MACD'] < curr['Signal'])    # MACD 死叉
             )
 
@@ -209,11 +214,18 @@ with st.sidebar:
     
     # 自動抓取對應的中文名稱 (用於顯示)
     stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
-    
-    years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
+   
     st.divider()
+    st.header("📊 顯示設定")
+    # 新增：時間週期選擇
+    time_frame = st.selectbox(
+        "時間週期 (K線頻率)",
+        options=["日", "週", "月"],
+        index=0
+    )
+    years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
 
-    
+    st.divider()
 # 在側邊欄的登出按鈕部分
     if st.button("🚪 登出帳號"):
     # 清理快取
@@ -225,13 +237,46 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
-def get_stock_data(ticker, years):
+def get_stock_data(ticker, years, time_frame="日"): # 新增參數
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
         df = yf.download(ticker, start=start, end=end, progress=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
+
+        # --- 新增：數據重採樣邏輯（符合金融慣例） ---
+        if time_frame == "週":
+    # 週線：週一～週五，K棒時間放在「週五」
+            df = df.resample(
+                'W-FRI',
+                label='right',     # 時間標籤放在區間右側（週五）
+                closed='right'     # 包含週五當天
+            ).agg({
+                'Open': 'first',   # 週一開盤
+                'High': 'max',     # 全週最高
+                'Low': 'min',      # 全週最低
+                'Close': 'last',   # 週五收盤
+                'Volume': 'sum'    # 全週成交量
+            }).dropna()
+
+        elif time_frame == "月":
+    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
+            df = df.resample(
+                'M',
+                label='right',     # 標記在月底
+                closed='right'     # 包含月底最後交易日
+            ).agg({
+                'Open': 'first',   # 月初開盤
+                'High': 'max',     # 當月最高
+                'Low': 'min',      # 當月最低
+                'Close': 'last',   # 月底收盤
+                'Volume': 'sum'    # 當月成交量
+            }).dropna()
+# ----------------------------------------------
+        
+        # ---------------------------
+        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
         slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
@@ -291,7 +336,8 @@ with col_btn:
             save_watchlist_to_google(username, st.session_state.watchlist_dict)
             st.rerun()
 
-result = get_stock_data(ticker_input, years_input)
+result = get_stock_data(ticker_input, years_input, time_frame)
+
 vix_val = get_vix_index()
 
 if result:
@@ -319,9 +365,12 @@ if result:
     m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="off", help="超過60代表極度恐慌")
 
     # --- 7. 切換按鈕 ---
+    
     st.divider()
-    with st.container():
-        c_rsi = df['RSI'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
+    show_detailed_metrics = st.toggle("顯示詳細指標", value=False)
+    if show_detailed_metrics:
+
+        c_rsi = df['RSI14'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
@@ -342,13 +391,27 @@ if result:
         r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
         i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
     
-    st.write("")
+        st.write("")
+    
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-# --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
-    fig = go.Figure()
+
+    col_sub1, col_sub2 = st.columns([1, 4])
+    with col_sub1: show_sub_chart = st.toggle("開啟副圖", value=False)
+    with col_sub2: sub_mode = st.selectbox("選擇副圖指標", ["KD指標", "成交量", "RSI", "MACD"], label_visibility="collapsed")
+
+    # --- 8. 繪圖核心 ---
+    t_row = 1 if show_sub_chart else None
+    t_col = 1 if show_sub_chart else None
+
+    if show_sub_chart:
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.7, 0.3])
+    else:
+        fig = go.Figure()
+    
+    # --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
     
     if view_mode == "樂活五線譜":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#F08C8C', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         for col, hex_color, name_tag, line_style in lines_config:
             fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag, hovertemplate='%{y:.1f}'))
             last_val = df[col].iloc[-1]
@@ -356,7 +419,7 @@ if result:
 
     elif view_mode == "樂活通道":
         # 繪製主收盤價線
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#F08C8C', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         
         # 通道配置：顏色與五線譜連動，方便判斷位階
         h_lines_config = [ 
@@ -423,7 +486,7 @@ if result:
         fig.add_hline(y=20, line_dash="dot", line_color="rgba(255,255,255,0.3)")
 
     elif view_mode == "布林通道":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2), hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#F08C8C', width=2), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash'), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['MA20'], name="20MA", line=dict(color='#FFBD03'), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash'), hovertemplate='%{y:.1f}'))
@@ -438,22 +501,66 @@ if result:
         fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14, family="Arial Black"))
 
 
-    # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
-    dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
-    # 透過差集 (difference) 直接找出缺失日期
-    dt_breaks = dt_all.difference(df['Date'])
-    if not dt_breaks.empty:
-        fig.update_xaxes(rangebreaks=[dict(values=dt_breaks.tolist())])
+    if show_sub_chart:
+        if sub_mode == "KD指標":
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131'), hovertemplate='%{y:.1f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF'), hovertemplate='%{y:.1f}'), row=2, col=1)
+        elif sub_mode == "成交量":
+            v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
+            fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量", hovertemplate='%{y:.0f}'), row=2, col=1)
+        elif sub_mode == "RSI":
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI7'], name="RSI7", 
+                                     line=dict(color='#00BFFF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
+            # 畫出 RSI 14 (粉紫線，如照片所示)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI14'], name="RSI14", 
+                                     line=dict(color='#E066FF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
+
+        elif sub_mode == "MACD":
+            m_diff = df['MACD'] - df['Signal']
+            m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
+            fig.add_trace(go.Bar(x=df['Date'], y=m_diff, marker_color=m_colors, name="柱狀圖", hovertemplate='%{y:.2f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], line=dict(color='#00BFFF'), name="MACD", hovertemplate='%{y:.2f}'), row=2, col=1)
+            fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='#E066FF'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
     
-    fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
+    # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
+
+    # --- X 軸缺口處理（只適用於日線） ---
+    if time_frame == "日":
+        dt_all = pd.date_range(
+            start=df['Date'].min(),
+            end=df['Date'].max(),
+            freq='D'
+        )
+        dt_breaks = dt_all.difference(df['Date'])
+
+        if not dt_breaks.empty:
+            fig.update_xaxes(
+                rangebreaks=[dict(values=dt_breaks.tolist())]
+            )
+# 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
+# -----------------------------------
+
+
     fig.update_layout(
-        height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
+        height=800 if show_sub_chart else 650,
+        plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
         showlegend=False, 
         margin=dict(l=10, r=100, t=10, b=10),
         
         xaxis=dict(
+            showspikes=True, # 顯示指引線
+            spikemode="across", # 穿過整個圖表
+            spikethickness=1,
+            spikecolor="white", # 設定為白色
+            spikedash="solid"   # 實線 (若要虛線改為 dash)
+        )
+    )    
+        # 如果有開啟副圖，額外設定副圖的 Y 軸指引線顏色為白色
+    if show_sub_chart:
+        fig.update_layout(
+        xaxis2=dict(
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
             spikethickness=1,
