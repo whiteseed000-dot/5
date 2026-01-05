@@ -438,7 +438,8 @@ with st.sidebar:
     ).upper().strip()
     
     # 自動抓取對應的中文名稱 (用於顯示)
-    stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
+    watchlist = st.session_state.get("watchlist_dict", {})
+    stock_name = watchlist.get(ticker_input, "")
    
     st.divider()
     st.header("📊 顯示設定")
