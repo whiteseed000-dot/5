@@ -396,7 +396,7 @@ def update_pattern_history(ticker, patterns):
     hist = patterns  # 直接用當週
     st.session_state.pattern_history[ticker] = hist
 
-    return " | ".join(hist) if hist else "⚪ 無明顯型態"
+    return " | ".join(hist) if hist else ""
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
