@@ -267,7 +267,64 @@ def detect_market_pattern(df, slope):
 
     if curr['RSI14'] < 20 and curr['Close'] < curr['TL-2SD']:
         patterns.append("🟢 超跌反彈觀察")
+        
+    # --- 底部背離（價格破底、動能回升） ---
+    if (
+    curr['Close'] < prev['Close'] and
+    curr['RSI14'] > prev['RSI14'] and
+    curr['MACD'] > prev['MACD'] and
+    curr['Close'] < curr['TL-1SD']
+):
+    patterns.append("🟢 底部背離（潛在反轉）")
 
+    # --- 回檔不破 TL（多頭續行） ---
+    if (
+    curr['Close'] > curr['TL'] and
+    prev['Close'] < curr['TL+1SD'] and
+    slope > 0 and
+    curr['RSI14'] > 45
+):
+    patterns.append("🟡 回檔不破趨勢")
+
+    # --- 均線糾結突破 ---
+    if ma_periods:
+        ma_short = df[f"MA{ma_periods[0]}"]
+        ma_long = df[f"MA{ma_periods[-1]}"]
+    
+        if (
+            abs(ma_short.iloc[-1] - ma_long.iloc[-1]) / ma_long.iloc[-1] < 0.01 and
+            curr['Close'] > ma_short.iloc[-1] and
+            curr['MACD'] > curr['Signal']
+        ):
+            patterns.append("🟡 均線糾結突破")
+
+        # --- 多頭疲勞 ---
+    if (
+        curr['Close'] > curr['TL+1SD'] and
+        curr['RSI14'] < prev['RSI14'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 多頭趨勢疲勞")
+
+        # --- 跌破關鍵均線 ---
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+    
+        if (
+            prev['Close'] > ma_mid.iloc[-2] and
+            curr['Close'] < ma_mid.iloc[-1] and
+            slope < 0
+        ):
+            patterns.append("🔴 跌破關鍵均線")
+
+        # --- 盤整收斂 ---
+    if (
+        abs(curr['Close'] - curr['TL']) / curr['TL'] < 0.01 and
+        abs(curr['RSI14'] - 50) < 5 and
+        abs(curr['MACD']) < abs(prev['MACD'])
+    ):
+        patterns.append("⚪ 盤整收斂")
+    
     return patterns
 
 def build_resonance_rank(stock_list, time_frame):
@@ -302,13 +359,19 @@ def summarize_patterns(patterns):
 
     # 優先順序（越上面越重要）
     priority = [
-        "🟢 結構性底部",
-        "🟡 趨勢轉折",
-        "🟡 強勢趨勢延伸（高檔鈍化）",
-        "🔴 過熱風險"
-        "🔴 弱勢趨勢延續"
-        "🟢 超跌反彈觀察"
-    ]
+    "🟢 結構性底部",
+    "🟢 底部背離（潛在反轉）",
+    "🟡 趨勢轉折",
+    "🟡 回檔不破趨勢",
+    "🟡 均線糾結突破",
+    "🟡 強勢趨勢延伸（高檔鈍化）",
+    "⚪ 盤整收斂",
+    "🔴 多頭趨勢疲勞",
+    "🔴 過熱風險",
+    "🔴 跌破關鍵均線",
+    "🔴 弱勢趨勢延續",
+    "🟢 超跌反彈觀察"
+]
 
     for p in priority:
         for pat in patterns:
@@ -842,7 +905,7 @@ for ticker, name in st.session_state.watchlist_dict.items():
         "最新價格": f"{curr_price:.1f}",
         "偏離 TL": f"{dist_pct:+.1f}%",
         "AI 市場型態(三周)": stable_pattern,
-        "AI 市場型態(單周)": stable_pattern,
+        "AI 市場型態(單周)": pattern_label,
     })
 
 # ========= 顯示排行榜 =========
