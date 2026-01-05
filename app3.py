@@ -398,7 +398,9 @@ def update_pattern_history(ticker, patterns):
         return hist[-1]
 
     return None
-
+    
+if "watchlist_dict" not in st.session_state:
+    st.session_state.watchlist_dict = {}
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
