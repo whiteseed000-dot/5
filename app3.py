@@ -262,6 +262,15 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🔴 過熱風險")
 
+    if curr['Close'] < curr['TL-1SD'] and slope < 0:
+        patterns.append("🔴 弱勢趨勢延續")
+    
+    if (
+        curr['RSI14'] < 30 and
+        curr['Close'] < curr['TL-2SD']
+     ):
+         patterns.append("🟢 超跌反彈觀察")
+    
     return patterns
 
 def build_resonance_rank(stock_list, time_frame):
@@ -309,6 +318,43 @@ def summarize_patterns(patterns):
 
     # 其他型態合併顯示（最多兩個）
     return " / ".join(patterns[:2])
+
+def pattern_to_action(patterns):
+    if not patterns:
+        return "⚪ 無明確趨勢"
+
+    text = " ".join(patterns)
+
+    if "強勢趨勢延伸" in text:
+        return "🟢 續抱"
+    if "突破" in text or "轉強" in text:
+        return "🟡 觀察"
+    if "跌破" in text or "轉弱" in text:
+        return "🔴 風險"
+
+    return "🟡 觀察"
+
+def update_pattern_history(ticker, patterns):
+    if "pattern_history" not in st.session_state:
+        st.session_state.pattern_history = {}
+
+    hist = st.session_state.pattern_history.get(ticker, [])
+    hist.append(" | ".join(patterns))
+
+    hist = hist[-3:]  # 只留 3 期
+    st.session_state.pattern_history[ticker] = hist
+
+    if len(hist) < 3:
+        return None
+
+    if hist.count(hist[-1]) == 3:
+        return hist[-1]
+
+    return None
+    
+def select_stock(ticker):
+    st.session_state.selected_ticker = ticker
+
 
 
 # --- 4. 側邊欄 ---
@@ -785,43 +831,47 @@ for ticker, name in st.session_state.watchlist_dict.items():
     if not res:
         continue
 
-    tdf, (slope, _) = res
+    tdf, trend_info = res
+    if trend_info is None or len(tdf) < 50:
+        continue
 
-    # 至少要有足夠資料
-    if len(tdf) < 50:
+    slope = trend_info[0]
+
+    patterns = detect_market_pattern(tdf, slope)
+    stable_pattern = update_pattern_history(ticker, patterns)
+
+    if stable_pattern is None:
         continue
 
     score = calc_resonance_score(tdf)
-        # AI 市場型態判讀
-    patterns = detect_market_pattern(tdf, slope)
-    pattern_label = summarize_patterns(patterns)
-    curr_price = float(tdf['Close'].iloc[-1])
-    tl_last = tdf['TL'].iloc[-1]
-    dist_pct = ((curr_price - tl_last) / tl_last) * 100
+    action = pattern_to_action([stable_pattern])
 
     resonance_rows.append({
         "代號": ticker,
         "名稱": name,
-        "共振分數": score,
-        "最新價格": f"{curr_price:.1f}",
-        "偏離 TL": f"{dist_pct:+.1f}%",
-        "狀態": score_label(score),
-        "AI 市場型態": pattern_label,
+        "AI 市場型態": stable_pattern,
+        "建議": action,
+        "共振分數": score
     })
 
 if resonance_rows:
-    df_rank = pd.DataFrame(resonance_rows)
-
-    # 依共振分數排序（高 → 低）
-    df_rank = df_rank.sort_values("共振分數", ascending=False)
-
-    st.dataframe(
-        df_rank,
-        use_container_width=True,
-        hide_index=True
+    df_rank = pd.DataFrame(resonance_rows).sort_values(
+        "共振分數", ascending=False
     )
+
+    for _, row in df_rank.iterrows():
+        col1, col2, col3, col4, col5 = st.columns([1.2, 2, 3, 1.5, 1])
+
+        with col1:
+            if st.button(row["代號"], key=row["代號"]):
+                select_stock(row["代號"])
+
+        col2.write(row["名稱"])
+        col3.write(row["AI 市場型態"])
+        col4.write(row["建議"])
+        col5.write(row["共振分數"])
 else:
-    st.info("目前收藏清單中沒有可計算共振分數的股票。")
+    st.info("目前 Watchlist 尚無穩定共振標的")
 
 # --- 9. 掃描 ---
 st.divider()
