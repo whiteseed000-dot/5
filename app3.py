@@ -827,7 +827,7 @@ for ticker, name in st.session_state.watchlist_dict.items():
     if stable_pattern is None:
         continue
 
-    action = pattern_to_action([stable_pattern])
+
 
     # ========= 價格 / TL =========
     curr_price = float(tdf['Close'].iloc[-1])
