@@ -435,8 +435,8 @@ with st.sidebar:
 
         ticker_input = st.text_input(
          "股票代號",
-         key="ticker_input"
-        watchlist = st.session_state.get("watchlist_dict", {})
+         key="ticker_input",
+        watchlist = st.session_state.get("watchlist_dict", {}),
         stock_name = watchlist.get(ticker_input, "")
     ).upper().strip()
     
