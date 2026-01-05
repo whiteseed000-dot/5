@@ -389,11 +389,14 @@ def summarize_patterns(patterns):
 
 
 def update_pattern_history(ticker, patterns):
-    if not patterns:
-        return None
+    if "pattern_history" not in st.session_state:
+        st.session_state.pattern_history = {}
 
-    # 直接顯示本週全部型態
-    return " | ".join(patterns)
+    hist = st.session_state.pattern_history.get(ticker, [])
+    hist = patterns  # 直接用當週
+    st.session_state.pattern_history[ticker] = hist
+
+    return " | ".join(hist) if hist else "⚪ 無明顯型態"
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
