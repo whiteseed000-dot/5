@@ -436,11 +436,12 @@ with st.sidebar:
         ticker_input = st.text_input(
          "股票代號",
          key="ticker_input"
+        watchlist = st.session_state.get("watchlist_dict", {})
+        stock_name = watchlist.get(ticker_input, "")
     ).upper().strip()
     
     # 自動抓取對應的中文名稱 (用於顯示)
-    watchlist = st.session_state.get("watchlist_dict", {})
-    stock_name = watchlist.get(ticker_input, "")
+
    
     st.divider()
     st.header("📊 顯示設定")
