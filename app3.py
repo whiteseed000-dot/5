@@ -428,7 +428,7 @@ with st.sidebar:
         quick_pick_ticker = ""
 
     if "ticker_input" not in st.session_state:
-    st.session_state.ticker_input = quick_pick_ticker
+        st.session_state.ticker_input = quick_pick_ticker
 
         ticker_input = st.text_input(
          "股票代號",
