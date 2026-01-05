@@ -355,7 +355,8 @@ def update_pattern_history(ticker, patterns):
 def select_stock(ticker):
     st.session_state.selected_ticker = ticker
 
-
+if "selected_ticker" not in st.session_state:
+    st.session_state.selected_ticker = None
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -385,10 +386,13 @@ with st.sidebar:
     else:
         quick_pick_ticker = ""
 
-    ticker_input = st.text_input(
-        "股票代號", 
-        value=quick_pick_ticker
-    ).upper().strip()
+    if st.session_state.selected_ticker:
+        ticker_input = st.session_state.selected_ticker
+    else:  
+        ticker_input = st.text_input(
+            "股票代號", 
+            value=quick_pick_ticker
+        ).upper().strip()
     
     # 自動抓取對應的中文名稱 (用於顯示)
     stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
@@ -818,11 +822,12 @@ if result:
     )
     st.plotly_chart(fig, use_container_width=True)
     
+
 # ==================================================
-# 二、Watchlist「共振排行榜」（全收藏掃描）
+# 二、Watchlist「共振排行榜」（可點擊）
 # ==================================================
 st.divider()
-st.markdown("## 🏆 Watchlist 共振排行榜")
+st.markdown("## 🏆 Watchlist 共振排行榜（點擊切換圖表）")
 
 resonance_rows = []
 
@@ -836,22 +841,28 @@ for ticker, name in st.session_state.watchlist_dict.items():
         continue
 
     slope = trend_info[0]
+    score = calc_resonance_score(tdf)
 
     patterns = detect_market_pattern(tdf, slope)
     stable_pattern = update_pattern_history(ticker, patterns)
-
     if stable_pattern is None:
         continue
 
-    score = calc_resonance_score(tdf)
     action = pattern_to_action([stable_pattern])
+
+    curr_price = float(tdf['Close'].iloc[-1])
+    tl_last = tdf['TL'].iloc[-1]
+    dist_pct = ((curr_price - tl_last) / tl_last) * 100
 
     resonance_rows.append({
         "代號": ticker,
         "名稱": name,
+        "共振分數": score,
+        "狀態": score_label(score),
+        "最新價格": f"{curr_price:.1f}",
+        "偏離 TL": f"{dist_pct:+.1f}%",
         "AI 市場型態": stable_pattern,
         "建議": action,
-        "共振分數": score
     })
 
 if resonance_rows:
@@ -859,19 +870,35 @@ if resonance_rows:
         "共振分數", ascending=False
     )
 
+    # ===== 表頭 =====
+    header = st.columns([1.2, 2, 1.2, 1.2, 1.2, 1.2, 2, 1.2])
+    headers = [
+        "代號", "名稱", "共振分數", "狀態",
+        "最新價格", "偏離 TL", "AI 市場型態", "建議"
+    ]
+    for col, h in zip(header, headers):
+        col.markdown(f"**{h}**")
+
+    # ===== 每一列 =====
     for _, row in df_rank.iterrows():
-        col1, col2, col3, col4, col5 = st.columns([1.2, 2, 3, 1.5, 1])
+        cols = st.columns([1.2, 2, 1.2, 1.2, 1.2, 1.2, 2, 1.2])
 
-        with col1:
-            if st.button(row["代號"], key=row["代號"]):
-                select_stock(row["代號"])
+        with cols[0]:
+            if st.button(row["代號"], key=f"sel_{row['代號']}"):
+                st.session_state.selected_ticker = row["代號"]
+                st.experimental_rerun()
 
-        col2.write(row["名稱"])
-        col3.write(row["AI 市場型態"])
-        col4.write(row["建議"])
-        col5.write(row["共振分數"])
+        cols[1].write(row["名稱"])
+        cols[2].write(row["共振分數"])
+        cols[3].write(row["狀態"])
+        cols[4].write(row["最新價格"])
+        cols[5].write(row["偏離 TL"])
+        cols[6].write(row["AI 市場型態"])
+        cols[7].write(row["建議"])
+
 else:
-    st.info("目前 Watchlist 尚無穩定共振標的")
+    st.info("目前收藏清單中沒有『穩定共振 + AI 型態』的股票。")
+
 
 # --- 9. 掃描 ---
 st.divider()
