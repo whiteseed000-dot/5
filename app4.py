@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
-from plotly.subplots import make_subplots
+
 # --- 1. 核心雲端邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -116,29 +116,13 @@ lines_config = [
     ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
 ]
 def get_technical_indicators(df):
-
-    def calc_rsi(series, period):
-        delta = series.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        return 100 - (100 / (1 + rs))
-
-
-    # --- RSI 依時間週期切換 ---
-    if time_frame == "日":
-        rsi_periods = [7, 14]
-    elif time_frame == "週":
-        rsi_periods = [7, 14]
-    elif time_frame == "月":
-        rsi_periods = [7, 14]
-    
-    for p in rsi_periods:
-        df[f'RSI{p}'] = calc_rsi(df['Close'], p)
-    
-    df.attrs['rsi_periods'] = rsi_periods
-    # --------------------------
-
+    """計算 RSI, MACD, BIAS, MA60"""
+    # RSI (14)
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
     
     # MACD (12, 26, 9)
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
@@ -171,7 +155,7 @@ def check_advanced_alerts(watchlist, years):
             is_cheap = curr['Close'] <= curr['TL-1SD']
             # 2. 技術面轉強 (滿足其一即可)
             tech_strong = (
-                (prev['RSI14'] < 30 and curr['RSI14'] > 30) or       # RSI 低檔回升
+                (prev['RSI'] < 30 and curr['RSI'] > 30) or       # RSI 低檔回升
                 (prev['MACD'] < prev['Signal'] and curr['MACD'] > curr['Signal']) or # MACD 金叉
                 (prev['Close'] < curr['MA60'] and curr['Close'] > curr['MA60'])      # 站上季線
             )
@@ -179,7 +163,7 @@ def check_advanced_alerts(watchlist, years):
             # --- 賣出訊號條件 ---
             is_expensive = curr['Close'] >= curr['TL+1SD']
             tech_weak = (
-                (prev['RSI14'] > 70 and curr['RSI14'] < 70) or       # RSI 高檔反轉
+                (prev['RSI'] > 70 and curr['RSI'] < 70) or       # RSI 高檔反轉
                 (prev['MACD'] > prev['Signal'] and curr['MACD'] < curr['Signal'])    # MACD 死叉
             )
 
@@ -189,215 +173,6 @@ def check_advanced_alerts(watchlist, years):
                 alerts.append({"name": name, "type": "SELL", "reason": "位階偏高 + 技術面轉弱"})
                 
     return alerts
-
-def calc_resonance_score(df):
-    score = 0
-    curr = df.iloc[-1]
-
-    # --- 五線譜位階（40）---
-    if curr['Close'] < curr['TL-2SD']:
-        score += 40
-    elif curr['Close'] < curr['TL-1SD']:
-        score += 30
-    elif curr['Close'] < curr['TL']:
-        score += 20
-    elif curr['Close'] < curr['TL+1SD']:
-        score += 10
-
-    # --- MA 趨勢（30）---
-    ma_periods = df.attrs.get('ma_periods', [])
-    if ma_periods:
-        ma_mid = df[f'MA{ma_periods[len(ma_periods)//2]}'].iloc[-1]
-        if curr['Close'] > ma_mid:
-            score += 30
-        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
-            score += 15
-
-    # --- MACD 動能（30）---
-    macd = curr['MACD']
-    signal = curr['Signal']
-    if macd > signal and macd > 0:
-        score += 30
-    elif macd > signal:
-        score += 20
-    elif macd > 0:
-        score += 10
-
-    return min(score, 100)
-
-def detect_market_pattern(df, slope):
-    curr = df.iloc[-1]
-    prev = df.iloc[-2]
-
-    patterns = []
-
-    # --- 結構性底部 ---
-    if (
-        curr['Close'] < curr['TL-1SD'] and
-        curr['RSI7'] > prev['RSI7'] and
-        curr['MACD'] > prev['MACD']
-    ):
-        patterns.append("🟢 結構性底部")
-
-    # --- 趨勢轉折 ---
-    ma_periods = df.attrs.get('ma_periods', [])
-    if ma_periods:
-        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
-        if prev['Close'] < ma_mid.iloc[-2] and curr['Close'] > ma_mid.iloc[-1]:
-            if curr['MACD'] > curr['Signal']:
-                patterns.append("🟡 趨勢轉折")
-
-    if (
-        curr['Close'] > curr['TL+1SD'] and
-        slope > 0 and
-        curr['RSI14'] > 60 and
-        curr['MACD'] > curr['Signal']
-    ):
-        patterns.append("🟡 強勢趨勢延伸（高檔鈍化）")
-
-    # --- 過熱反轉 ---
-    if (
-        curr['Close'] > curr['TL+2SD'] and
-        curr['MACD'] < prev['MACD']
-    ):
-        patterns.append("🔴 過熱風險")
-        
-    if curr['Close'] < curr['TL-1SD'] and slope < 0 and curr['Close'] > curr['TL-2SD']:
-        patterns.append("🔴 弱勢趨勢延續")
-
-    if curr['RSI14'] < 20 and curr['Close'] < curr['TL-2SD']:
-        patterns.append("🟢 超跌反彈觀察")
-        
-    # --- 底部背離（價格破底、動能回升） ---
-    if (
-        curr['Close'] < prev['Close'] and
-        curr['RSI14'] > prev['RSI14'] and
-        curr['MACD'] > prev['MACD'] and
-        curr['Close'] < curr['TL-1SD']
-    ):
-        patterns.append("🟢 底部背離（潛在反轉）")
-
-    # --- 回檔不破 TL（多頭續行） ---
-    if (
-        curr['Close'] > curr['TL'] and
-        prev['Close'] < curr['TL+1SD'] and
-        slope > 0 and
-        curr['RSI14'] > 45
-    ):
-        patterns.append("🟡 回檔不破趨勢")
-
-    # --- 均線糾結突破 ---
-    if ma_periods:
-        ma_short = df[f"MA{ma_periods[0]}"]
-        ma_long = df[f"MA{ma_periods[-1]}"]
-    
-        if (
-            abs(ma_short.iloc[-1] - ma_long.iloc[-1]) / ma_long.iloc[-1] < 0.01 and
-            curr['Close'] > ma_short.iloc[-1] and
-            curr['MACD'] > curr['Signal']
-        ):
-            patterns.append("🟡 均線糾結突破")
-
-        # --- 多頭疲勞 ---
-    if (
-        curr['Close'] > curr['TL+1SD'] and
-        curr['RSI14'] < prev['RSI14'] and
-        curr['MACD'] < prev['MACD']
-    ):
-        patterns.append("🔴 多頭趨勢疲勞")
-
-        # --- 跌破關鍵均線 ---
-    if ma_periods:
-        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
-    
-        if (
-            prev['Close'] > ma_mid.iloc[-2] and
-            curr['Close'] < ma_mid.iloc[-1] and
-            slope < 0
-        ):
-            patterns.append("🔴 跌破關鍵均線")
-
-        # --- 盤整收斂 ---
-    if (
-        abs(curr['Close'] - curr['TL']) / curr['TL'] < 0.01 and
-        abs(curr['RSI14'] - 50) < 5 and
-        abs(curr['MACD']) < abs(prev['MACD'])
-    ):
-        patterns.append("⚪ 盤整收斂")
-    
-    return patterns
-
-def build_resonance_rank(stock_list, time_frame):
-    results = []
-
-    for stock_id in stock_list:
-        df = get_stock_data(stock_id, time_frame)
-        if df is None or len(df) < 50:
-            continue
-
-        score = calc_resonance_score(df)
-        price = df.iloc[-1]['Close']
-
-        results.append({
-            "股票": stock_id,
-            "價格": round(price, 2),
-            "共振分數": score
-        })
-
-    return pd.DataFrame(results).sort_values("共振分數", ascending=False)
-
-def score_label(score):
-    if score >= 80: return "🟢 強烈偏多"
-    if score >= 60: return "🟡 偏多"
-    if score >= 40: return "⚪ 中性"
-    if score >= 20: return "🟠 偏弱"
-    return "🔴 高風險"
-
-def summarize_patterns(patterns):
-    if not patterns:
-        return "⚪ 無明顯型態"
-
-    # 優先順序（越上面越重要）
-    priority = [
-    "🟢 結構性底部",
-    "🟢 底部背離（潛在反轉）",
-    "🟡 趨勢轉折",
-    "🟡 回檔不破趨勢",
-    "🟡 均線糾結突破",
-    "🟡 強勢趨勢延伸（高檔鈍化）",
-    "⚪ 盤整收斂",
-    "🔴 多頭趨勢疲勞",
-    "🔴 過熱風險",
-    "🔴 跌破關鍵均線",
-    "🔴 弱勢趨勢延續",
-    "🟢 超跌反彈觀察"
-]
-
-    for p in priority:
-        for pat in patterns:
-            if p in pat:
-                return p
-
-    # 其他型態合併顯示（最多兩個）
-    return " / ".join(patterns[:2])
-
-def update_pattern_history(ticker, patterns):
-    if "pattern_history" not in st.session_state:
-        st.session_state.pattern_history = {}
-
-    hist = st.session_state.pattern_history.get(ticker, [])
-    hist.append(" | ".join(patterns))
-
-    hist = hist[-3:]  # 只留 3 期
-    st.session_state.pattern_history[ticker] = hist
-
-    if len(hist) < 3:
-        return None
-
-    if hist.count(hist[-1]) == 3:
-        return hist[-1]
-
-    return None
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -434,18 +209,11 @@ with st.sidebar:
     
     # 自動抓取對應的中文名稱 (用於顯示)
     stock_name = st.session_state.watchlist_dict.get(ticker_input, "")
-   
-    st.divider()
-    st.header("📊 顯示設定")
-    # 新增：時間週期選擇
-    time_frame = st.selectbox(
-        "時間週期 (K線頻率)",
-        options=["日", "週", "月"],
-        index=0
-    )
+    
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
-
     st.divider()
+
+    
 # 在側邊欄的登出按鈕部分
     if st.button("🚪 登出帳號"):
     # 清理快取
@@ -457,97 +225,21 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
-def get_stock_data(ticker, years, time_frame="日"): # 新增參數
+def get_stock_data(ticker, years):
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
         df = yf.download(ticker, start=start, end=end, progress=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-
-        # --- 新增：數據重採樣邏輯（符合金融慣例） ---
-        if time_frame == "週":
-    # 週線：週一～週五，K棒時間放在「週五」
-            df = df.resample(
-                'W-FRI',
-                label='right',     # 時間標籤放在區間右側（週五）
-                closed='right'     # 包含週五當天
-            ).agg({
-                'Open': 'first',   # 週一開盤
-                'High': 'max',     # 全週最高
-                'Low': 'min',      # 全週最低
-                'Close': 'last',   # 週五收盤
-                'Volume': 'sum'    # 全週成交量
-            }).dropna()
-
-        elif time_frame == "月":
-    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
-            df = df.resample(
-                'M',
-                label='right',     # 標記在月底
-                closed='right'     # 包含月底最後交易日
-            ).agg({
-                'Open': 'first',   # 月初開盤
-                'High': 'max',     # 當月最高
-                'Low': 'min',      # 當月最低
-                'Close': 'last',   # 月底收盤
-                'Volume': 'sum'    # 當月成交量
-            }).dropna()
-# ----------------------------------------------
-            
-        # ---------------------------
-# --- 依時間週期自動切換 MA 參數 ---
-        if time_frame == "日":
-            ma_periods = [5, 10, 20, 60, 120]
-        elif time_frame == "週":
-            ma_periods = [4, 13, 26, 52]
-        elif time_frame == "月":
-            ma_periods = [3, 6, 12, 24]
-
-        for p in ma_periods:
-            df[f'MA{p}'] = df['Close'].rolling(window=p).mean()
-
-        df.attrs['ma_periods'] = ma_periods
-# ----------------------------------        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
-
-
-        # --- 趨勢線計算（週線使用加權回歸） ---
-        x = df['x'].values
-        y = df['Close'].values
-
-        if time_frame == "週":
-            # 權重：越近權重越大（平方加權）
-            w = np.linspace(0.3, 1.0, len(x)) ** 2
-            slope, intercept = np.polyfit(x, y, 1, w=w)
-            # 加權 R²
-            y_hat = slope * x + intercept
-            r_squared = 1 - np.sum(w * (y - y_hat)**2) / np.sum(w * (y - np.average(y, weights=w))**2)
-        else:
-            slope, intercept, r_value, _, _ = stats.linregress(x, y)
-            r_squared = r_value ** 2
-
-        df['TL'] = slope * x + intercept
-# ---------------------------------------
-
-        
-        # --- 五線譜 SD 倍數依時間尺度調整 ---
-        if time_frame == "日":
-            sd1, sd2 = 1.0, 2.0
-        elif time_frame == "週":
-            sd1, sd2 = 1.2, 2.4
-        elif time_frame == "月":
-            sd1, sd2 = 1.5, 3.0
-
+        slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
+        r_squared = r_value**2  # 決定係數 = r 的平方
+        df['TL'] = slope * df['x'] + intercept
         std = np.std(df['Close'] - df['TL'])
-        df['TL+1SD'] = df['TL'] + sd1 * std
-        df['TL-1SD'] = df['TL'] - sd1 * std
-        df['TL+2SD'] = df['TL'] + sd2 * std
-        df['TL-2SD'] = df['TL'] - sd2 * std
-        # ------------------------------------
-
-        
+        df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
+        df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
         # 加入技術指標計算
         df = get_technical_indicators(df)        
         # 指標
@@ -599,8 +291,7 @@ with col_btn:
             save_watchlist_to_google(username, st.session_state.watchlist_dict)
             st.rerun()
 
-result = get_stock_data(ticker_input, years_input, time_frame)
-
+result = get_stock_data(ticker_input, years_input)
 vix_val = get_vix_index()
 
 if result:
@@ -608,15 +299,6 @@ if result:
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
-    #
-    patterns = detect_market_pattern(df, slope)
-    
-    if patterns:
-        st.markdown("### 🧠 AI 市場型態判讀")
-        for p in patterns:
-            st.write(p)
-    #
-    
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
@@ -637,16 +319,13 @@ if result:
     m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="off", help="超過60代表極度恐慌")
 
     # --- 7. 切換按鈕 ---
-    
     st.divider()
-    show_detailed_metrics = st.toggle("顯示詳細指標", value=False)
-    if show_detailed_metrics:
-
-        c_rsi = df['RSI14'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
+    with st.container():
+        c_rsi = df['RSI'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
-        i1, i2, i3, i4, i5, i6 = st.columns(6)
+        i1, i2, i3, i4, i5 = st.columns(5)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
         
@@ -662,38 +341,14 @@ if result:
 
         r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
         i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
-
-        res_score = calc_resonance_score(df)
-        res_label = (
-            "🟢 強烈偏多" if res_score >= 80 else
-            "🟡 偏多" if res_score >= 60 else
-            "⚪ 中性" if res_score >= 40 else
-            "🟠 偏弱" if res_score >= 20 else
-            "🔴 高風險"
-        )     
-        i6.metric("多指標共振分數", f"{res_score}/100", res_label, delta_color="off")
-        
-        st.write("")
     
+    st.write("")
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
-
-    col_sub1, col_sub2 = st.columns([1, 4])
-    with col_sub1: show_sub_chart = st.toggle("開啟副圖", value=False)
-    with col_sub2: sub_mode = st.selectbox("選擇副圖指標", ["KD指標", "成交量", "RSI", "MACD"], label_visibility="collapsed")
-
-    # --- 8. 繪圖核心 ---
-    t_row = 1 if show_sub_chart else None
-    t_col = 1 if show_sub_chart else None
-
-    if show_sub_chart:
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.7, 0.3])
-    else:
-        fig = go.Figure()
-    
-    # --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
+# --- 8. 圖表核心 (修正縮排並新增 K線指標) ---
+    fig = go.Figure()
     
     if view_mode == "樂活五線譜":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#F08C8C', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         for col, hex_color, name_tag, line_style in lines_config:
             fig.add_trace(go.Scatter(x=df['Date'], y=df[col], line=dict(color=hex_color, dash=line_style, width=1.5), name=name_tag, hovertemplate='%{y:.1f}'))
             last_val = df[col].iloc[-1]
@@ -701,7 +356,7 @@ if result:
 
     elif view_mode == "樂活通道":
         # 繪製主收盤價線
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#F08C8C', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], line=dict(color='#00D084', width=2), name="收盤價", hovertemplate='%{y:.1f}'))
         
         # 通道配置：顏色與五線譜連動，方便判斷位階
         h_lines_config = [ 
@@ -745,15 +400,13 @@ if result:
         ))
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
-        # 從 df 取回 MA 週期（不會 NameError）
-        ma_periods = df.attrs.get('ma_periods', [])
-        ma_colors = ['#FDDD42', '#87DCF6', '#C29ACF', '#F3524F', '#009B3A']
-
         ma_list = [
-            (f'MA{p}', ma_colors[i % len(ma_colors)], f'{p}MA')
-            for i, p in enumerate(ma_periods)
+            ('MA5', '#FDDD42', '5MA'), 
+            ('MA10', '#87DCF6', '10MA'), 
+            ('MA20', '#C29ACF', '20MA'), 
+            ('MA60', '#F3524F', '60MA'), 
+            ('MA120', '#009B3A', '120MA')
         ]
-
         
         for col, color, name in ma_list:
             if col in df.columns:
@@ -770,7 +423,7 @@ if result:
         fig.add_hline(y=20, line_dash="dot", line_color="rgba(255,255,255,0.3)")
 
     elif view_mode == "布林通道":
-        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#F08C8C', width=2), hovertemplate='%{y:.1f}'))
+        fig.add_trace(go.Scatter(x=df['Date'], y=df['Close'], name="收盤價", line=dict(color='#00D084', width=2), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_up'], name="上軌", line=dict(color='#FF3131', dash='dash'), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['MA20'], name="20MA", line=dict(color='#FFBD03'), hovertemplate='%{y:.1f}'))
         fig.add_trace(go.Scatter(x=df['Date'], y=df['BB_low'], name="下軌", line=dict(color='#00FF00', dash='dash'), hovertemplate='%{y:.1f}'))
@@ -785,55 +438,16 @@ if result:
         fig.add_annotation(x=df['Date'].iloc[-1], y=curr, text=f"現價: {curr:.2f}", showarrow=False, xanchor="left", xshift=10, yshift=15, font=dict(color="#FFFFFF", size=14, family="Arial Black"))
 
 
-    if show_sub_chart:
-        if sub_mode == "KD指標":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131'), hovertemplate='%{y:.1f}'), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['D'], name="D", line=dict(color='#0096FF'), hovertemplate='%{y:.1f}'), row=2, col=1)
-        elif sub_mode == "成交量":
-            v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
-            fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量", hovertemplate='%{y:.0f}'), row=2, col=1)
-        elif sub_mode == "RSI":
-            rsi_periods = df.attrs.get('rsi_periods', [])
-            for p, color in zip(rsi_periods, ['#00BFFF', '#E066FF']):
-                fig.add_trace(
-                    go.Scatter(
-                        x=df['Date'],
-                        y=df[f'RSI{p}'],
-                        name=f'RSI{p}',
-                        line=dict(color=color, width=1.5),
-                        hovertemplate='%{y:.2f}'
-                    ),
-                    row=2, col=1
-                )
-        elif sub_mode == "MACD":
-            m_diff = df['MACD'] - df['Signal']
-            m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
-            fig.add_trace(go.Bar(x=df['Date'], y=m_diff, marker_color=m_colors, name="柱狀圖", hovertemplate='%{y:.2f}'), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], line=dict(color='#00BFFF'), name="MACD", hovertemplate='%{y:.2f}'), row=2, col=1)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='#E066FF'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
-    
     # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
-
-    # --- X 軸缺口處理（只適用於日線） ---
-    if time_frame == "日":
-        dt_all = pd.date_range(
-            start=df['Date'].min(),
-            end=df['Date'].max(),
-            freq='D'
-        )
-        dt_breaks = dt_all.difference(df['Date'])
-
-        if not dt_breaks.empty:
-            fig.update_xaxes(
-                rangebreaks=[dict(values=dt_breaks.tolist())]
-            )
-# 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
-# -----------------------------------
-
-
+    dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
+    # 透過差集 (difference) 直接找出缺失日期
+    dt_breaks = dt_all.difference(df['Date'])
+    if not dt_breaks.empty:
+        fig.update_xaxes(rangebreaks=[dict(values=dt_breaks.tolist())])
+    
+    fig.update_xaxes(rangebreaks=[dict(values=dt_breaks)])
     fig.update_layout(
-        height=800 if show_sub_chart else 650,
-        plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
+        height=650, plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
         showlegend=False, 
@@ -846,83 +460,8 @@ if result:
             spikecolor="white", # 設定為白色
             spikedash="solid"   # 實線 (若要虛線改為 dash)
         )
-    )    
-        # 如果有開啟副圖，額外設定副圖的 Y 軸指引線顏色為白色
-    if show_sub_chart:
-        fig.update_layout(
-        xaxis2=dict(
-            showspikes=True, # 顯示指引線
-            spikemode="across", # 穿過整個圖表
-            spikethickness=1,
-            spikecolor="white", # 設定為白色
-            spikedash="solid"   # 實線 (若要虛線改為 dash)
-        )
     )
     st.plotly_chart(fig, use_container_width=True)
-    
-# ==================================================
-# 二、Watchlist「共振排行榜」（全收藏掃描）
-# ==================================================
-st.divider()
-st.markdown("## 🏆 Watchlist 共振排行榜")
-
-resonance_rows = []
-
-for ticker, name in st.session_state.watchlist_dict.items():
-    res = get_stock_data(ticker, years_input, time_frame)
-    if not res:
-        continue
-
-    tdf, trend_info = res
-    if trend_info is None or len(tdf) < 50:
-        continue
-
-    slope = trend_info[0]
-
-    # ========= 原本共振分數 =========
-    score = calc_resonance_score(tdf)
-
-    # ========= AI 市場型態（穩定版） =========
-    patterns = detect_market_pattern(tdf, slope)
-    stable_pattern = update_pattern_history(ticker, patterns)
-    pattern_label = summarize_patterns(patterns)
-    # 🔴 連續 3 期未穩定 → 不列入排行榜
-    if stable_pattern is None:
-        continue
-
-
-
-    # ========= 價格 / TL =========
-    curr_price = float(tdf['Close'].iloc[-1])
-    tl_last = tdf['TL'].iloc[-1]
-    dist_pct = ((curr_price - tl_last) / tl_last) * 100
-
-    resonance_rows.append({
-        "代號": ticker,
-        "名稱": name,
-        "共振分數": score,
-        "狀態": score_label(score),
-        "最新價格": f"{curr_price:.1f}",
-        "偏離 TL": f"{dist_pct:+.1f}%",
-        "AI 市場型態(三周)": stable_pattern,
-        "AI 市場型態(單周)": pattern_label,
-    })
-
-# ========= 顯示排行榜 =========
-if resonance_rows:
-    df_rank = pd.DataFrame(resonance_rows)
-
-    # 依共振分數排序（高 → 低）
-    df_rank = df_rank.sort_values("共振分數", ascending=False)
-
-    st.dataframe(
-        df_rank,
-        use_container_width=True,
-        hide_index=True
-    )
-else:
-    st.info("目前收藏清單中沒有可計算共振分數的股票。")
-
 
 # --- 9. 掃描 ---
 st.divider()
@@ -956,6 +495,3 @@ if st.button("🔍 執行全自動多指標雷達掃描"):
                     st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
         else:
             st.info("目前沒有標的符合共振條件。")
-
-
-
