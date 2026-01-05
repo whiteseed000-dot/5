@@ -270,21 +270,21 @@ def detect_market_pattern(df, slope):
         
     # --- 底部背離（價格破底、動能回升） ---
     if (
-    curr['Close'] < prev['Close'] and
-    curr['RSI14'] > prev['RSI14'] and
-    curr['MACD'] > prev['MACD'] and
-    curr['Close'] < curr['TL-1SD']
-):
-    patterns.append("🟢 底部背離（潛在反轉）")
+        curr['Close'] < prev['Close'] and
+        curr['RSI14'] > prev['RSI14'] and
+        curr['MACD'] > prev['MACD'] and
+        curr['Close'] < curr['TL-1SD']
+    ):
+        patterns.append("🟢 底部背離（潛在反轉）")
 
     # --- 回檔不破 TL（多頭續行） ---
     if (
-    curr['Close'] > curr['TL'] and
-    prev['Close'] < curr['TL+1SD'] and
-    slope > 0 and
-    curr['RSI14'] > 45
-):
-    patterns.append("🟡 回檔不破趨勢")
+        curr['Close'] > curr['TL'] and
+        prev['Close'] < curr['TL+1SD'] and
+        slope > 0 and
+        curr['RSI14'] > 45
+    ):
+        patterns.append("🟡 回檔不破趨勢")
 
     # --- 均線糾結突破 ---
     if ma_periods:
