@@ -918,20 +918,23 @@ if resonance_rows:
     # 依共振分數排序（高 → 低）
     df_rank = df_rank.sort_values("共振分數", ascending=False)
 
-    event = st.dataframe(
+    st.dataframe(
     df_rank,
     use_container_width=True,
     hide_index=True,
+    selection_mode="single-row",
     on_select="rerun",
-    selection_mode="single-row"
-    )
-        if event and event.selection.rows:
-            selected_row = event.selection.rows[0]
-            selected_ticker = df_rank.iloc[selected_row]["代號"]
-        
-            # 更新目前主分析股票
-            st.session_state.ticker_input = selected_ticker
-            st.rerun()
+    key="resonance_rank"
+)
+# ===== 點擊排行榜 → 切換股票（穩定版）=====
+selection = st.session_state.get("resonance_rank")
+
+if selection and selection.get("selection", {}).get("rows"):
+    selected_row = selection["selection"]["rows"][0]
+    selected_ticker = df_rank.iloc[selected_row]["代號"]
+
+    st.session_state.ticker_input = selected_ticker
+    st.rerun()
 else:
     st.info("目前收藏清單中沒有可計算共振分數的股票。")
 
