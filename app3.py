@@ -925,13 +925,13 @@ if resonance_rows:
     on_select="rerun",
     selection_mode="single-row"
     )
-if event and event.selection.rows:
-    selected_row = event.selection.rows[0]
-    selected_ticker = df_rank.iloc[selected_row]["代號"]
-
-    # 更新目前主分析股票
-    st.session_state.ticker_input = selected_ticker
-    st.rerun()
+        if event and event.selection.rows:
+            selected_row = event.selection.rows[0]
+            selected_ticker = df_rank.iloc[selected_row]["代號"]
+        
+            # 更新目前主分析股票
+            st.session_state.ticker_input = selected_ticker
+            st.rerun()
 else:
     st.info("目前收藏清單中沒有可計算共振分數的股票。")
 
