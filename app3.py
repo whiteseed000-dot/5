@@ -9,9 +9,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from plotly.subplots import make_subplots
 
-if "watchlist_dict" not in st.session_state:
-    st.session_state.watchlist_dict = {}
-watchlist = st.session_state.watchlist_dict
+
 # --- 1. 核心雲端邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
