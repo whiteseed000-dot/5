@@ -881,12 +881,6 @@ for ticker, name in st.session_state.watchlist_dict.items():
     # ========= AI 市場型態（穩定版） =========
     patterns = detect_market_pattern(tdf, slope)
     stable_pattern = update_pattern_history(ticker, patterns)
-    
-    # 🔴 連續 3 期未穩定 → 不列入排行榜
-    if stable_pattern is None:
-        continue
-
-
 
     # ========= 價格 / TL =========
     curr_price = float(tdf['Close'].iloc[-1])
