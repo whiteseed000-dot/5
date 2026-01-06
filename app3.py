@@ -867,11 +867,11 @@ st.markdown("## 🏆 Watchlist 共振排行榜")
 resonance_rows = []
 
 for ticker, name in st.session_state.watchlist_dict.items():
-    res = get_stock_data(ticker, years_input, time_frame)
-    if not res:
+    resb = get_stock_data(ticker, years_input, time_frame)
+    if not resb:
         continue
 
-    tdf, trend_info = res
+    tdf, trend_info = resb
     if trend_info is None or len(tdf) < 50:
         continue
 
