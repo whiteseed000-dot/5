@@ -862,63 +862,59 @@ if result:
 # ==================================================
 # 二、Watchlist「共振排行榜」（全收藏掃描）
 # ==================================================
-@st.cache_data(ttl=600)
-def get_resonance_snapshot(ticker, years, time_frame):
-    res = get_stock_data(ticker, years, time_frame)
-    if not res:
-        return None
-
-    df, trend_info = res
-    if trend_info is None or len(df) < 50:
-        return None
-
-    slope = trend_info[0]
-
-    score = calc_resonance_score(df)
-    patterns = detect_market_pattern(df, slope)
-    pattern_text = " | ".join(patterns) if patterns else ""
-
-    curr_price = float(df['Close'].iloc[-1])
-    tl_last = df['TL'].iloc[-1]
-    dist_pct = ((curr_price - tl_last) / tl_last) * 100
-
-    return {
-        "共振分數": score,
-        "最新價格": f"{curr_price:.1f}",
-        "偏離 TL": f"{dist_pct:+.1f}%",
-        "AI 市場型態": pattern_text,
-    }
-    
 st.divider()
-st.markdown("## 🏆 Watchlist 共振排行榜")
-
+if st.button("## 🏆 Watchlist 共振排行榜"):
 resonance_rows = []
 
 for ticker, name in st.session_state.watchlist_dict.items():
-    snap = get_resonance_snapshot(ticker, years_input, time_frame)
-    if not snap:
+    res = get_stock_data(ticker, years_input, time_frame)
+    if not res:
         continue
+
+    tdf, trend_info = res
+    if trend_info is None or len(tdf) < 50:
+        continue
+
+    slope = trend_info[0]
+
+    # ========= 原本共振分數 =========
+    score = calc_resonance_score(tdf)
+
+    # ========= AI 市場型態（穩定版） =========
+    patterns = detect_market_pattern(tdf, slope)
+    stable_pattern = update_pattern_history(ticker, patterns)
+
+    # ========= 價格 / TL =========
+    curr_price = float(tdf['Close'].iloc[-1])
+    tl_last = tdf['TL'].iloc[-1]
+    dist_pct = ((curr_price - tl_last) / tl_last) * 100
 
     resonance_rows.append({
         "代號": ticker,
         "名稱": name,
-        "共振分數": snap["共振分數"],
-        "狀態": score_label(snap["共振分數"]),
-        "最新價格": snap["最新價格"],
-        "偏離 TL": snap["偏離 TL"],
-        "AI 市場型態": snap["AI 市場型態"],
+        "共振分數": score,
+        "狀態": score_label(score),
+        "最新價格": f"{curr_price:.1f}",
+        "偏離 TL": f"{dist_pct:+.1f}%",
+        "AI 市場型態": stable_pattern,
     })
 
+# ========= 顯示排行榜 =========
 if resonance_rows:
-    df_rank = (
-        pd.DataFrame(resonance_rows)
-        .sort_values("共振分數", ascending=False)
-        .reset_index(drop=True)
-    )
+    df_rank = pd.DataFrame(resonance_rows)
 
-    st.dataframe(df_rank, use_container_width=True, hide_index=True)
+    # 依共振分數排序（高 → 低）
+    df_rank = df_rank.sort_values("共振分數", ascending=False)
+
+    st.dataframe(
+        df_rank,
+        use_container_width=True,
+        hide_index=True
+    )
 else:
     st.info("目前收藏清單中沒有可計算共振分數的股票。")
+
+
 # --- 9. 掃描 ---
 st.divider()
 if st.button("🔄 開始掃描所有標的狀態"):
