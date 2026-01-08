@@ -225,6 +225,56 @@ def calc_resonance_score(df):
 
     return min(score, 100)
 
+def calc_resonance_score_V2(df):
+    score = 0
+    curr = df.iloc[-1]
+
+    # --- 五線譜位階（40）---
+    if curr['Close'] < curr['TL-2SD']:
+        score += 40
+    elif curr['Close'] < curr['TL-1SD']:
+        score += 30
+    elif curr['Close'] < curr['TL']:
+        score += 20
+    elif curr['Close'] < curr['TL+1SD']:
+        score += 10
+
+    # --- MA 趨勢（30）---
+    ma_periods = df.attrs.get('ma_periods', [])
+    if len(ma_periods) >= 3:
+        ma_short = df[f'MA{ma_periods[0]}'].iloc[-1]
+        ma_mid   = df[f'MA{ma_periods[len(ma_periods)//2]}'].iloc[-1]
+        ma_long  = df[f'MA{ma_periods[-1]}'].iloc[-1]
+    
+        if ma_short > ma_mid > ma_long:
+            score += 30
+        elif ma_short > ma_mid:
+            score += 20
+        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
+            score += 10
+
+    # --- MACD 動能（30）---
+    macd = curr['MACD']
+    signal = curr['Signal']
+    macd_diff = macd - signal
+    
+    if macd_diff > 0 and macd > 0:
+        score += min(30, 20 + macd_diff * 50)
+    elif macd_diff > 0:
+        score += min(20, 10 + macd_diff * 30)
+    elif macd > 0:
+        score += 5
+
+        # --- 懲罰：高檔轉弱 ---
+    if curr['Close'] > curr['TL+1SD'] and macd_diff < 0:
+        score -= 15
+    
+    # --- 懲罰：跌破趨勢 ---
+    if curr['Close'] < ma_long:
+        score -= 10
+
+    return max(0, min(score, 100))
+
 def detect_market_pattern(df, slope):
     curr = df.iloc[-1]
     prev = df.iloc[-2]
