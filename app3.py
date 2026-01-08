@@ -247,11 +247,15 @@ def calc_resonance_score_V2(df):
         ma_long  = df[f'MA{ma_periods[-1]}'].iloc[-1]
     
         if ma_short > ma_mid > ma_long:
-            score += 30
-        elif ma_short > ma_mid:
             score += 20
-        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
+        elif ma_short > ma_mid:
             score += 10
+
+        # 價格相對 MA
+        if curr['Close'] > ma_mid:
+            score += 10
+        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
+            score += 5
 
     # --- MACD 動能（30）---
     macd = curr['MACD']
