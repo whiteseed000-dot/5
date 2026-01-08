@@ -969,6 +969,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
                 "代號": st.column_config.TextColumn(width="small"),
                 "名稱": st.column_config.TextColumn(width="medium"),
                 "共振分數": st.column_config.NumberColumn(width="small"),
+                "共振分數V2": st.column_config.NumberColumn(width="small"),
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
