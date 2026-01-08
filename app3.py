@@ -929,7 +929,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
     
         # ========= 原本共振分數 =========
         score = calc_resonance_score(tdf)
-    
+        score_V2 = calc_resonance_score_V2(tdf)
         # ========= AI 市場型態（穩定版） =========
         patterns = detect_market_pattern(tdf, slope)
         stable_pattern = update_pattern_history(ticker, patterns)
@@ -943,6 +943,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
             "代號": ticker,
             "名稱": name,
             "共振分數": score,
+            "共振分數V2": score_V2,
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
