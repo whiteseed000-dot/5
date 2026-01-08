@@ -964,7 +964,15 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
         st.dataframe(
             df_rank,
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            column_config={
+                "代號": st.column_config.TextColumn(width="small"),
+                "名稱": st.column_config.TextColumn(width="medium"),
+                "共振分數": st.column_config.NumberColumn(width="small"),
+                "狀態": st.column_config.TextColumn(width="small"),
+                "最新價格": st.column_config.TextColumn(width="small"),
+                "偏離 TL": st.column_config.TextColumn(width="small"),
+                "AI 市場型態": st.column_config.TextColumn(width="large"),
         )
     else:
         st.info("目前收藏清單中沒有可計算共振分數的股票。")
