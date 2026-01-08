@@ -973,6 +973,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
                 "AI 市場型態": st.column_config.TextColumn(width="large"),
+            }
         )
     else:
         st.info("目前收藏清單中沒有可計算共振分數的股票。")
