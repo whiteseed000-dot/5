@@ -985,7 +985,7 @@ st.divider()
 if st.button("🔄 開始掃描所有標的狀態"):
     summary = []
     for t, name in st.session_state.watchlist_dict.items():
-        res = get_stock_data(t, years_input)
+        res = get_stock_data(t, years_input, time_frame)
         if res:
             tdf, _ = res; p = float(tdf['Close'].iloc[-1]); t_tl = tdf['TL'].iloc[-1]
             if p > tdf['TL+2SD'].iloc[-1]: pos = "🔴 天價"
