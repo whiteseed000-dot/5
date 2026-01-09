@@ -800,7 +800,7 @@ if result:
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 從 df 取回 MA 週期（不會 NameError）
         ma_periods = df.attrs.get('ma_periods', [])
-        ma_colors = ['#FDDD42', '#87DCF6', '#C29ACF', '#F3524F', '#009B3A']
+        ma_colors = ['#FDDD42', '#87DCF6', '#C29ACF', '#F3524F', '#009B3A', '#FF66CC']
 
         ma_list = [
             (f'MA{p}', ma_colors[i % len(ma_colors)], f'{p}MA')
