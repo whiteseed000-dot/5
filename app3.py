@@ -553,9 +553,9 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         if time_frame == "日":
             ma_periods = [5, 10, 20, 60, 120]
         elif time_frame == "週":
-            ma_periods = [4, 13, 26, 52]
+            ma_periods = [4, 13, 26, 52, 104]
         elif time_frame == "月":
-            ma_periods = [3, 6, 12, 24]
+            ma_periods = [3, 6, 12, 24, 48, 96]
 
         for p in ma_periods:
             df[f'MA{p}'] = df['Close'].rolling(window=p).mean()
