@@ -58,7 +58,7 @@ def load_watchlist_from_google(username):
     except Exception as e:
         st.error(f"雲端連線異常: {e}")
         return default_dict
-
+        
 def save_watchlist_to_google(username, watchlist_dict):
     try:
         client = get_gsheet_client()
