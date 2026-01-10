@@ -1449,10 +1449,9 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
 
         patterns = detect_L1_patterns(tdf, slope)
         
-        """
-        patterns = detect_market_pattern(tdf, slope)
-        stable_pattern = update_pattern_history(ticker, patterns)
-        """
+
+
+
     
         # ========= 價格 / TL =========
         curr_price = float(tdf['Close'].iloc[-1])
