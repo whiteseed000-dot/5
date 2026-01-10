@@ -58,7 +58,7 @@ def load_watchlist_from_google(username):
     except Exception as e:
         st.error(f"雲端連線異常: {e}")
         return default_dict
-
+        
 def save_watchlist_to_google(username, watchlist_dict):
     try:
         client = get_gsheet_client()
@@ -124,9 +124,20 @@ def get_technical_indicators(df):
         rs = gain / loss
         return 100 - (100 / (1 + rs))
 
-    # 新增短、長週期 RSI
-    df['RSI7'] = calc_rsi(df['Close'], 7)
-    df['RSI14'] = calc_rsi(df['Close'], 14)
+
+    # --- RSI 依時間週期切換 ---
+    if time_frame == "日":
+        rsi_periods = [7, 14]
+    elif time_frame == "週":
+        rsi_periods = [7, 14]
+    elif time_frame == "月":
+        rsi_periods = [7, 14]
+    
+    for p in rsi_periods:
+        df[f'RSI{p}'] = calc_rsi(df['Close'], p)
+    
+    df.attrs['rsi_periods'] = rsi_periods
+    # --------------------------
 
     
     # MACD (12, 26, 9)
@@ -178,6 +189,355 @@ def check_advanced_alerts(watchlist, years):
                 alerts.append({"name": name, "type": "SELL", "reason": "位階偏高 + 技術面轉弱"})
                 
     return alerts
+
+def calc_resonance_score(df):
+    score = 0
+    curr = df.iloc[-1]
+
+    # --- 五線譜位階（40）---
+    if curr['Close'] < curr['TL-2SD']:
+        score += 40
+    elif curr['Close'] < curr['TL-1SD']:
+        score += 30
+    elif curr['Close'] < curr['TL']:
+        score += 20
+    elif curr['Close'] < curr['TL+1SD']:
+        score += 10
+
+    # --- MA 趨勢（30）---
+    ma_periods = df.attrs.get('ma_periods', [])
+    if ma_periods:
+        ma_mid = df[f'MA{ma_periods[len(ma_periods)//2]}'].iloc[-1]
+        if curr['Close'] > ma_mid:
+            score += 30
+        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
+            score += 15
+
+    # --- MACD 動能（30）---
+    macd = curr['MACD']
+    signal = curr['Signal']
+    if macd > signal and macd > 0:
+        score += 30
+    elif macd > signal:
+        score += 20
+    elif macd > 0:
+        score += 10
+
+    return min(score, 100)
+
+def calc_resonance_score_V2(df):
+    score = 0
+    curr = df.iloc[-1]
+
+    # --- 五線譜位階（40）---
+    if curr['Close'] < curr['TL-2SD']:
+        score += 40
+    elif curr['Close'] < curr['TL-1SD']:
+        score += 30
+    elif curr['Close'] < curr['TL']:
+        score += 20
+    elif curr['Close'] < curr['TL+1SD']:
+        score += 10
+
+    # --- MA 趨勢（30）---
+    ma_periods = df.attrs.get('ma_periods', [])
+    if len(ma_periods) >= 3:
+        ma_short = df[f'MA{ma_periods[0]}'].iloc[-1]
+        ma_mid   = df[f'MA{ma_periods[len(ma_periods)//2]}'].iloc[-1]
+        ma_long  = df[f'MA{ma_periods[-1]}'].iloc[-1]
+    
+        if ma_short > ma_mid > ma_long:
+            score += 20
+        elif ma_short > ma_mid:
+            score += 10
+
+        # 價格相對 MA
+        if curr['Close'] > ma_mid:
+            score += 10
+        elif abs(curr['Close'] - ma_mid) / ma_mid < 0.01:
+            score += 5
+
+    # --- MACD 動能（30）---
+    macd = curr['MACD']
+    signal = curr['Signal']
+    macd_diff = macd - signal
+    
+    if macd_diff > 0 and macd > 0:
+        score += min(30, 20 + macd_diff * 50)
+    elif macd_diff > 0:
+        score += min(20, 10 + macd_diff * 30)
+    elif macd > 0:
+        score += 5
+
+        # --- 懲罰：高檔轉弱 ---
+    if curr['Close'] > curr['TL+1SD'] and macd_diff < 0:
+        score -= 15
+    
+    # --- 懲罰：跌破趨勢 ---
+    if curr['Close'] < ma_long:
+        score -= 10
+
+    return max(0, min(score, 100))
+
+def detect_market_pattern(df, slope):
+    curr = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    patterns = []
+
+    # === 🔴 趨勢末端（動能衰竭）===
+    if (
+        curr['Close'] > prev['Close'] and
+        curr['RSI14'] < prev['RSI14'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 趨勢末端（動能衰竭）")
+
+        # === 🟢 V 型反轉 ===
+    if (
+        prev['Close'] < curr['TL-2SD'] and
+        curr['Close'] > curr['TL-1SD'] and
+        (curr['RSI14'] - prev['RSI14']) > 10
+    ):
+        patterns.append("🟢 V 型反轉")
+
+        # === 🟢 雙底確認 ===
+    if (
+        abs(curr['Close'] - df['Close'].iloc[-6]) / df['Close'].iloc[-6] < 0.02 and
+        curr['RSI14'] > df['RSI14'].iloc[-6]
+    ):
+        patterns.append("🟢 雙底確認")
+
+        # === ⚪ 箱型整理 ===
+    if (
+        df['High'].iloc[-10:].max() - df['Low'].iloc[-10:].min()
+        < 1.5 * (curr['TL+1SD'] - curr['TL'])
+    ):
+        patterns.append("⚪ 箱型整理")
+
+        # === 🟡 多頭旗形 ===
+    if (
+        df['Close'].iloc[-6] > curr['TL+1SD'] and
+        curr['Close'] > curr['TL'] and
+        curr['RSI14'] > 50
+    ):
+        patterns.append("🟡 多頭旗形（續行）")
+
+        # === 🔴 假突破 ===
+    if (
+        prev['Close'] > curr['TL+1SD'] and
+        curr['Close'] < curr['TL'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 假突破")
+
+        # === ⚪ 波動擠壓（即將爆發）===
+    if (
+        curr['RANGE_N'] <
+        df['RANGE_N'].rolling(50).quantile(0.2).iloc[-1]
+    ):
+        patterns.append("⚪ 波動擠壓（即將爆發）")
+    
+    # === 🟢 碗型底 / 圓弧底（Rounded Bottom）===
+    if (
+        curr['Close'] < curr['TL-1SD'] and
+        curr['ddP'] > 0 and
+        curr['RSI14'] > df['RSI14'].iloc[-4] and
+        curr['MACD'] > df['MACD'].iloc[-4]
+    ):
+        patterns.append("🟢 碗型底（圓弧底反轉）")
+
+    # === ⚪ 財訊：盤整收斂型態 ===
+    if (
+        curr['RANGE_N'] < curr['RANGE_N_prev'] and
+        abs(curr['Close'] - curr['TL']) / curr['TL'] < 0.01 and
+        abs(curr['MACD']) < abs(prev['MACD'])
+    ):
+        patterns.append("⚪ 財訊盤整收斂")
+
+    # === 🟡 財訊：三角收斂（突破前）===
+    if (
+        curr['RANGE_N'] < df['RANGE_N'].iloc[-2] and
+        df['RANGE_N'].iloc[-2] < df['RANGE_N'].iloc[-3] and
+        45 < curr['RSI14'] < 55
+    ):
+        patterns.append("🟡 三角收斂（突破前）")
+
+    # === 🟡 財訊：盤整後上突破 ===
+    if (
+        curr['Close'] > df['Close'].iloc[-11:-1].max() and
+        df['RANGE_N'].iloc[-2] < df['RANGE_N'].iloc[-3] and
+        curr['MACD'] > curr['Signal'] and
+        curr['RSI14'] > 55
+    ):
+        patterns.append("🟡 盤整後上突破（起漲型）")
+
+    # --- 結構性底部 ---
+    if (
+        curr['Close'] < curr['TL-1SD'] and
+        curr['RSI7'] > prev['RSI7'] and
+        curr['MACD'] > prev['MACD']
+    ):
+        patterns.append("🟢 結構性底部")
+
+    # --- 趨勢轉折 ---
+    ma_periods = df.attrs.get('ma_periods', [])
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+        if prev['Close'] < ma_mid.iloc[-2] and curr['Close'] > ma_mid.iloc[-1]:
+            if curr['MACD'] > curr['Signal']:
+                patterns.append("🟡 趨勢轉折")
+
+    if (
+        curr['Close'] > curr['TL+1SD'] and
+        slope > 0 and
+        curr['RSI14'] > 60 and
+        curr['MACD'] > curr['Signal']
+    ):
+        patterns.append("🟡 強勢趨勢延伸（高檔鈍化）")
+
+    # --- 過熱反轉 ---
+    if (
+        curr['Close'] > curr['TL+2SD'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 過熱風險")
+        
+    if curr['Close'] < curr['TL-1SD'] and slope < 0 and curr['Close'] > curr['TL-2SD']:
+        patterns.append("🔴 弱勢趨勢延續")
+
+    if curr['RSI14'] < 20 and curr['Close'] < curr['TL-2SD']:
+        patterns.append("🟢 超跌反彈觀察")
+        
+    # --- 底部背離（價格破底、動能回升） ---
+    if (
+        curr['Close'] < prev['Close'] and
+        curr['RSI14'] > prev['RSI14'] and
+        curr['MACD'] > prev['MACD'] and
+        curr['Close'] < curr['TL-1SD']
+    ):
+        patterns.append("🟢 底部背離（潛在反轉）")
+
+    # --- 回檔不破 TL（多頭續行） ---
+    if (
+        curr['Close'] > curr['TL'] and
+        prev['Close'] < curr['TL+1SD'] and
+        slope > 0 and
+        curr['RSI14'] > 45
+    ):
+        patterns.append("🟡 回檔不破趨勢")
+
+    # --- 均線糾結突破 ---
+    if ma_periods:
+        ma_short = df[f"MA{ma_periods[0]}"]
+        ma_long = df[f"MA{ma_periods[-1]}"]
+    
+        if (
+            abs(ma_short.iloc[-1] - ma_long.iloc[-1]) / ma_long.iloc[-1] < 0.01 and
+            curr['Close'] > ma_short.iloc[-1] and
+            curr['MACD'] > curr['Signal']
+        ):
+            patterns.append("🟡 均線糾結突破")
+
+        # --- 多頭疲勞 ---
+    if (
+        curr['Close'] > curr['TL+1SD'] and
+        curr['RSI14'] < prev['RSI14'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 多頭趨勢疲勞")
+
+        # --- 跌破關鍵均線 ---
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+    
+        if (
+            prev['Close'] > ma_mid.iloc[-2] and
+            curr['Close'] < ma_mid.iloc[-1] and
+            slope < 0
+        ):
+            patterns.append("🔴 跌破關鍵均線")
+
+        # --- 盤整收斂 ---
+    if (
+        abs(curr['Close'] - curr['TL']) / curr['TL'] < 0.01 and
+        abs(curr['RSI14'] - 50) < 5 and
+        abs(curr['MACD']) < abs(prev['MACD'])
+    ):
+        patterns.append("⚪ 盤整收斂")
+    
+    return patterns
+
+def build_resonance_rank(stock_list, time_frame):
+    results = []
+
+    for stock_id in stock_list:
+        df = get_stock_data(stock_id, time_frame)
+        if df is None or len(df) < 50:
+            continue
+
+        score = calc_resonance_score(df)
+        price = df.iloc[-1]['Close']
+
+        results.append({
+            "股票": stock_id,
+            "價格": round(price, 2),
+            "共振分數": score
+        })
+
+    return pd.DataFrame(results).sort_values("共振分數", ascending=False)
+
+def score_label(score):
+    if score >= 80: return "🟢 強烈偏多"
+    if score >= 60: return "🟡 偏多"
+    if score >= 40: return "⚪ 中性"
+    if score >= 20: return "🟠 偏弱"
+    return "🔴 高風險"
+
+def summarize_patterns(patterns):
+    if not patterns:
+        return ["⚪ 無明顯型態"]
+
+    # 優先順序（越上面越重要）
+    priority = [
+        "🟢 結構性底部",
+        "🟢 底部背離（潛在反轉）",
+        "🟡 趨勢轉折",
+        "🟡 回檔不破趨勢",
+        "🟡 均線糾結突破",
+        "🟡 強勢趨勢延伸（高檔鈍化）",
+        "⚪ 盤整收斂",
+        "🔴 多頭趨勢疲勞",
+        "🔴 過熱風險",
+        "🔴 跌破關鍵均線",
+        "🔴 弱勢趨勢延續",
+        "🟢 超跌反彈觀察"
+    ]
+
+    result = []
+
+    for p in priority:
+        for pat in patterns:
+            if p in pat and p not in result:
+                result.append(p)
+
+    # 如果 patterns 有新型態但不在 priority 裡
+    for pat in patterns:
+        if pat not in result:
+            result.append(pat)
+
+    return result
+
+
+def update_pattern_history(ticker, patterns):
+    if "pattern_history" not in st.session_state:
+        st.session_state.pattern_history = {}
+
+    hist = st.session_state.pattern_history.get(ticker, [])
+    hist = patterns  # 直接用當週
+    st.session_state.pattern_history[ticker] = hist
+
+    return " | ".join(hist) if hist else ""
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -274,17 +634,60 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
                 'Volume': 'sum'    # 當月成交量
             }).dropna()
 # ----------------------------------------------
-        
+            
         # ---------------------------
-        
+# --- 依時間週期自動切換 MA 參數 ---
+        if time_frame == "日":
+            ma_periods = [5, 10, 20, 60, 120]
+        elif time_frame == "週":
+            ma_periods = [4, 13, 26, 52, 104]
+        elif time_frame == "月":
+            ma_periods = [3, 6, 12, 24, 48, 96]
+
+        for p in ma_periods:
+            df[f'MA{p}'] = df['Close'].rolling(window=p).mean()
+
+        df.attrs['ma_periods'] = ma_periods
+# ----------------------------------        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
-        slope, intercept, r_value, _, _ = stats.linregress(df['x'], df['Close'])
-        r_squared = r_value**2  # 決定係數 = r 的平方
-        df['TL'] = slope * df['x'] + intercept
+
+
+        # --- 趨勢線計算（週線使用加權回歸） ---
+        x = df['x'].values
+        y = df['Close'].values
+
+        if time_frame == "週":
+            # 權重：越近權重越大（平方加權）
+            w = np.linspace(0.3, 1.0, len(x)) ** 2
+            slope, intercept = np.polyfit(x, y, 1, w=w)
+            # 加權 R²
+            y_hat = slope * x + intercept
+            r_squared = 1 - np.sum(w * (y - y_hat)**2) / np.sum(w * (y - np.average(y, weights=w))**2)
+        else:
+            slope, intercept, r_value, _, _ = stats.linregress(x, y)
+            r_squared = r_value ** 2
+
+        df['TL'] = slope * x + intercept
+# ---------------------------------------
+
+        
+        # --- 五線譜 SD 倍數依時間尺度調整 ---
+        if time_frame == "日":
+            sd1, sd2 = 1.0, 2.0
+        elif time_frame == "週":
+            sd1, sd2 = 1.2, 2.4
+        elif time_frame == "月":
+            sd1, sd2 = 1.5, 3.0
+
         std = np.std(df['Close'] - df['TL'])
-        df['TL+2SD'], df['TL+1SD'] = df['TL'] + 2*std, df['TL'] + std
-        df['TL-1SD'], df['TL-2SD'] = df['TL'] - std, df['TL'] - 2*std
+        df['TL+1SD'] = df['TL'] + sd1 * std
+        df['TL-1SD'] = df['TL'] - sd1 * std
+        df['TL+2SD'] = df['TL'] + sd2 * std
+        df['TL-2SD'] = df['TL'] - sd2 * std
+        # ------------------------------------
+
+        
         # 加入技術指標計算
         df = get_technical_indicators(df)        
         # 指標
@@ -307,6 +710,19 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         # 使用固定百分比帶寬，模擬五線譜的位階感
         df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (+10%)
         df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (-10%)
+
+        # 價格一階 / 二階差分（趨勢彎曲度）
+        df['dP'] = df['Close'].diff()
+        df['ddP'] = df['dP'].diff()
+        
+        # 近 N 日高低區間（收斂用）
+        N = 10
+        df['RANGE_N'] = (
+            df['High'].rolling(N).max() -
+            df['Low'].rolling(N).min()
+        )
+        
+        df['RANGE_N_prev'] = df['RANGE_N'].shift(1)
         
         return df, (slope, r_squared)
     except: return None
@@ -321,7 +737,7 @@ def get_vix_index():
 # --- 6. 介面形式恢復 ---
 col_title, col_btn = st.columns([4, 1])
 with col_title:
-    st.markdown(f'# <img src="https://cdn-icons-png.flaticon.com/512/421/421644.png" width="30"> 樂活五線譜: {ticker_input} ({stock_name})', unsafe_allow_html=True, help="若無法顯示資料，請按右上角 ⋮ → Clear cache")
+    st.markdown(f'#  {ticker_input} ({stock_name})', unsafe_allow_html=True, help="若無法顯示資料，請按右上角 ⋮ → Clear cache")
 
 with col_btn:
     if ticker_input in st.session_state.watchlist_dict:
@@ -345,6 +761,15 @@ if result:
     curr = float(df['Close'].iloc[-1]); tl_last = df['TL'].iloc[-1]
     dist_pct = ((curr - tl_last) / tl_last) * 100
 
+    #
+    patterns = detect_market_pattern(df, slope)
+    
+    if patterns:
+        st.markdown("### 🧠 AI 市場型態判讀")
+        for p in patterns:
+            st.write(p)
+    #
+    
     if curr > df['TL+2SD'].iloc[-1]: status_label = "🔴 天價"
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
@@ -374,7 +799,7 @@ if result:
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
-        i1, i2, i3, i4, i5 = st.columns(5)
+        i1, i2, i3, i4, i5, i6 = st.columns(6)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
         
@@ -390,7 +815,17 @@ if result:
 
         r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
         i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
-    
+
+        res_score = calc_resonance_score(df)
+        res_label = (
+            "🟢 強烈偏多" if res_score >= 80 else
+            "🟡 偏多" if res_score >= 60 else
+            "⚪ 中性" if res_score >= 40 else
+            "🟠 偏弱" if res_score >= 20 else
+            "🔴 高風險"
+        )     
+        i6.metric("多指標共振分數", f"{res_score}/100", res_label, delta_color="off")
+        
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
@@ -463,13 +898,15 @@ if result:
         ))
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
+        # 從 df 取回 MA 週期（不會 NameError）
+        ma_periods = df.attrs.get('ma_periods', [])
+        ma_colors = ['#FDDD42', '#87DCF6', '#C29ACF', '#F3524F', '#009B3A', '#FF66CC']
+
         ma_list = [
-            ('MA5', '#FDDD42', '5MA'), 
-            ('MA10', '#87DCF6', '10MA'), 
-            ('MA20', '#C29ACF', '20MA'), 
-            ('MA60', '#F3524F', '60MA'), 
-            ('MA120', '#009B3A', '120MA')
+            (f'MA{p}', ma_colors[i % len(ma_colors)], f'{p}MA')
+            for i, p in enumerate(ma_periods)
         ]
+
         
         for col, color, name in ma_list:
             if col in df.columns:
@@ -509,12 +946,18 @@ if result:
             v_colors = ['#FF3131' if c > o else '#00FF00' for o, c in zip(df['Open'], df['Close'])]
             fig.add_trace(go.Bar(x=df['Date'], y=df['Volume'], marker_color=v_colors, name="成交量", hovertemplate='%{y:.0f}'), row=2, col=1)
         elif sub_mode == "RSI":
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI7'], name="RSI7", 
-                                     line=dict(color='#00BFFF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
-            # 畫出 RSI 14 (粉紫線，如照片所示)
-            fig.add_trace(go.Scatter(x=df['Date'], y=df['RSI14'], name="RSI14", 
-                                     line=dict(color='#E066FF', width=1.5), hovertemplate='%{y:.2f}'), row=2, col=1)
-
+            rsi_periods = df.attrs.get('rsi_periods', [])
+            for p, color in zip(rsi_periods, ['#00BFFF', '#E066FF']):
+                fig.add_trace(
+                    go.Scatter(
+                        x=df['Date'],
+                        y=df[f'RSI{p}'],
+                        name=f'RSI{p}',
+                        line=dict(color=color, width=1.5),
+                        hovertemplate='%{y:.2f}'
+                    ),
+                    row=2, col=1
+                )
         elif sub_mode == "MACD":
             m_diff = df['MACD'] - df['Signal']
             m_colors = ['#FF3131' if v > 0 else '#00FF00' for v in m_diff]
@@ -569,13 +1012,80 @@ if result:
         )
     )
     st.plotly_chart(fig, use_container_width=True)
+    
+# ==================================================
+# 二、Watchlist「共振排行榜」（全收藏掃描）
+# ==================================================
+st.divider()
+if st.button("## 🏆 Watchlist 共振排行榜"):
+    resonance_rows = []
+    
+    for ticker, name in st.session_state.watchlist_dict.items():
+        res = get_stock_data(ticker, years_input, time_frame)
+        if not res:
+            continue
+    
+        tdf, trend_info = res
+        if trend_info is None or len(tdf) < 50:
+            continue
+    
+        slope = trend_info[0]
+    
+        # ========= 原本共振分數 =========
+        score = calc_resonance_score(tdf)
+        score_V2 = calc_resonance_score_V2(tdf)
+        # ========= AI 市場型態（穩定版） =========
+        patterns = detect_market_pattern(tdf, slope)
+        stable_pattern = update_pattern_history(ticker, patterns)
+    
+        # ========= 價格 / TL =========
+        curr_price = float(tdf['Close'].iloc[-1])
+        tl_last = tdf['TL'].iloc[-1]
+        dist_pct = ((curr_price - tl_last) / tl_last) * 100
+    
+        resonance_rows.append({
+            "代號": ticker,
+            "名稱": name,
+            "共振分數": score,
+            "共振分數V2": f"{score_V2:.1f}",
+            "狀態": score_label(score),
+            "最新價格": f"{curr_price:.1f}",
+            "偏離 TL": f"{dist_pct:+.1f}%",
+            "AI 市場型態": stable_pattern,
+        })
+    
+    # ========= 顯示排行榜 =========
+    if resonance_rows:
+        df_rank = pd.DataFrame(resonance_rows)
+    
+        # 依共振分數排序（高 → 低）
+        df_rank = df_rank.sort_values("共振分數", ascending=False)
+    
+        st.dataframe(
+            df_rank,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "代號": st.column_config.TextColumn(width="small"),
+                "名稱": st.column_config.TextColumn(width="small"),
+                "共振分數": st.column_config.NumberColumn(width="small"),
+                "共振分數V2": st.column_config.NumberColumn(width="small"),
+                "狀態": st.column_config.TextColumn(width="small"),
+                "最新價格": st.column_config.TextColumn(width="small"),
+                "偏離 TL": st.column_config.TextColumn(width="small"),
+                "AI 市場型態": st.column_config.TextColumn(width="large"),
+            }
+        )
+    else:
+        st.info("目前收藏清單中沒有可計算共振分數的股票。")
+
 
 # --- 9. 掃描 ---
 st.divider()
 if st.button("🔄 開始掃描所有標的狀態"):
     summary = []
     for t, name in st.session_state.watchlist_dict.items():
-        res = get_stock_data(t, years_input)
+        res = get_stock_data(t, years_input, time_frame)
         if res:
             tdf, _ = res; p = float(tdf['Close'].iloc[-1]); t_tl = tdf['TL'].iloc[-1]
             if p > tdf['TL+2SD'].iloc[-1]: pos = "🔴 天價"
@@ -588,7 +1098,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
 # --- 3. UI 顯示部分 (放置於指標儀表板下方) ---
 
 # 點擊掃描按鈕後觸發
-if st.button("🔍 執行全自動多指標雷達掃描"):
+if st.button("🔍 多指標雷達掃描"):
     st.cache_data.clear() 
     with st.spinner("正在計算 RSI/MACD/MA/BIAS 共振訊號..."):
         adv_alerts = check_advanced_alerts(st.session_state.watchlist_dict, years_input)
