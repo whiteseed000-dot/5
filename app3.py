@@ -1214,7 +1214,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
-                "AI 市場型態": st.column_config.TextColumn(width="large"),
+                "AI 市場型態": st.column_config.TextColumn(),
             }
         )
     else:
