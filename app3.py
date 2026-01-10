@@ -724,27 +724,7 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         
         df['RANGE_N_prev'] = df['RANGE_N'].shift(1)
         
-                # 區間價格趨勢（線性回歸）
-        xx = np.arange(W)
-        price_slope = np.polyfit(xx, window['Close'], 1)[0]
-        
-        # 區間價格曲率（二階）
-        price_curve = np.polyfit(xx, window['Close'], 2)[0]
-        
-        # 區間低點抬高程度
-        higher_lows = window['Low'].iloc[-5:].min() > window['Low'].iloc[:5].min()
-        
-        # 區間動能趨勢
-        rsi_slope = np.polyfit(xx, window['RSI14'], 1)[0]
-        macd_slope = np.polyfit(xx, window['MACD'], 1)[0]
-        
-        # 區間波動收斂
-        range_shrink = (
-            window['High'].max() - window['Low'].min()
-        ) < (
-            df.iloc[-2*W:-W]['High'].max() -
-            df.iloc[-2*W:-W]['Low'].min()
-        )
+       
         
         return df, (slope, r_squared)
     except: return None
