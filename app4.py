@@ -355,7 +355,7 @@ def detect_market_pattern(df, slope):
         close.iloc[-flag_window:].mean() > tl.iloc[-1] and
         slope > 0
     ):
-        patterns.append("🟡 L1 多頭旗形")
+        patterns.append("🟡 多頭旗形（區間）")
 
     # =========================
     # 🟡 回檔不破趨勢（區間）
@@ -364,7 +364,7 @@ def detect_market_pattern(df, slope):
         close.iloc[-10:].min() > tl.iloc[-1] and
         slope > 0
     ):
-        patterns.append("🟡 L1 回檔不破趨勢")
+        patterns.append("🟡 回檔不破趨勢（區間）")
 
     # =========================
     # 🟡 均線糾結（結構）
@@ -374,7 +374,7 @@ def detect_market_pattern(df, slope):
         ma_l = df[f"MA{ma_periods[-1]}"].iloc[-10:].mean()
 
         if abs(ma_s - ma_l) / ma_l < 0.01:
-            patterns.append("🟡 L1 均線糾結")
+            patterns.append("🟡 均線糾結（區間）")
 
     
     # =========================
@@ -391,7 +391,7 @@ def detect_market_pattern(df, slope):
         y.min() < df['TL-1SD'].iloc[-1] and
         close.iloc[-5:].mean() > close.iloc[-10:-5].mean()
     ):
-        patterns.append("🟢 L1 碗型底（圓弧底）")
+        patterns.append("🟢 碗型底（圓弧底）")
         
     # === 🟢 區間碗型底（Rounded Bottom）===
     if (
@@ -416,6 +416,14 @@ def detect_market_pattern(df, slope):
 
     if price_slope < 0 and rsi_slope < 0:
         patterns.append("L1｜🔴 弱勢趨勢結構（區間）")
+
+    
+        # === ⚪ 箱型整理 ===
+    if (
+        df['High'].iloc[-15:].max() - df['Low'].iloc[-15:].min()
+        < 1.5 * (curr['TL+1SD'] - curr['TL'])
+    ):
+        patterns.append("⚪ 箱型整理（區間）")
     
     # === 🔴 區間頭部派發 ===
     if (
@@ -478,12 +486,6 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🟢 雙底確認")
 
-        # === ⚪ 箱型整理 ===
-    if (
-        df['High'].iloc[-10:].max() - df['Low'].iloc[-10:].min()
-        < 1.5 * (curr['TL+1SD'] - curr['TL'])
-    ):
-        patterns.append("⚪ 箱型整理")
 
         # === 🟡 多頭旗形 ===
     if (
