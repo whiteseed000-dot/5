@@ -279,20 +279,44 @@ def calc_resonance_score_V2(df):
 
     return max(0, min(score, 100))
 
-import numpy as np
+def detect_market_pattern(df, slope):
+    curr = df.iloc[-1]
+    prev = df.iloc[-2]
 
-import numpy as np
-
-def detect_L1_patterns(df, slope):
     patterns = []
+
+    W = 20  # 可調 10~20
+    window = df.iloc[-W:]
+    
+    # 區間價格趨勢（線性回歸）
+    x = np.arange(W)
+    price_slope = np.polyfit(x, window['Close'], 1)[0]
+    
+    # 區間價格曲率（二階）
+    price_curve = np.polyfit(x, window['Close'], 2)[0]
+    
+    # 區間低點抬高程度
+    higher_lows = window['Low'].iloc[-5:].min() > window['Low'].iloc[:5].min()
+    
+    # 區間動能趨勢
+    rsi_slope = np.polyfit(x, window['RSI14'], 1)[0]
+    macd_slope = np.polyfit(x, window['MACD'], 1)[0]
+    
+    # 區間波動收斂
+    range_shrink = (
+        window['High'].max() - window['Low'].min()
+    ) < (
+        df.iloc[-2*W:-W]['High'].max() -
+        df.iloc[-2*W:-W]['Low'].min()
+    )
 
     close = df['Close']
     high = df['High']
     low = df['Low']
-    range_n = df['RANGE_N']
     tl = df['TL']
-
     ma_periods = df.attrs.get('ma_periods', [])
+    
+    ###區間型態###
 
     # =========================
     # 🟢 結構性底部（區間版）
@@ -302,7 +326,7 @@ def detect_L1_patterns(df, slope):
         close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
         df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean()
     ):
-        patterns.append("🟢 L1 結構性底部")
+        patterns.append("🟢 結構性底部（區間）")
 
     # =========================
     # 🟢 雙底確認（區間）
@@ -312,23 +336,7 @@ def detect_L1_patterns(df, slope):
         close.iloc[-10:-7].mean() < 0.02 and
         df['RSI14'].iloc[-3:].mean() > df['RSI14'].iloc[-10:-7].mean()
     ):
-        patterns.append("🟢 L1 雙底確認")
-
-    # =========================
-    # 🟢 碗型底 / 圓弧底
-    # =========================
-    bowl_window = 25
-    x = np.arange(bowl_window)
-    y = close.iloc[-bowl_window:]
-
-    quad_coef = np.polyfit(x, y, 2)[0]
-
-    if (
-        quad_coef > 0 and
-        y.min() < df['TL-1SD'].iloc[-1] and
-        close.iloc[-5:].mean() > close.iloc[-10:-5].mean()
-    ):
-        patterns.append("🟢 L1 碗型底（圓弧底）")
+        patterns.append("🟢 雙底確認（區間）")
 
     # =========================
     # 🟡 多頭旗形（新增）
@@ -347,7 +355,7 @@ def detect_L1_patterns(df, slope):
         close.iloc[-flag_window:].mean() > tl.iloc[-1] and
         slope > 0
     ):
-        patterns.append("🟡 L1 多頭旗形")
+        patterns.append("🟡 多頭旗形（區間）")
 
     # =========================
     # 🟡 回檔不破趨勢（區間）
@@ -356,7 +364,7 @@ def detect_L1_patterns(df, slope):
         close.iloc[-10:].min() > tl.iloc[-1] and
         slope > 0
     ):
-        patterns.append("🟡 L1 回檔不破趨勢")
+        patterns.append("🟡 回檔不破趨勢（區間）")
 
     # =========================
     # 🟡 均線糾結（結構）
@@ -366,25 +374,66 @@ def detect_L1_patterns(df, slope):
         ma_l = df[f"MA{ma_periods[-1]}"].iloc[-10:].mean()
 
         if abs(ma_s - ma_l) / ma_l < 0.01:
-            patterns.append("🟡 L1 均線糾結")
+            patterns.append("🟡 均線糾結（區間）")
 
+    
     # =========================
-    # ⚪ 箱型整理
+    # 🟢 碗型底 / 圓弧底
     # =========================
-    if (
-        high.iloc[-15:].max() - low.iloc[-15:].min()
-        < 1.5 * (df['TL+1SD'].iloc[-1] - tl.iloc[-1])
-    ):
-        patterns.append("⚪ L1 箱型整理")
+    bowl_window = 25
+    x = np.arange(bowl_window)
+    y = close.iloc[-bowl_window:]
 
-    # =========================
-    # ⚪ 盤整收斂
-    # =========================
+    quad_coef = np.polyfit(x, y, 2)[0]
+
     if (
-        range_n.iloc[-12:].mean() < 0.7 * range_n.iloc[-24:-12].mean() and
-        abs(close.iloc[-12:].mean() - tl.iloc[-1]) / tl.iloc[-1] < 0.015
+        quad_coef > 0 and
+        y.min() < df['TL-1SD'].iloc[-1] and
+        close.iloc[-5:].mean() > close.iloc[-10:-5].mean()
     ):
-        patterns.append("⚪ L1 盤整收斂")
+        patterns.append("🟢 碗型底（圓弧底）")
+        
+    # === 🟢 區間碗型底（Rounded Bottom）===
+    if (
+        price_curve > 0 and
+        -0.01 < price_slope < 0.02 and
+        higher_lows and
+        rsi_slope > 0 and
+        curr['Close'] < curr['TL-1SD']
+    ):
+        patterns.append("🟢 區間碗型底（區間）")
+
+    # === ⚪ 區間盤整（非趨勢）===
+    if (
+        abs(price_slope) < 0.01 and
+        range_shrink and
+        45 < curr['RSI14'] < 55
+    ):
+        patterns.append("⚪ 區間盤整（區間）")
+
+    if price_slope > 0 and rsi_slope > 0:
+        patterns.append("🟡 上升趨勢結構（區間）")
+
+    if price_slope < 0 and rsi_slope < 0:
+        patterns.append("🔴 弱勢趨勢結構（區間）")
+
+    
+        # === ⚪ 箱型整理 ===
+    if (
+        df['High'].iloc[-15:].max() - df['Low'].iloc[-15:].min()
+        < 1.5 * (curr['TL+1SD'] - curr['TL'])
+    ):
+        patterns.append("⚪ 箱型整理（區間）")
+    
+    # === 🔴 區間頭部派發 ===
+    if (
+        price_slope <= 0 and
+        price_curve < 0 and
+        macd_slope < 0 and
+        curr['Close'] > curr['TL+1SD']
+    ):
+        patterns.append("🔴 區間頭部派發（區間）")
+
 
     # =========================
     # ⚪ 三角收斂（新增）
@@ -397,16 +446,7 @@ def detect_L1_patterns(df, slope):
     l_slope = np.polyfit(range(tri_window), ls, 1)[0]
 
     if h_slope < 0 and l_slope > 0:
-        patterns.append("⚪ L1 三角收斂")
-
-    # =========================
-    # 🔴 弱勢趨勢延續（結構）
-    # =========================
-    if (
-        close.iloc[-10:].max() < tl.iloc[-1] and
-        slope < 0
-    ):
-        patterns.append("🔴 L1 弱勢趨勢延續")
+        patterns.append("⚪ 三角收斂（區間）")
 
     # =========================
     # 🔴 跌破關鍵均線（結構）
@@ -418,424 +458,179 @@ def detect_L1_patterns(df, slope):
             close.iloc[-5:].mean() < ma_mid.iloc[-5:].mean() and
             slope < 0
         ):
-            patterns.append("🔴 L1 跌破關鍵均線")
+            patterns.append("🔴 跌破關鍵均線（區間）")
+        
+    ###區間型態###
 
-    return patterns
-def detect_L2_triggers(df, slope):
-    curr = df.iloc[-1]
-    prev = df.iloc[-2]
 
-    triggers = []
-
-    # =========================
-    # 🔴 趨勢末端（動能衰竭）
-    # =========================
+    # === 🔴 趨勢末端（動能衰竭）===
     if (
         curr['Close'] > prev['Close'] and
         curr['RSI14'] < prev['RSI14'] and
         curr['MACD'] < prev['MACD']
     ):
-        triggers.append("🔴 L2 趨勢末端（動能衰竭）")
+        patterns.append("🔴 趨勢末端（動能衰竭）")
 
-    # =========================
-    # 🟢 V 型反轉（急彈）
-    # =========================
+        # === 🟢 V 型反轉 ===
     if (
         prev['Close'] < curr['TL-2SD'] and
         curr['Close'] > curr['TL-1SD'] and
         (curr['RSI14'] - prev['RSI14']) > 10
     ):
-        triggers.append("🟢 L2 V 型反轉")
+        patterns.append("🟢 V 型反轉")
 
-    # =========================
-    # 🟢 雙底確認（單點）
-    # =========================
+        # === 🟢 雙底確認 ===
     if (
         abs(curr['Close'] - df['Close'].iloc[-6]) / df['Close'].iloc[-6] < 0.02 and
         curr['RSI14'] > df['RSI14'].iloc[-6]
     ):
-        triggers.append("🟢 L2 雙底確認")
+        patterns.append("🟢 雙底確認")
 
-    # =========================
-    # ⚪ 箱型整理中的反應
-    # =========================
-    if (
-        df['High'].iloc[-10:].max() - df['Low'].iloc[-10:].min()
-        < 1.5 * (curr['TL+1SD'] - curr['TL'])
-    ):
-        triggers.append("⚪ L2 箱型整理中")
 
-    # =========================
-    # 🟡 多頭旗形續行（觸發）
-    # =========================
+        # === 🟡 多頭旗形 ===
     if (
         df['Close'].iloc[-6] > curr['TL+1SD'] and
         curr['Close'] > curr['TL'] and
         curr['RSI14'] > 50
     ):
-        triggers.append("🟡 L2 多頭旗形續行")
+        patterns.append("🟡 多頭旗形（續行）")
 
-    # =========================
-    # 🔴 假突破
-    # =========================
+        # === 🔴 假突破 ===
     if (
         prev['Close'] > curr['TL+1SD'] and
         curr['Close'] < curr['TL'] and
         curr['MACD'] < prev['MACD']
     ):
-        triggers.append("🔴 L2 假突破")
+        patterns.append("🔴 假突破")
 
-    # =========================
-    # ⚪ 波動擠壓
-    # =========================
+        # === ⚪ 波動擠壓（即將爆發）===
     if (
         curr['RANGE_N'] <
         df['RANGE_N'].rolling(50).quantile(0.2).iloc[-1]
     ):
-        triggers.append("⚪ L2 波動擠壓")
+        patterns.append("⚪ 波動擠壓（即將爆發）")
 
-    # =========================
-    # 🟢 碗型底的啟動點
-    # =========================
-    if (
-        curr['Close'] < curr['TL-1SD'] and
-        curr['ddP'] > 0 and
-        curr['RSI14'] > df['RSI14'].iloc[-4] and
-        curr['MACD'] > df['MACD'].iloc[-4]
-    ):
-        triggers.append("🟢 L2 碗型底啟動")
 
-    # =========================
-    # ⚪ 盤整收斂中的變化
-    # =========================
+    # === ⚪ 財訊：盤整收斂型態 ===
     if (
         curr['RANGE_N'] < curr['RANGE_N_prev'] and
         abs(curr['Close'] - curr['TL']) / curr['TL'] < 0.01 and
         abs(curr['MACD']) < abs(prev['MACD'])
     ):
-        triggers.append("⚪ L2 盤整收斂中")
+        patterns.append("⚪ 財訊盤整收斂")
 
-    # =========================
-    # 🟡 三角收斂臨界
-    # =========================
+    # === 🟡 財訊：三角收斂（突破前）===
     if (
         curr['RANGE_N'] < df['RANGE_N'].iloc[-2] and
         df['RANGE_N'].iloc[-2] < df['RANGE_N'].iloc[-3] and
         45 < curr['RSI14'] < 55
     ):
-        triggers.append("🟡 L2 三角收斂臨界")
+        patterns.append("🟡 三角收斂（突破前）")
 
-    # =========================
-    # 🟡 盤整後上突破
-    # =========================
+    # === 🟡 財訊：盤整後上突破 ===
     if (
         curr['Close'] > df['Close'].iloc[-11:-1].max() and
         df['RANGE_N'].iloc[-2] < df['RANGE_N'].iloc[-3] and
         curr['MACD'] > curr['Signal'] and
         curr['RSI14'] > 55
     ):
-        triggers.append("🟡 L2 盤整後上突破")
+        patterns.append("🟡 盤整後上突破（起漲型）")
 
-    # =========================
-    # 🟢 結構性底部的啟動
-    # =========================
+    # --- 結構性底部 ---
     if (
         curr['Close'] < curr['TL-1SD'] and
         curr['RSI7'] > prev['RSI7'] and
         curr['MACD'] > prev['MACD']
     ):
-        triggers.append("🟢 L2 結構性底部啟動")
+        patterns.append("🟢 結構性底部")
 
-    # =========================
-    # 🟡 趨勢轉折（MA）
-    # =========================
+    # --- 趨勢轉折 ---
     ma_periods = df.attrs.get('ma_periods', [])
     if ma_periods:
         ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
-        if (
-            prev['Close'] < ma_mid.iloc[-2] and
-            curr['Close'] > ma_mid.iloc[-1] and
-            curr['MACD'] > curr['Signal']
-        ):
-            triggers.append("🟡 L2 趨勢轉折")
+        if prev['Close'] < ma_mid.iloc[-2] and curr['Close'] > ma_mid.iloc[-1]:
+            if curr['MACD'] > curr['Signal']:
+                patterns.append("🟡 趨勢轉折")
 
-    # =========================
-    # 🔴 過熱 / 疲勞 / 轉弱
-    # =========================
-    if curr['Close'] > curr['TL+2SD'] and curr['MACD'] < prev['MACD']:
-        triggers.append("🔴 L2 過熱風險")
+    if (
+        curr['Close'] > curr['TL+1SD'] and
+        slope > 0 and
+        curr['RSI14'] > 60 and
+        curr['MACD'] > curr['Signal']
+    ):
+        patterns.append("🟡 強勢趨勢延伸（高檔鈍化）")
 
-    if curr['Close'] > curr['TL+1SD'] and curr['RSI14'] < prev['RSI14']:
-        triggers.append("🔴 L2 多頭疲勞")
+    # --- 過熱反轉 ---
+    if (
+        curr['Close'] > curr['TL+2SD'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 過熱風險")
+        
+    if curr['Close'] < curr['TL-1SD'] and slope < 0 and curr['Close'] > curr['TL-2SD']:
+        patterns.append("🔴 弱勢趨勢延續")
 
     if curr['RSI14'] < 20 and curr['Close'] < curr['TL-2SD']:
-        triggers.append("🟢 L2 超跌反彈觀察")
-
-    # =========================
-    # 🔴 跌破關鍵均線
-    # =========================
-    if ma_periods:
-        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
-        if (
-            prev['Close'] > ma_mid.iloc[-2] and
-            curr['Close'] < ma_mid.iloc[-1] and
-            slope < 0
-        ):
-            triggers.append("🔴 L2 跌破關鍵均線")
-
-    return triggers
-
-def detect_market_structure(df, slope):
-    """
-    回傳：
-    {
-        'L1': [...],  # 結構型態
-        'L2': [...]   # 單點觸發
-    }
-    """
-
-    L1, L2 = [], []
-
-    close = df['Close']
-    high = df['High']
-    low = df['Low']
-    tl = df['TL']
-
-    rsi = df['RSI14']
-    macd = df['MACD']
-    signal = df['Signal']
-
-    curr = df.iloc[-1]
-    prev = df.iloc[-2]
-
-    ma_periods = df.attrs.get('ma_periods', [])
-
-    # =====================================================
-    # ===================== L1：結構 ======================
-    # =====================================================
-
-    # 🟢 結構性底部
-    if (
-        close.iloc[-20:].min() < df['TL-1SD'].iloc[-1] and
-        close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
-        rsi.iloc[-5:].mean() > rsi.iloc[-15:-5].mean()
-    ):
-        L1.append("🟢 結構性底部")
-
-    # 🟢 雙底
-    left = close.iloc[-25:-20].mean()
-    right = close.iloc[-5:].mean()
-    if abs(right - left) / left < 0.03:
-        L1.append("🟢 雙底結構")
-
-    # 🟢 碗型底（圓弧）
-    W = 25
-    curve = np.polyfit(range(W), close.iloc[-W:], 2)[0]
-    if curve > 0 and close.iloc[-5:].mean() > close.iloc[-10:-5].mean():
-        L1.append("🟢 碗型底")
-
-    # 🟡 多頭旗形
-    pole = close.iloc[-30:-10]
-    flag = close.iloc[-10:]
-    if (
-        pole.pct_change().sum() > 0.15 and
-        flag.max() - flag.min() < 0.4 * (pole.max() - pole.min()) and
-        slope > 0
-    ):
-        L1.append("🟡 多頭旗形")
-
-    # ⚪ 盤整收斂
-    if (
-        (high.iloc[-15:].max() - low.iloc[-15:].min()) <
-        0.7 * (high.iloc[-30:-15].max() - low.iloc[-30:-15].min())
-    ):
-        L1.append("⚪ 盤整收斂")
-
-    # ⚪ 三角收斂
-    W = 15
-    if (
-        np.polyfit(range(W), high.iloc[-W:], 1)[0] < 0 and
-        np.polyfit(range(W), low.iloc[-W:], 1)[0] > 0
-    ):
-        L1.append("⚪ 三角收斂")
-
-    # 🔴 弱勢趨勢
-    if close.iloc[-10:].max() < tl.iloc[-1] and slope < 0:
-        L1.append("🔴 弱勢趨勢延續")
-
-    # =====================================================
-    # ===================== L2：觸發 ======================
-    # =====================================================
-
-    # 🟡 突破盤整
-    if (
-        "⚪ 盤整收斂" in L1 and
-        curr['Close'] > high.iloc[-20:-1].max() and
-        macd.iloc[-1] > signal.iloc[-1]
-    ):
-        L2.append("🟡 盤整突破觸發")
-
-    # 🟢 結構底 + 動能翻正
-    if (
-        "🟢 結構性底部" in L1 and
-        macd.iloc[-1] > macd.iloc[-2] and
-        rsi.iloc[-1] > 50
-    ):
-        L2.append("🟢 底部動能確認")
-
-    # 🟡 多頭旗形突破
-    if (
-        "🟡 多頭旗形" in L1 and
-        curr['Close'] > high.iloc[-10:].max()
-    ):
-        L2.append("🟡 旗形突破")
-
-    # 🔴 假突破
-    if (
-        curr['Close'] > df['TL+1SD'].iloc[-1] and
-        prev['Close'] > df['TL+1SD'].iloc[-2] and
-        curr['Close'] < prev['Close']
-    ):
-        L2.append("🔴 假突破")
-
-    # 🔴 動能背離
-    if (
-        curr['Close'] > prev['Close'] and
-        rsi.iloc[-1] < rsi.iloc[-2] and
-        macd.iloc[-1] < macd.iloc[-2]
-    ):
-        L2.append("🔴 動能背離")
-
-    # 🔴 跌破結構
-    if (
-        "🟢 結構性底部" in L1 and
-        curr['Close'] < low.iloc[-10:].min()
-    ):
-        L2.append("🔴 結構失敗")
-
-    return {
-        "L1": L1,
-        "L2": L2
-    }
-
-import numpy as np
-
-def detect_market_pattern(df, slope, W=15):
-    curr = df.iloc[-1]
-    prev = df.iloc[-2]
-    patterns = []
-
-    if len(df) < W + 10:
-        return patterns
-
-    # =========================
-    # 區間資料
-    # =========================
-    window = df.iloc[-W:]
-    prev_window = df.iloc[-2*W:-W]
-    x = np.arange(W)
-
-    price_slope = np.polyfit(x, window['Close'], 1)[0]
-    price_curve = np.polyfit(x, window['Close'], 2)[0]
-    rsi_slope = np.polyfit(x, window['RSI14'], 1)[0]
-    macd_slope = np.polyfit(x, window['MACD'], 1)[0]
-
-    range_now = window['High'].max() - window['Low'].min()
-    range_prev = prev_window['High'].max() - prev_window['Low'].min()
-    range_shrink = range_now < range_prev
-
-    higher_lows = window['Low'].iloc[-5:].min() > window['Low'].iloc[:5].min()
-
-    # ==================================================
-    # L1：區間型態（結構）
-    # ==================================================
-
-    if price_curve > 0 and higher_lows and rsi_slope > 0:
-        patterns.append("L1｜🟢 碗型底（區間結構）")
-
-    if abs(price_slope) < 0.01 and range_shrink:
-        patterns.append("L1｜⚪ 箱型 / 盤整結構")
-
-    if price_slope > 0 and rsi_slope > 0:
-        patterns.append("L1｜🟡 上升趨勢結構")
-
-    if price_slope < 0 and rsi_slope < 0:
-        patterns.append("L1｜🔴 弱勢趨勢結構")
-
-    if price_curve < 0 and macd_slope < 0:
-        patterns.append("L1｜🔴 派發 / 趨勢末端結構")
-
-    # ==================================================
-    # L2：單點觸發（你原本的條件，幾乎全保留）
-    # ==================================================
-
-    if curr['Close'] > prev['Close'] and curr['RSI14'] < prev['RSI14'] and curr['MACD'] < prev['MACD']:
-        patterns.append("L2｜🔴 趨勢末端（動能衰竭）")
-
-    if prev['Close'] < curr['TL-2SD'] and curr['Close'] > curr['TL-1SD'] and (curr['RSI14'] - prev['RSI14']) > 10:
-        patterns.append("L2｜🟢 V 型反轉")
-
-    if abs(curr['Close'] - df['Close'].iloc[-6]) / df['Close'].iloc[-6] < 0.02 and curr['RSI14'] > df['RSI14'].iloc[-6]:
-        patterns.append("L2｜🟢 雙底確認")
-
-    if df['High'].iloc[-10:].max() - df['Low'].iloc[-10:].min() < 1.5 * (curr['TL+1SD'] - curr['TL']):
-        patterns.append("L2｜⚪ 箱型整理（單點）")
-
-    if df['Close'].iloc[-6] > curr['TL+1SD'] and curr['Close'] > curr['TL'] and curr['RSI14'] > 50:
-        patterns.append("L2｜🟡 多頭旗形")
-
-    if prev['Close'] > curr['TL+1SD'] and curr['Close'] < curr['TL'] and curr['MACD'] < prev['MACD']:
-        patterns.append("L2｜🔴 假突破")
-
-    if curr['RANGE_N'] < df['RANGE_N'].rolling(50).quantile(0.2).iloc[-1]:
-        patterns.append("L2｜⚪ 波動擠壓")
-
-    if curr['Close'] < curr['TL-1SD'] and curr['RSI7'] > prev['RSI7'] and curr['MACD'] > prev['MACD']:
-        patterns.append("L2｜🟢 結構性底部")
-
-    ma_periods = df.attrs.get('ma_periods', [])
-    if ma_periods:
-        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
-        if prev['Close'] < ma_mid.iloc[-2] and curr['Close'] > ma_mid.iloc[-1] and curr['MACD'] > curr['Signal']:
-            patterns.append("L2｜🟡 趨勢轉折（均線）")
-
-        if prev['Close'] > ma_mid.iloc[-2] and curr['Close'] < ma_mid.iloc[-1] and slope < 0:
-            patterns.append("L2｜🔴 跌破關鍵均線")
-
-    if curr['Close'] > curr['TL+2SD'] and curr['MACD'] < prev['MACD']:
-        patterns.append("L2｜🔴 過熱反轉")
-
-    if curr['RSI14'] < 20 and curr['Close'] < curr['TL-2SD']:
-        patterns.append("L2｜🟢 超跌反彈觀察")
-
-    # 🟢 底部背離觸發
+        patterns.append("🟢 超跌反彈觀察")
+        
+    # --- 底部背離（價格破底、動能回升） ---
     if (
         curr['Close'] < prev['Close'] and
         curr['RSI14'] > prev['RSI14'] and
-        curr['MACD'] > prev['MACD']
+        curr['MACD'] > prev['MACD'] and
+        curr['Close'] < curr['TL-1SD']
     ):
-        patterns.append("L2｜🟢 底部背離")
+        patterns.append("🟢 底部背離（潛在反轉）")
 
-    
-        # 🟡 回檔不破 TL
+    # --- 回檔不破 TL（多頭續行） ---
     if (
         curr['Close'] > curr['TL'] and
         prev['Close'] < curr['TL+1SD'] and
         slope > 0 and
         curr['RSI14'] > 45
     ):
-        patterns.append("L2｜🟡 回檔不破趨勢")
+        patterns.append("🟡 回檔不破趨勢")
 
-        # ⚪ 動能收斂（即將變盤）
+    # --- 均線糾結突破 ---
+    if ma_periods:
+        ma_short = df[f"MA{ma_periods[0]}"]
+        ma_long = df[f"MA{ma_periods[-1]}"]
+    
+        if (
+            abs(ma_short.iloc[-1] - ma_long.iloc[-1]) / ma_long.iloc[-1] < 0.01 and
+            curr['Close'] > ma_short.iloc[-1] and
+            curr['MACD'] > curr['Signal']
+        ):
+            patterns.append("🟡 均線糾結突破")
+
+        # --- 多頭疲勞 ---
+    if (
+        curr['Close'] > curr['TL+1SD'] and
+        curr['RSI14'] < prev['RSI14'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 多頭趨勢疲勞")
+
+        # --- 跌破關鍵均線 ---
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+    
+        if (
+            prev['Close'] > ma_mid.iloc[-2] and
+            curr['Close'] < ma_mid.iloc[-1] and
+            slope < 0
+        ):
+            patterns.append("🔴 跌破關鍵均線")
+
+        # --- 盤整收斂 ---
     if (
         abs(curr['Close'] - curr['TL']) / curr['TL'] < 0.01 and
         abs(curr['RSI14'] - 50) < 5 and
         abs(curr['MACD']) < abs(prev['MACD'])
     ):
-        patterns.append("L2｜⚪ 動能收斂（變盤前）")
-
+        patterns.append("⚪ 盤整收斂")
+    
     return patterns
-
 
 def build_resonance_rank(stock_list, time_frame):
     results = []
@@ -1080,7 +875,6 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (+10%)
         df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (-10%)
 
-        ###
         # 價格一階 / 二階差分（趨勢彎曲度）
         df['dP'] = df['Close'].diff()
         df['ddP'] = df['dP'].diff()
@@ -1093,7 +887,6 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         )
         
         df['RANGE_N_prev'] = df['RANGE_N'].shift(1)
-
         
         return df, (slope, r_squared)
     except: return None
@@ -1406,10 +1199,8 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
         score = calc_resonance_score(tdf)
         score_V2 = calc_resonance_score_V2(tdf)
         # ========= AI 市場型態（穩定版） =========
-
-        patterns_L1 = detect_L1_patterns(tdf, slope)
-        patterns_L2 = detect_L2_triggers(tdf, slope)        
-
+        patterns = detect_market_pattern(tdf, slope)
+        stable_pattern = update_pattern_history(ticker, patterns)
     
         # ========= 價格 / TL =========
         curr_price = float(tdf['Close'].iloc[-1])
@@ -1424,9 +1215,9 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
-            "AI 市場型態":  patterns_L1 + patterns_L2
-        }) 
-
+            "AI 市場型態": stable_pattern,
+        })
+    
     # ========= 顯示排行榜 =========
     if resonance_rows:
         df_rank = pd.DataFrame(resonance_rows)
@@ -1485,6 +1276,3 @@ if st.button("🔍 多指標雷達掃描"):
                     st.error(f"⚠️ **減碼建議：{alert['name']}** ({alert['reason']})")
         else:
             st.info("目前沒有標的符合共振條件。")
-
-
-
