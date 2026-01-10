@@ -325,7 +325,7 @@ def detect_market_pattern(df, slope):
         close.iloc[-20:].min() < df['TL-1SD'].iloc[-1] and
         close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
         df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean() and
-        -0.01 < price_slope < 0.02
+        -0.01 < price_slope < 0.05
     ):
         patterns.append("🟢 結構性底部（區間）")
 
