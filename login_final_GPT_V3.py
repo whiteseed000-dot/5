@@ -324,7 +324,8 @@ def detect_market_pattern(df, slope):
     if (
         close.iloc[-20:].min() < df['TL-1SD'].iloc[-1] and
         close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
-        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean()
+        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean() and
+        -0.01 < price_slope < 0.05
     ):
         patterns.append("🟢 結構性底部（區間）")
 
@@ -332,9 +333,9 @@ def detect_market_pattern(df, slope):
     # 🟢 雙底確認（區間）
     # =========================
     if (
-        abs(close.iloc[-3:].mean() - close.iloc[-10:-7].mean()) /
-        close.iloc[-10:-7].mean() < 0.02 and
-        df['RSI14'].iloc[-3:].mean() > df['RSI14'].iloc[-10:-7].mean()
+        abs(close.iloc[-5:].mean() - close.iloc[-20:-15].mean()) /
+        close.iloc[-20:-15].mean() < 0.03 and
+        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-20:-15].mean()
     ):
         patterns.append("🟢 雙底確認（區間）")
 
@@ -376,23 +377,6 @@ def detect_market_pattern(df, slope):
         if abs(ma_s - ma_l) / ma_l < 0.01:
             patterns.append("🟡 均線糾結（區間）")
 
-    
-    # =========================
-    # 🟢 碗型底 / 圓弧底
-    # =========================
-    bowl_window = 25
-    x = np.arange(bowl_window)
-    y = close.iloc[-bowl_window:]
-
-    quad_coef = np.polyfit(x, y, 2)[0]
-
-    if (
-        quad_coef > 0 and
-        y.min() < df['TL-1SD'].iloc[-1] and
-        close.iloc[-5:].mean() > close.iloc[-10:-5].mean()
-    ):
-        patterns.append("🟢 碗型底（圓弧底）")
-        
     # === 🟢 區間碗型底（Rounded Bottom）===
     if (
         price_curve > 0 and
@@ -420,7 +404,7 @@ def detect_market_pattern(df, slope):
     
         # === ⚪ 箱型整理 ===
     if (
-        df['High'].iloc[-15:].max() - df['Low'].iloc[-15:].min()
+        df['High'].iloc[-50:].max() - df['Low'].iloc[-50:].min()
         < 1.5 * (curr['TL+1SD'] - curr['TL'])
     ):
         patterns.append("⚪ 箱型整理（區間）")
@@ -482,7 +466,7 @@ def detect_market_pattern(df, slope):
         # === 🟢 雙底確認 ===
     if (
         abs(curr['Close'] - df['Close'].iloc[-6]) / df['Close'].iloc[-6] < 0.02 and
-        curr['RSI14'] > df['RSI14'].iloc[-6]
+        curr['RSI14'] > df['RSI14'].iloc[-6] 
     ):
         patterns.append("🟢 雙底確認")
 
