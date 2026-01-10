@@ -314,7 +314,6 @@ def detect_market_pattern(df, slope):
     high = df['High']
     low = df['Low']
     tl = df['TL']
-
     ma_periods = df.attrs.get('ma_periods', [])
     
     ###區間型態###
@@ -427,14 +426,6 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🔴 區間頭部派發（區間）")
 
-    # =========================
-    # ⚪ 盤整收斂
-    # =========================
-    if (
-        range_n.iloc[-12:].mean() < 0.7 * range_n.iloc[-24:-12].mean() and
-        abs(close.iloc[-12:].mean() - tl.iloc[-1]) / tl.iloc[-1] < 0.015
-    ):
-        patterns.append("⚪ L1 盤整收斂")
 
     # =========================
     # ⚪ 三角收斂（新增）
