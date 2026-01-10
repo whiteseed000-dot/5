@@ -1067,7 +1067,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
             hide_index=True,
             column_config={
                 "代號": st.column_config.TextColumn(width="small"),
-                "名稱": st.column_config.TextColumn(width="medium"),
+                "名稱": st.column_config.TextColumn(width="small"),
                 "共振分數": st.column_config.NumberColumn(width="small"),
                 "共振分數V2": st.column_config.NumberColumn(width="small"),
                 "狀態": st.column_config.TextColumn(width="small"),
