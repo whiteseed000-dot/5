@@ -421,6 +421,169 @@ def detect_L1_patterns(df, slope):
             patterns.append("🔴 L1 跌破關鍵均線")
 
     return patterns
+def detect_L2_triggers(df, slope):
+    curr = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    triggers = []
+
+    # =========================
+    # 🔴 趨勢末端（動能衰竭）
+    # =========================
+    if (
+        curr['Close'] > prev['Close'] and
+        curr['RSI14'] < prev['RSI14'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        triggers.append("🔴 L2 趨勢末端（動能衰竭）")
+
+    # =========================
+    # 🟢 V 型反轉（急彈）
+    # =========================
+    if (
+        prev['Close'] < curr['TL-2SD'] and
+        curr['Close'] > curr['TL-1SD'] and
+        (curr['RSI14'] - prev['RSI14']) > 10
+    ):
+        triggers.append("🟢 L2 V 型反轉")
+
+    # =========================
+    # 🟢 雙底確認（單點）
+    # =========================
+    if (
+        abs(curr['Close'] - df['Close'].iloc[-6]) / df['Close'].iloc[-6] < 0.02 and
+        curr['RSI14'] > df['RSI14'].iloc[-6]
+    ):
+        triggers.append("🟢 L2 雙底確認")
+
+    # =========================
+    # ⚪ 箱型整理中的反應
+    # =========================
+    if (
+        df['High'].iloc[-10:].max() - df['Low'].iloc[-10:].min()
+        < 1.5 * (curr['TL+1SD'] - curr['TL'])
+    ):
+        triggers.append("⚪ L2 箱型整理中")
+
+    # =========================
+    # 🟡 多頭旗形續行（觸發）
+    # =========================
+    if (
+        df['Close'].iloc[-6] > curr['TL+1SD'] and
+        curr['Close'] > curr['TL'] and
+        curr['RSI14'] > 50
+    ):
+        triggers.append("🟡 L2 多頭旗形續行")
+
+    # =========================
+    # 🔴 假突破
+    # =========================
+    if (
+        prev['Close'] > curr['TL+1SD'] and
+        curr['Close'] < curr['TL'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        triggers.append("🔴 L2 假突破")
+
+    # =========================
+    # ⚪ 波動擠壓
+    # =========================
+    if (
+        curr['RANGE_N'] <
+        df['RANGE_N'].rolling(50).quantile(0.2).iloc[-1]
+    ):
+        triggers.append("⚪ L2 波動擠壓")
+
+    # =========================
+    # 🟢 碗型底的啟動點
+    # =========================
+    if (
+        curr['Close'] < curr['TL-1SD'] and
+        curr['ddP'] > 0 and
+        curr['RSI14'] > df['RSI14'].iloc[-4] and
+        curr['MACD'] > df['MACD'].iloc[-4]
+    ):
+        triggers.append("🟢 L2 碗型底啟動")
+
+    # =========================
+    # ⚪ 盤整收斂中的變化
+    # =========================
+    if (
+        curr['RANGE_N'] < curr['RANGE_N_prev'] and
+        abs(curr['Close'] - curr['TL']) / curr['TL'] < 0.01 and
+        abs(curr['MACD']) < abs(prev['MACD'])
+    ):
+        triggers.append("⚪ L2 盤整收斂中")
+
+    # =========================
+    # 🟡 三角收斂臨界
+    # =========================
+    if (
+        curr['RANGE_N'] < df['RANGE_N'].iloc[-2] and
+        df['RANGE_N'].iloc[-2] < df['RANGE_N'].iloc[-3] and
+        45 < curr['RSI14'] < 55
+    ):
+        triggers.append("🟡 L2 三角收斂臨界")
+
+    # =========================
+    # 🟡 盤整後上突破
+    # =========================
+    if (
+        curr['Close'] > df['Close'].iloc[-11:-1].max() and
+        df['RANGE_N'].iloc[-2] < df['RANGE_N'].iloc[-3] and
+        curr['MACD'] > curr['Signal'] and
+        curr['RSI14'] > 55
+    ):
+        triggers.append("🟡 L2 盤整後上突破")
+
+    # =========================
+    # 🟢 結構性底部的啟動
+    # =========================
+    if (
+        curr['Close'] < curr['TL-1SD'] and
+        curr['RSI7'] > prev['RSI7'] and
+        curr['MACD'] > prev['MACD']
+    ):
+        triggers.append("🟢 L2 結構性底部啟動")
+
+    # =========================
+    # 🟡 趨勢轉折（MA）
+    # =========================
+    ma_periods = df.attrs.get('ma_periods', [])
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+        if (
+            prev['Close'] < ma_mid.iloc[-2] and
+            curr['Close'] > ma_mid.iloc[-1] and
+            curr['MACD'] > curr['Signal']
+        ):
+            triggers.append("🟡 L2 趨勢轉折")
+
+    # =========================
+    # 🔴 過熱 / 疲勞 / 轉弱
+    # =========================
+    if curr['Close'] > curr['TL+2SD'] and curr['MACD'] < prev['MACD']:
+        triggers.append("🔴 L2 過熱風險")
+
+    if curr['Close'] > curr['TL+1SD'] and curr['RSI14'] < prev['RSI14']:
+        triggers.append("🔴 L2 多頭疲勞")
+
+    if curr['RSI14'] < 20 and curr['Close'] < curr['TL-2SD']:
+        triggers.append("🟢 L2 超跌反彈觀察")
+
+    # =========================
+    # 🔴 跌破關鍵均線
+    # =========================
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+        if (
+            prev['Close'] > ma_mid.iloc[-2] and
+            curr['Close'] < ma_mid.iloc[-1] and
+            slope < 0
+        ):
+            triggers.append("🔴 L2 跌破關鍵均線")
+
+    return triggers
 
 
 def detect_market_pattern(df, slope, W=15):
