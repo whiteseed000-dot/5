@@ -380,7 +380,7 @@ def detect_market_pattern(df, slope):
     # =========================
     # 🟢 碗型底 / 圓弧底
     # =========================
-    bowl_window = 50
+    bowl_window = 100
     x = np.arange(bowl_window)
     y = close.iloc[-bowl_window:]
 
