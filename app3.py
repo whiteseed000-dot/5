@@ -466,7 +466,8 @@ def detect_market_pattern(df, slope):
         # === 🟢 雙底確認 ===
     if (
         abs(curr['Close'] - df['Close'].iloc[-6]) / df['Close'].iloc[-6] < 0.02 and
-        curr['RSI14'] > df['RSI14'].iloc[-6]
+        curr['RSI14'] > df['RSI14'].iloc[-6] and
+        0.01 <price_slope < 0.05
     ):
         patterns.append("🟢 雙底確認")
 
