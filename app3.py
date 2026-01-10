@@ -1435,7 +1435,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
         score_V2 = calc_resonance_score_V2(tdf)
         # ========= AI 市場型態（穩定版） =========
 
-        patterns = detect_market_pattern(tdf, slope)
+        patterns = detect_L1_patterns(tdf, slope)
         
         """
         patterns = detect_market_pattern(tdf, slope)
