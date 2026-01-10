@@ -1447,10 +1447,8 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
         score_V2 = calc_resonance_score_V2(tdf)
         # ========= AI 市場型態（穩定版） =========
 
-        patterns = detect_L1_patterns(tdf, slope)
-        
-
-
+        patterns_L1 = detect_L1_patterns(tdf, slope)
+        patterns_L2 = detect_L2_triggers(tdf, slope)        
 
     
         # ========= 價格 / TL =========
@@ -1466,9 +1464,9 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
-            "AI 市場型態": patterns,
-        })
-    
+            "AI 市場型態": patterns_L1 + patterns_L2,
+        }) 
+
     # ========= 顯示排行榜 =========
     if resonance_rows:
         df_rank = pd.DataFrame(resonance_rows)
