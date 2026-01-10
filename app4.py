@@ -446,7 +446,7 @@ def detect_market_pattern(df, slope):
     l_slope = np.polyfit(range(tri_window), ls, 1)[0]
 
     if h_slope < 0 and l_slope > 0:
-        patterns.append("⚪ L1 三角收斂")
+        patterns.append("⚪ 三角收斂（區間）")
 
     # =========================
     # 🔴 跌破關鍵均線（結構）
@@ -458,7 +458,7 @@ def detect_market_pattern(df, slope):
             close.iloc[-5:].mean() < ma_mid.iloc[-5:].mean() and
             slope < 0
         ):
-            patterns.append("🔴 L1 跌破關鍵均線")
+            patterns.append("🔴 跌破關鍵均線（區間）")
         
     ###區間型態###
 
