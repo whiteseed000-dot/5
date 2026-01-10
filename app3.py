@@ -1464,7 +1464,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
-            "AI 市場型態": patterns_L1 <br>+ patterns_L2,
+            "AI 市場型態": patterns_L1 <br> + patterns_L2,
         }) 
 
     # ========= 顯示排行榜 =========
