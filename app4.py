@@ -412,10 +412,10 @@ def detect_market_pattern(df, slope):
         patterns.append("⚪ 區間盤整（區間）")
 
     if price_slope > 0 and rsi_slope > 0:
-        patterns.append("L1｜🟡 上升趨勢結構（區間）")
+        patterns.append("🟡 上升趨勢結構（區間）")
 
     if price_slope < 0 and rsi_slope < 0:
-        patterns.append("L1｜🔴 弱勢趨勢結構（區間）")
+        patterns.append("🔴 弱勢趨勢結構（區間）")
 
     
         # === ⚪ 箱型整理 ===
