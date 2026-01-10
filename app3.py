@@ -285,6 +285,59 @@ def detect_market_pattern(df, slope):
 
     patterns = []
 
+    # === 🔴 趨勢末端（動能衰竭）===
+    if (
+        curr['Close'] > prev['Close'] and
+        curr['RSI14'] < prev['RSI14'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 趨勢末端（動能衰竭）")
+
+        # === 🟢 V 型反轉 ===
+    if (
+        prev['Close'] < curr['TL-2SD'] and
+        curr['Close'] > curr['TL-1SD'] and
+        (curr['RSI14'] - prev['RSI14']) > 10
+    ):
+        patterns.append("🟢 V 型反轉")
+
+        # === 🟢 雙底確認 ===
+    if (
+        abs(curr['Close'] - df['Close'].iloc[-6]) / df['Close'].iloc[-6] < 0.02 and
+        curr['RSI14'] > df['RSI14'].iloc[-6]
+    ):
+        patterns.append("🟢 雙底確認")
+
+        # === ⚪ 箱型整理 ===
+    if (
+        df['High'].iloc[-10:].max() - df['Low'].iloc[-10:].min()
+        < 1.5 * (curr['TL+1SD'] - curr['TL'])
+    ):
+        patterns.append("⚪ 箱型整理")
+
+        # === 🟡 多頭旗形 ===
+    if (
+        df['Close'].iloc[-6] > curr['TL+1SD'] and
+        curr['Close'] > curr['TL'] and
+        curr['RSI14'] > 50
+    ):
+        patterns.append("🟡 多頭旗形（續行）")
+
+        # === 🔴 假突破 ===
+    if (
+        prev['Close'] > curr['TL+1SD'] and
+        curr['Close'] < curr['TL'] and
+        curr['MACD'] < prev['MACD']
+    ):
+        patterns.append("🔴 假突破")
+
+        # === ⚪ 波動擠壓（即將爆發）===
+    if (
+        curr['RANGE_N'] <
+        df['RANGE_N'].rolling(50).quantile(0.2).iloc[-1]
+    ):
+        patterns.append("⚪ 波動擠壓（即將爆發）")
+    
     # === 🟢 碗型底 / 圓弧底（Rounded Bottom）===
     if (
         curr['Close'] < curr['TL-1SD'] and
