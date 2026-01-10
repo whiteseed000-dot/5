@@ -284,6 +284,51 @@ def detect_market_pattern(df, slope):
     prev = df.iloc[-2]
 
     patterns = []
+    # 價格一階 / 二階差分（趨勢彎曲度）
+    df['dP'] = df['Close'].diff()
+    df['ddP'] = df['dP'].diff()
+    
+    # 近 N 日高低區間（收斂用）
+    N = 10
+    df['RANGE_N'] = (
+        df['High'].rolling(N).max() -
+        df['Low'].rolling(N).min()
+    )
+    
+    df['RANGE_N_prev'] = df['RANGE_N'].shift(1)
+    # === 🟢 碗型底 / 圓弧底（Rounded Bottom）===
+    if (
+        curr['Close'] < curr['TL-1SD'] and
+        curr['ddP'] > 0 and
+        curr['RSI14'] > df['RSI14'].iloc[-4] and
+        curr['MACD'] > df['MACD'].iloc[-4]
+    ):
+        patterns.append("🟢 碗型底（圓弧底反轉）")
+
+    # === ⚪ 財訊：盤整收斂型態 ===
+    if (
+        curr['RANGE_N'] < curr['RANGE_N_prev'] and
+        abs(curr['Close'] - curr['TL']) / curr['TL'] < 0.01 and
+        abs(curr['MACD']) < abs(prev['MACD'])
+    ):
+        patterns.append("⚪ 財訊盤整收斂")
+
+    # === 🟡 財訊：三角收斂（突破前）===
+    if (
+        curr['RANGE_N'] < df['RANGE_N'].iloc[-2] and
+        df['RANGE_N'].iloc[-2] < df['RANGE_N'].iloc[-3] and
+        45 < curr['RSI14'] < 55
+    ):
+        patterns.append("🟡 三角收斂（突破前）")
+
+    # === 🟡 財訊：盤整後上突破 ===
+    if (
+        curr['Close'] > df['Close'].iloc[-11:-1].max() and
+        df['RANGE_N'].iloc[-2] < df['RANGE_N'].iloc[-3] and
+        curr['MACD'] > curr['Signal'] and
+        curr['RSI14'] > 55
+    ):
+        patterns.append("🟡 盤整後上突破（起漲型）")
 
     # --- 結構性底部 ---
     if (
