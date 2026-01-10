@@ -309,6 +309,7 @@ def detect_market_pattern(df, slope):
         df.iloc[-2*W:-W]['High'].max() -
         df.iloc[-2*W:-W]['Low'].min()
     )
+    
     ###區間型態###
     # === 🟢 區間碗型底（Rounded Bottom）===
     if (
@@ -318,7 +319,7 @@ def detect_market_pattern(df, slope):
         rsi_slope > 0 and
         curr['Close'] < curr['TL-1SD']
     ):
-        patterns.append("🟢 區間碗型底（結構反轉）")
+        patterns.append("🟢 區間碗型底（區間）")
 
     # === ⚪ 區間盤整（非趨勢）===
     if (
@@ -326,16 +327,13 @@ def detect_market_pattern(df, slope):
         range_shrink and
         45 < curr['RSI14'] < 55
     ):
-        patterns.append("⚪ 區間盤整")
+        patterns.append("⚪ 區間盤整（區間）")
 
-    # === 🟡 區間旗形（多頭續行）===
-    if (
-        prev_price_slope > 0 and
-        abs(price_slope) < 0.01 and
-        curr['Close'] > curr['TL'] and
-        curr['RSI14'] > 50
-    ):
-        patterns.append("🟡 區間旗形（續行）")
+    if price_slope > 0 and rsi_slope > 0:
+        patterns.append("L1｜🟡 上升趨勢結構（區間）")
+
+    if price_slope < 0 and rsi_slope < 0:
+        patterns.append("L1｜🔴 弱勢趨勢結構（區間）")
     
     # === 🔴 區間頭部派發 ===
     if (
@@ -344,8 +342,8 @@ def detect_market_pattern(df, slope):
         macd_slope < 0 and
         curr['Close'] > curr['TL+1SD']
     ):
-        patterns.append("🔴 區間頭部派發")
-
+        patterns.append("🔴 區間頭部派發（區間）")
+        
     ###區間型態###
 
 
