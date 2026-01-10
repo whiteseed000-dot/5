@@ -334,7 +334,7 @@ def detect_market_pattern(df, slope):
     if (
         abs(close.iloc[-5:].mean() - close.iloc[-20:-15].mean()) /
         close.iloc[-20:-15].mean() < 0.03 and
-        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-20:-15].mean() and
+        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-20:-15].mean()
     ):
         patterns.append("🟢 雙底確認（區間）")
 
