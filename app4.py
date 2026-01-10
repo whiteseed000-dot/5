@@ -285,6 +285,70 @@ def detect_market_pattern(df, slope):
 
     patterns = []
 
+    W = 20  # 可調 10~20
+    window = df.iloc[-W:]
+    
+    # 區間價格趨勢（線性回歸）
+    x = np.arange(W)
+    price_slope = np.polyfit(x, window['Close'], 1)[0]
+    
+    # 區間價格曲率（二階）
+    price_curve = np.polyfit(x, window['Close'], 2)[0]
+    
+    # 區間低點抬高程度
+    higher_lows = window['Low'].iloc[-5:].min() > window['Low'].iloc[:5].min()
+    
+    # 區間動能趨勢
+    rsi_slope = np.polyfit(x, window['RSI14'], 1)[0]
+    macd_slope = np.polyfit(x, window['MACD'], 1)[0]
+    
+    # 區間波動收斂
+    range_shrink = (
+        window['High'].max() - window['Low'].min()
+    ) < (
+        df.iloc[-2*W:-W]['High'].max() -
+        df.iloc[-2*W:-W]['Low'].min()
+    )
+    ###區間型態###
+    # === 🟢 區間碗型底（Rounded Bottom）===
+    if (
+        price_curve > 0 and
+        -0.01 < price_slope < 0.02 and
+        higher_lows and
+        rsi_slope > 0 and
+        curr['Close'] < curr['TL-1SD']
+    ):
+        patterns.append("🟢 區間碗型底（結構反轉）")
+
+    # === ⚪ 區間盤整（非趨勢）===
+    if (
+        abs(price_slope) < 0.01 and
+        range_shrink and
+        45 < curr['RSI14'] < 55
+    ):
+        patterns.append("⚪ 區間盤整")
+
+    # === 🟡 區間旗形（多頭續行）===
+    if (
+        prev_price_slope > 0 and
+        abs(price_slope) < 0.01 and
+        curr['Close'] > curr['TL'] and
+        curr['RSI14'] > 50
+    ):
+        patterns.append("🟡 區間旗形（續行）")
+    
+    # === 🔴 區間頭部派發 ===
+    if (
+        price_slope <= 0 and
+        price_curve < 0 and
+        macd_slope < 0 and
+        curr['Close'] > curr['TL+1SD']
+    ):
+        patterns.append("🔴 區間頭部派發")
+
+    ###區間型態###
+
+
     # === 🔴 趨勢末端（動能衰竭）===
     if (
         curr['Close'] > prev['Close'] and
@@ -337,15 +401,7 @@ def detect_market_pattern(df, slope):
         df['RANGE_N'].rolling(50).quantile(0.2).iloc[-1]
     ):
         patterns.append("⚪ 波動擠壓（即將爆發）")
-    
-    # === 🟢 碗型底 / 圓弧底（Rounded Bottom）===
-    if (
-        curr['Close'] < curr['TL-1SD'] and
-        curr['ddP'] > 0 and
-        curr['RSI14'] > df['RSI14'].iloc[-4] and
-        curr['MACD'] > df['MACD'].iloc[-4]
-    ):
-        patterns.append("🟢 碗型底（圓弧底反轉）")
+
 
     # === ⚪ 財訊：盤整收斂型態 ===
     if (
