@@ -317,12 +317,6 @@ def detect_market_pattern(df, slope):
     ma_periods = df.attrs.get('ma_periods', [])
     
     ###區間型態###
-    if price_slope > 0 and rsi_slope > 0:
-        patterns.append("🟡 上升趨勢結構（區間）")
-
-    if price_slope < 0 and rsi_slope < 0:
-        patterns.append("🔴 弱勢趨勢結構（區間）")
-
     # =========================
     # 🟢 結構性底部（區間版）
     # =========================
