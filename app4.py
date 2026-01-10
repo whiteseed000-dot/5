@@ -326,7 +326,7 @@ def detect_market_pattern(df, slope):
         close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
         df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean()
     ):
-        patterns.append("🟢 L1 結構性底部")
+        patterns.append("🟢 結構性底部（區間）")
 
     # =========================
     # 🟢 雙底確認（區間）
@@ -336,7 +336,7 @@ def detect_market_pattern(df, slope):
         close.iloc[-10:-7].mean() < 0.02 and
         df['RSI14'].iloc[-3:].mean() > df['RSI14'].iloc[-10:-7].mean()
     ):
-        patterns.append("🟢 L1 雙底確認")
+        patterns.append("🟢 雙底確認（區間）")
 
     # =========================
     # 🟡 多頭旗形（新增）
