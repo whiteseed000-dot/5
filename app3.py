@@ -376,7 +376,7 @@ def detect_market_pattern(df, slope):
         if abs(ma_s - ma_l) / ma_l < 0.01:
             patterns.append("🟡 均線糾結（區間）")
 
-    
+    """
     # =========================
     # 🟢 碗型底 / 圓弧底
     # =========================
@@ -392,7 +392,7 @@ def detect_market_pattern(df, slope):
         close.iloc[-5:].mean() > close.iloc[-10:-5].mean()
     ):
         patterns.append("🟢 碗型底（圓弧底）")
-        
+    """  
     # === 🟢 區間碗型底（Rounded Bottom）===
     if (
         price_curve > 0 and
