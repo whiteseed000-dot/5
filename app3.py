@@ -332,12 +332,11 @@ def detect_market_pattern(df, slope):
     # 🟢 雙底確認（區間）
     # =========================
     if (
-        abs(close.iloc[-5:].mean() - close.iloc[-20:-15].mean()) /
-        close.iloc[-20:-15].mean() < 0.03 and
-        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-20:-15].mean)
+        abs(close.iloc[-3:].mean() - close.iloc[-10:-7].mean()) /
+        close.iloc[-10:-7].mean() < 0.02 and
+        df['RSI14'].iloc[-3:].mean() > df['RSI14'].iloc[-10:-7].mean()
     ):
         patterns.append("🟢 雙底確認（區間）")
-
 
     # =========================
     # 🟡 多頭旗形（新增）
