@@ -376,23 +376,6 @@ def detect_market_pattern(df, slope):
         if abs(ma_s - ma_l) / ma_l < 0.01:
             patterns.append("🟡 均線糾結（區間）")
 
-    """
-    # =========================
-    # 🟢 碗型底 / 圓弧底
-    # =========================
-    bowl_window = 25
-    x = np.arange(bowl_window)
-    y = close.iloc[-bowl_window:]
-
-    quad_coef = np.polyfit(x, y, 2)[0]
-
-    if (
-        quad_coef > 0 and
-        y.min() < df['TL-1SD'].iloc[-1] and
-        close.iloc[-5:].mean() > close.iloc[-10:-5].mean()
-    ):
-        patterns.append("🟢 碗型底（圓弧底）")
-    """  
     # === 🟢 區間碗型底（Rounded Bottom）===
     if (
         price_curve > 0 and
