@@ -281,6 +281,148 @@ def calc_resonance_score_V2(df):
 
 import numpy as np
 
+import numpy as np
+
+def detect_L1_patterns(df, slope):
+    patterns = []
+
+    close = df['Close']
+    high = df['High']
+    low = df['Low']
+    range_n = df['RANGE_N']
+    tl = df['TL']
+
+    ma_periods = df.attrs.get('ma_periods', [])
+
+    # =========================
+    # 🟢 結構性底部（區間版）
+    # =========================
+    if (
+        close.iloc[-20:].min() < df['TL-1SD'].iloc[-1] and
+        close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
+        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean()
+    ):
+        patterns.append("🟢 L1 結構性底部")
+
+    # =========================
+    # 🟢 雙底確認（區間）
+    # =========================
+    if (
+        abs(close.iloc[-3:].mean() - close.iloc[-10:-7].mean()) /
+        close.iloc[-10:-7].mean() < 0.02 and
+        df['RSI14'].iloc[-3:].mean() > df['RSI14'].iloc[-10:-7].mean()
+    ):
+        patterns.append("🟢 L1 雙底確認")
+
+    # =========================
+    # 🟢 碗型底 / 圓弧底
+    # =========================
+    bowl_window = 25
+    x = np.arange(bowl_window)
+    y = close.iloc[-bowl_window:]
+
+    quad_coef = np.polyfit(x, y, 2)[0]
+
+    if (
+        quad_coef > 0 and
+        y.min() < df['TL-1SD'].iloc[-1] and
+        close.iloc[-5:].mean() > close.iloc[-10:-5].mean()
+    ):
+        patterns.append("🟢 L1 碗型底（圓弧底）")
+
+    # =========================
+    # 🟡 多頭旗形（新增）
+    # =========================
+    pole_window = 20
+    flag_window = 8
+
+    pole_return = close.iloc[-pole_window-flag_window:-flag_window].pct_change().sum()
+    flag_range = high.iloc[-flag_window:].max() - low.iloc[-flag_window:].min()
+    pole_range = high.iloc[-pole_window-flag_window:-flag_window].max() - \
+                 low.iloc[-pole_window-flag_window:-flag_window].min()
+
+    if (
+        pole_return > 0.12 and
+        flag_range < 0.5 * pole_range and
+        close.iloc[-flag_window:].mean() > tl.iloc[-1] and
+        slope > 0
+    ):
+        patterns.append("🟡 L1 多頭旗形")
+
+    # =========================
+    # 🟡 回檔不破趨勢（區間）
+    # =========================
+    if (
+        close.iloc[-10:].min() > tl.iloc[-1] and
+        slope > 0
+    ):
+        patterns.append("🟡 L1 回檔不破趨勢")
+
+    # =========================
+    # 🟡 均線糾結（結構）
+    # =========================
+    if ma_periods:
+        ma_s = df[f"MA{ma_periods[0]}"].iloc[-10:].mean()
+        ma_l = df[f"MA{ma_periods[-1]}"].iloc[-10:].mean()
+
+        if abs(ma_s - ma_l) / ma_l < 0.01:
+            patterns.append("🟡 L1 均線糾結")
+
+    # =========================
+    # ⚪ 箱型整理
+    # =========================
+    if (
+        high.iloc[-15:].max() - low.iloc[-15:].min()
+        < 1.5 * (df['TL+1SD'].iloc[-1] - tl.iloc[-1])
+    ):
+        patterns.append("⚪ L1 箱型整理")
+
+    # =========================
+    # ⚪ 盤整收斂
+    # =========================
+    if (
+        range_n.iloc[-12:].mean() < 0.7 * range_n.iloc[-24:-12].mean() and
+        abs(close.iloc[-12:].mean() - tl.iloc[-1]) / tl.iloc[-1] < 0.015
+    ):
+        patterns.append("⚪ L1 盤整收斂")
+
+    # =========================
+    # ⚪ 三角收斂（新增）
+    # =========================
+    tri_window = 15
+    hs = high.iloc[-tri_window:]
+    ls = low.iloc[-tri_window:]
+
+    h_slope = np.polyfit(range(tri_window), hs, 1)[0]
+    l_slope = np.polyfit(range(tri_window), ls, 1)[0]
+
+    if h_slope < 0 and l_slope > 0:
+        patterns.append("⚪ L1 三角收斂")
+
+    # =========================
+    # 🔴 弱勢趨勢延續（結構）
+    # =========================
+    if (
+        close.iloc[-10:].max() < tl.iloc[-1] and
+        slope < 0
+    ):
+        patterns.append("🔴 L1 弱勢趨勢延續")
+
+    # =========================
+    # 🔴 跌破關鍵均線（結構）
+    # =========================
+    if ma_periods:
+        ma_mid = df[f"MA{ma_periods[len(ma_periods)//2]}"]
+
+        if (
+            close.iloc[-5:].mean() < ma_mid.iloc[-5:].mean() and
+            slope < 0
+        ):
+            patterns.append("🔴 L1 跌破關鍵均線")
+
+    return patterns
+
+
 def detect_market_pattern(df, slope, W=15):
     """
     Layer 1: 區間型態（結構）
