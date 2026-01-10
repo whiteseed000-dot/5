@@ -585,6 +585,139 @@ def detect_L2_triggers(df, slope):
 
     return triggers
 
+def detect_market_structure(df, slope):
+    """
+    回傳：
+    {
+        'L1': [...],  # 結構型態
+        'L2': [...]   # 單點觸發
+    }
+    """
+
+    L1, L2 = [], []
+
+    close = df['Close']
+    high = df['High']
+    low = df['Low']
+    tl = df['TL']
+
+    rsi = df['RSI14']
+    macd = df['MACD']
+    signal = df['Signal']
+
+    curr = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    ma_periods = df.attrs.get('ma_periods', [])
+
+    # =====================================================
+    # ===================== L1：結構 ======================
+    # =====================================================
+
+    # 🟢 結構性底部
+    if (
+        close.iloc[-20:].min() < df['TL-1SD'].iloc[-1] and
+        close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
+        rsi.iloc[-5:].mean() > rsi.iloc[-15:-5].mean()
+    ):
+        L1.append("🟢 結構性底部")
+
+    # 🟢 雙底
+    left = close.iloc[-25:-20].mean()
+    right = close.iloc[-5:].mean()
+    if abs(right - left) / left < 0.03:
+        L1.append("🟢 雙底結構")
+
+    # 🟢 碗型底（圓弧）
+    W = 25
+    curve = np.polyfit(range(W), close.iloc[-W:], 2)[0]
+    if curve > 0 and close.iloc[-5:].mean() > close.iloc[-10:-5].mean():
+        L1.append("🟢 碗型底")
+
+    # 🟡 多頭旗形
+    pole = close.iloc[-30:-10]
+    flag = close.iloc[-10:]
+    if (
+        pole.pct_change().sum() > 0.15 and
+        flag.max() - flag.min() < 0.4 * (pole.max() - pole.min()) and
+        slope > 0
+    ):
+        L1.append("🟡 多頭旗形")
+
+    # ⚪ 盤整收斂
+    if (
+        (high.iloc[-15:].max() - low.iloc[-15:].min()) <
+        0.7 * (high.iloc[-30:-15].max() - low.iloc[-30:-15].min())
+    ):
+        L1.append("⚪ 盤整收斂")
+
+    # ⚪ 三角收斂
+    W = 15
+    if (
+        np.polyfit(range(W), high.iloc[-W:], 1)[0] < 0 and
+        np.polyfit(range(W), low.iloc[-W:], 1)[0] > 0
+    ):
+        L1.append("⚪ 三角收斂")
+
+    # 🔴 弱勢趨勢
+    if close.iloc[-10:].max() < tl.iloc[-1] and slope < 0:
+        L1.append("🔴 弱勢趨勢延續")
+
+    # =====================================================
+    # ===================== L2：觸發 ======================
+    # =====================================================
+
+    # 🟡 突破盤整
+    if (
+        "⚪ 盤整收斂" in L1 and
+        curr['Close'] > high.iloc[-20:-1].max() and
+        macd.iloc[-1] > signal.iloc[-1]
+    ):
+        L2.append("🟡 盤整突破觸發")
+
+    # 🟢 結構底 + 動能翻正
+    if (
+        "🟢 結構性底部" in L1 and
+        macd.iloc[-1] > macd.iloc[-2] and
+        rsi.iloc[-1] > 50
+    ):
+        L2.append("🟢 底部動能確認")
+
+    # 🟡 多頭旗形突破
+    if (
+        "🟡 多頭旗形" in L1 and
+        curr['Close'] > high.iloc[-10:].max()
+    ):
+        L2.append("🟡 旗形突破")
+
+    # 🔴 假突破
+    if (
+        curr['Close'] > df['TL+1SD'].iloc[-1] and
+        prev['Close'] > df['TL+1SD'].iloc[-2] and
+        curr['Close'] < prev['Close']
+    ):
+        L2.append("🔴 假突破")
+
+    # 🔴 動能背離
+    if (
+        curr['Close'] > prev['Close'] and
+        rsi.iloc[-1] < rsi.iloc[-2] and
+        macd.iloc[-1] < macd.iloc[-2]
+    ):
+        L2.append("🔴 動能背離")
+
+    # 🔴 跌破結構
+    if (
+        "🟢 結構性底部" in L1 and
+        curr['Close'] < low.iloc[-10:].min()
+    ):
+        L2.append("🔴 結構失敗")
+
+    return {
+        "L1": L1,
+        "L2": L2
+    }
+
 
 def detect_market_pattern(df, slope, W=15):
     """
