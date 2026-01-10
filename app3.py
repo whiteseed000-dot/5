@@ -279,23 +279,25 @@ def calc_resonance_score_V2(df):
 
     return max(0, min(score, 100))
 
+# 價格一階 / 二階差分（趨勢彎曲度）
+df['dP'] = df['Close'].diff()
+df['ddP'] = df['dP'].diff()
+
+# 近 N 日高低區間（收斂用）
+N = 10
+df['RANGE_N'] = (
+    df['High'].rolling(N).max() -
+    df['Low'].rolling(N).min()
+)
+
+df['RANGE_N_prev'] = df['RANGE_N'].shift(1)
+
 def detect_market_pattern(df, slope):
     curr = df.iloc[-1]
     prev = df.iloc[-2]
 
     patterns = []
-    # 價格一階 / 二階差分（趨勢彎曲度）
-    df['dP'] = df['Close'].diff()
-    df['ddP'] = df['dP'].diff()
-    
-    # 近 N 日高低區間（收斂用）
-    N = 10
-    df['RANGE_N'] = (
-        df['High'].rolling(N).max() -
-        df['Low'].rolling(N).min()
-    )
-    
-    df['RANGE_N_prev'] = df['RANGE_N'].shift(1)
+
     # === 🟢 碗型底 / 圓弧底（Rounded Bottom）===
     if (
         curr['Close'] < curr['TL-1SD'] and
