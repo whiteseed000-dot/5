@@ -403,7 +403,7 @@ def detect_market_pattern(df, slope):
     
         # === ⚪ 箱型整理 ===
     if (
-        df['High'].iloc[-15:].max() - df['Low'].iloc[-15:].min()
+        df['High'].iloc[-60:].max() - df['Low'].iloc[-60:].min()
         < 1.5 * (curr['TL+1SD'] - curr['TL'])
     ):
         patterns.append("⚪ 箱型整理（區間）")
