@@ -482,13 +482,31 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🔴 趨勢末端（動能衰竭）")
 
-        # === 🟢 V 型反轉 ===
-    if (
-        prev['Close'] < curr['TL-2SD'] and
-        curr['Close'] > curr['TL-1SD'] and
-        (curr['RSI14'] - prev['RSI14']) > 10
-    ):
-        patterns.append("🟢 V 型反轉")
+    
+    # === 🟢 V 型反轉 ===
+    # 1️⃣ 回測 50 日找最低點
+    lookback = 10
+    sub_df = df.iloc[-lookback:]
+    min_idx = sub_df['Close'].idxmin()
+    bottom_price = df.loc[min_idx, 'Close']
+    
+    # 2️⃣ 最低點左右斜率（各 3 日）
+    left_prices = df.loc[:min_idx].iloc[-3:]['Close'].values
+    right_prices = df.loc[min_idx:].iloc[:3]['Close'].values
+
+    if len(left_prices) == 3 and len(right_prices) == 3:
+        x = np.arange(3)
+        slope_left, _, _, _, _ = stats.linregress(x, left_prices)
+        slope_right, _, _, _, _ = stats.linregress(x, right_prices)
+
+        if (
+            slope_left < 0 and                 # 左側下跌
+            slope_right > 0 and                # 右側回升
+            rsi_slope > 0 and                   # 動能回升
+            curr['Close'] > bottom_price * 1.1         # ✅ 現價需高於碗底
+        ):
+            patterns.append("🟢 V 型反轉")
+
 
         # === 🟢 雙底確認 ===
     if (
