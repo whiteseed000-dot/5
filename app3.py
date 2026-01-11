@@ -324,7 +324,7 @@ def detect_market_pattern(df, slope):
         close.iloc[-20:].min() < df['TL-1SD'].iloc[-1] and
         close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
         df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean() and
-        -0.01 < price_slope < 0.05
+        -0.02 < price_slope < 0.05
     ):
         patterns.append("🟢 結構性底部（區間）")
 
@@ -379,25 +379,18 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🟡 多頭旗形（區間）")
 
-    # =========================
-    # 🟡 回檔不破趨勢（區間）
-    # =========================
-    if (
-        close.iloc[-10:].min() > tl.iloc[-1] and
-        slope > 0
-    ):
-        patterns.append("🟡 回檔不破趨勢（區間）")
 
     # =========================
     # 🟡 均線糾結（結構）
     # =========================
     if ma_periods:
         ma_s = df[f"MA{ma_periods[0]}"].iloc[-10:].mean()
-        ma_l = df[f"MA{ma_periods[-1]}"].iloc[-10:].mean()
+        ma_l = df[f"MA{ma_periods[2]}"].iloc[-10:].mean()
 
         if abs(ma_s - ma_l) / ma_l < 0.01:
             patterns.append("🟡 均線糾結（區間）")
-
+    
+    # =========================
     # 1️⃣ 回測 50 日找最低點
     lookback = 50
     sub_df = df.iloc[-lookback:]
@@ -423,7 +416,7 @@ def detect_market_pattern(df, slope):
             range_ratio <= 0.05 and             # 區間盤整
             rsi_slope > 0 and                   # 動能回升
             curr['Close'] < curr['TL'] and      # 位於低檔結構
-            curr['Close'] > bottom_price*1.05         # ✅ 現價需高於碗底
+            curr['Close'] > bottom_price * 1.05         # ✅ 現價需高於碗底
         ):
             patterns.append("🟢 碗型底（區間）")
 
@@ -612,7 +605,7 @@ def detect_market_pattern(df, slope):
     # --- 均線糾結突破 ---
     if ma_periods:
         ma_short = df[f"MA{ma_periods[0]}"]
-        ma_long = df[f"MA{ma_periods[-1]}"]
+        ma_long = df[f"MA{ma_periods[2]}"]
     
         if (
             abs(ma_short.iloc[-1] - ma_long.iloc[-1]) / ma_long.iloc[-1] < 0.01 and
