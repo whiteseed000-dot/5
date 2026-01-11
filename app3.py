@@ -400,7 +400,7 @@ def detect_market_pattern(df, slope):
             slope_right > 0 and                # 右側回升
             range_ratio <= 0.05 and             # 區間盤整
             rsi_slope > 0 and                   # 動能回升
-            curr['Close'] < curr['TL-1SD'] and      # 位於低檔結構
+            curr['Close'] < curr['TL'] and      # 位於低檔結構
             curr['Close'] > bottom_price*1.05         # ✅ 現價需高於碗底
         ):
             patterns.append("🟢 碗型底（區間）")
