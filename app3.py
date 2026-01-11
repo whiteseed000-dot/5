@@ -328,15 +328,40 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🟢 結構性底部（區間）")
 
-    # =========================
-    # 🟢 雙底確認（區間）
-    # =========================
-    if (
-        abs(close.iloc[-5:].mean() - close.iloc[-20:-15].mean()) /
-        close.iloc[-20:-15].mean() < 0.03 and
-        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-20:-15].mean()
-    ):
-        patterns.append("🟢 雙底確認（區間）")
+
+
+
+    # 1️⃣ 回測 50 日找出第一個最低點（第一底）
+    lookback = 50
+    sub_df = df.iloc[-lookback:]
+    first_min_idx = sub_df['Close'].idxmin()
+    first_bottom_price = df.loc[first_min_idx, 'Close']
+
+    # 2️⃣ 往右回測 ≥10 日，找「高於第一底」的次低點（第二底）
+    right_df = df.loc[first_min_idx:].iloc[10:]  # 至少隔 10 日
+        if len(right_df) < 10:
+            raise ValueError
+    
+        second_min_idx = right_df['Close'].idxmin()
+        second_bottom_price = df.loc[second_min_idx, 'Close']
+    
+        if second_bottom_price <= first_bottom_price:
+            raise ValueError
+    
+        # 3️⃣ 次低點後 5 日斜率必須為正
+        post_prices = df.loc[second_min_idx:].iloc[:5]['Close'].values
+        if len(post_prices) < 5:
+            raise ValueError
+    
+        x = np.arange(5)
+        slope_post, _, _, _, _ = stats.linregress(x, post_prices)
+    
+        # 4️⃣ 現價需大於次低點
+        if (
+            slope_post > 0 and
+            curr['Close'] > second_bottom_price
+        ):
+            patterns.append("🟢 雙底確認（區間）")
 
     # =========================
     # 🟡 多頭旗形（新增）
