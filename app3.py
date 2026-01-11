@@ -380,7 +380,8 @@ def detect_market_pattern(df, slope):
     lookback = 50
     sub_df = df.iloc[-lookback:]
     min_idx = sub_df['Close'].idxmin()
-
+    bottom_price = df.loc[min_idx, 'Close']
+    
     # 2️⃣ 最低點左右斜率（各 5 日）
     left_prices = df.loc[:min_idx].iloc[-5:]['Close'].values
     right_prices = df.loc[min_idx:].iloc[:5]['Close'].values
@@ -399,7 +400,8 @@ def detect_market_pattern(df, slope):
             slope_right > 0 and                # 右側回升
             range_ratio <= 0.05 and             # 區間盤整
             rsi_slope > 0 and                   # 動能回升
-            curr['Close'] < curr['TL-1SD']      # 位於低檔結構
+            curr['Close'] < curr['TL-1SD'] and      # 位於低檔結構
+            curr['Close'] > bottom_price         # ✅ 現價需高於碗底
         ):
             patterns.append("🟢 碗型底（區間）")
 
