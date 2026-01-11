@@ -593,14 +593,6 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🟢 底部背離（潛在反轉）")
 
-    # --- 回檔不破 TL（多頭續行） ---
-    if (
-        curr['Close'] > curr['TL'] and
-        prev['Close'] < curr['TL+1SD'] and
-        slope > 0 and
-        curr['RSI14'] > 45
-    ):
-        patterns.append("🟡 回檔不破趨勢")
 
     # --- 均線糾結突破 ---
     if ma_periods:
