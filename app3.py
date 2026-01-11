@@ -444,7 +444,7 @@ def detect_market_pattern(df, slope):
         macd_slope < 0 and
         curr['Close'] > curr['TL+1SD']
     ):
-        patterns.append("🔴 區間頭部派發（區間）")
+        patterns.append("🔴 頭部形成（區間）")
 
 
     # =========================
@@ -651,6 +651,18 @@ def detect_market_pattern(df, slope):
         abs(curr['MACD']) < abs(prev['MACD'])
     ):
         patterns.append("⚪ 盤整收斂")
+    
+    # =========================
+    # 🔵 爆大量（Volume Spike）
+    # =========================
+
+    # 1️⃣ 最新收盤日與前一日成交量
+    vol_today = df['Volume'].iloc[-1]
+    vol_prev = df['Volume'].iloc[-2]
+
+    # 2️⃣ 今日成交量 > 前一日 3 倍
+    if vol_today > vol_prev * 3:
+        patterns.append("🔵 爆大量")
     
     return patterns
 
