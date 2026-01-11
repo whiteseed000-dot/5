@@ -376,15 +376,32 @@ def detect_market_pattern(df, slope):
         if abs(ma_s - ma_l) / ma_l < 0.01:
             patterns.append("🟡 均線糾結（區間）")
 
-    # === 🟢 區間碗型底（Rounded Bottom）===
-    if (
-        price_curve > 0 and
-        -0.01 < price_slope < 0.02 and
-        higher_lows and
-        rsi_slope > 0 and
-        curr['Close'] < curr['TL-1SD']
-    ):
-        patterns.append("🟢 區間碗型底（區間）")
+    # 1️⃣ 回測 50 日找最低點
+    lookback = 50
+    sub_df = df.iloc[-lookback:]
+    min_idx = sub_df['Close'].idxmin()
+
+    # 2️⃣ 最低點左右斜率（各 5 日）
+    left_prices = df.loc[:min_idx].iloc[-5:]['Close'].values
+    right_prices = df.loc[min_idx:].iloc[:5]['Close'].values
+
+    if len(left_prices) == 5 and len(right_prices) == 5:
+        x = np.arange(5)
+        slope_left, _, _, _, _ = stats.linregress(x, left_prices)
+        slope_right, _, _, _, _ = stats.linregress(x, right_prices)
+
+        # 3️⃣ 現價回測 10 日，波動 ≤ 5%
+        recent_prices = df['Close'].iloc[-10:]
+        range_ratio = (recent_prices.max() - recent_prices.min()) / recent_prices.mean()
+
+        if (
+            slope_left < 0 and                 # 左側下跌
+            slope_right > 0 and                # 右側回升
+            range_ratio <= 0.05 and             # 區間盤整
+            rsi_slope > 0 and                   # 動能回升
+            curr['Close'] < curr['TL-1SD']      # 位於低檔結構
+        ):
+            patterns.append("🟢 碗型底（區間）")
 
     # === ⚪ 區間盤整（非趨勢）===
     if (
