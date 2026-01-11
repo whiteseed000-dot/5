@@ -344,7 +344,7 @@ def detect_market_pattern(df, slope):
         second_min_idx = right_df['Close'].idxmin()
         second_bottom_price = df.loc[second_min_idx, 'Close']
     
-        if second_bottom_price > first_bottom_price:
+        if second_bottom_price > first_bottom_price * 0.98:
    
             # 3️⃣ 次低點後 5 日斜率必須為正
             post_prices = df.loc[second_min_idx:].iloc[:5]['Close'].values
@@ -356,7 +356,8 @@ def detect_market_pattern(df, slope):
                 # 4️⃣ 現價需大於次低點
                 if (
                     slope_post > 0 and
-                    curr['Close'] > second_bottom_price
+                    curr['Close'] > second_bottom_price and
+                    curr['Close'] < curr['TL']
                 ):
                     patterns.append("🟢 雙底確認（區間）")
 
