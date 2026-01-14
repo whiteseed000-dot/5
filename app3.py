@@ -1195,7 +1195,7 @@ if result:
             spikemode="across", # 穿過整個圖表
             spikethickness=1,
             spikecolor="white", # 設定為白色
-            spikedash="solid"   # 實線 (若要虛線改為 dash)
+            spikedash="solid",   # 實線 (若要虛線改為 dash)
         )
         yaxis=dict(
             showspikes=True, # 顯示指引線
