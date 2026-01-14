@@ -795,7 +795,7 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
-    def get_stock_data(*, ticker: str, years: int, time_frame: str = "日"):
+def get_stock_data(*, ticker: str, years: int, time_frame: str = "日"):
         """
         ticker: 股票代號 (e.g. '3005')
         years: 回測年數 (int)
