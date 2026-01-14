@@ -1190,7 +1190,7 @@ if result:
         showlegend=False, 
         margin=dict(l=10, r=100, t=10, b=10),
         
-        yaxis=dict(
+        xaxis=dict(
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
             spikethickness=1,
