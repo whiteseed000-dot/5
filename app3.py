@@ -286,14 +286,24 @@ def detect_market_pattern(df, slope):
     patterns = []
 
     W = 20  # 可調 10~20
-    window = df.iloc[-W:]
-    
-    # 區間價格趨勢（線性回歸）
-    x = np.arange(W)
-    price_slope = np.polyfit(x, window['Close'], 1)[0]
-    
+
+# 取最後 W 筆並清掉 Close 為 NaN 的資料
+window = df.iloc[-W:].dropna(subset=['Close'])
+
+# 至少要 3 筆資料（二階回歸）
+if len(window) >= 3:
+    x = np.arange(len(window))
+    y = window['Close'].values
+
+    # 區間價格趨勢（一次線性回歸）
+    price_slope = np.polyfit(x, y, 1)[0]
+
     # 區間價格曲率（二階）
-    price_curve = np.polyfit(x, window['Close'], 2)[0]
+    price_curve = np.polyfit(x, y, 2)[0]
+
+else:
+    price_slope = np.nan
+    price_curve = np.nan
     
     # 區間低點抬高程度
     higher_lows = window['Low'].iloc[-5:].min() > window['Low'].iloc[:5].min()
