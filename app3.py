@@ -795,42 +795,61 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
-def get_stock_data(ticker, years, time_frame="日"): # 新增參數
-    try:
-        end = datetime.now()
-        start = end - timedelta(days=int(years * 365))
-        df = yf.download(ticker, start=start, end=end, progress=False)
-        if df.empty: return None
-        if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
+def get_stock_data(*, ticker: str, years: int, time_frame: str = "日"):
+    """
+    ticker: 股票代號 (e.g. '3005')
+    years: 回測年數 (int)
+    time_frame: '日' / '週' / '月'
+    """
 
-        # --- 新增：數據重採樣邏輯（符合金融慣例） ---
-        if time_frame == "週":
-    # 週線：週一～週五，K棒時間放在「週五」
-            df = df.resample(
-                'W-FRI',
-                label='right',     # 時間標籤放在區間右側（週五）
-                closed='right'     # 包含週五當天
-            ).agg({
-                'Open': 'first',   # 週一開盤
-                'High': 'max',     # 全週最高
-                'Low': 'min',      # 全週最低
-                'Close': 'last',   # 週五收盤
-                'Volume': 'sum'    # 全週成交量
-            }).dropna()
+    if not isinstance(years, int):
+        raise TypeError(f"years 必須是 int，目前是 {type(years)}")
 
-        elif time_frame == "月":
-    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
-            df = df.resample(
-                'M',
-                label='right',     # 標記在月底
-                closed='right'     # 包含月底最後交易日
-            ).agg({
-                'Open': 'first',   # 月初開盤
-                'High': 'max',     # 當月最高
-                'Low': 'min',      # 當月最低
-                'Close': 'last',   # 月底收盤
-                'Volume': 'sum'    # 當月成交量
-            }).dropna()
+    if time_frame not in ("日", "週", "月"):
+        raise ValueError(f"time_frame 錯誤：{time_frame}")
+
+    end = pd.Timestamp.today().normalize()
+    start = end - pd.DateOffset(years=years)
+
+    df = yf.download(
+        f"{ticker}.TW",
+        start=start,
+        end=end,
+        progress=False
+    )
+
+    if df.empty:
+        return None
+
+    # 統一欄位名稱
+    df = df.rename(columns=str.capitalize)
+
+    # === 轉週 / 月線 ===
+    if time_frame == "週":
+        df = df.resample(
+            "W-FRI",
+            label="right",
+            closed="right"
+        ).agg({
+            "Open": "first",
+            "High": "max",
+            "Low": "min",
+            "Close": "last",
+            "Volume": "sum"
+        }).dropna()
+
+    elif time_frame == "月":
+        df = df.resample(
+            "M",
+            label="right",
+            closed="right"
+        ).agg({
+            "Open": "first",
+            "High": "max",
+            "Low": "min",
+            "Close": "last",
+            "Volume": "sum"
+        }).dropna()
 # ----------------------------------------------
             
         # ---------------------------
