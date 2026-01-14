@@ -112,7 +112,7 @@ with st.sidebar:
 @st.cache_data(ttl=3600)
 def get_vix_index():
     try:
-        vix_data = yf.download("^VIX", period="1d", progress=False)
+        vix_data = yf.download("^VIX", period="1d", progress=False, auto_adjust=False)
         return float(vix_data['Close'].iloc[-1])
     except:
         return 0.0
