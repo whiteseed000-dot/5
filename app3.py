@@ -800,10 +800,12 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
         df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=False)
-        df['Close'] = df['Close']
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-
+        if 'Adj Close' in df.columns:
+            # 如果您想要的是原始股價 (Yahoo 圖 1)，就確保 Close 沒被覆蓋
+            # 有些版本 auto_adjust=True 會把 Adj Close 覆蓋掉 Close
+            pass
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
