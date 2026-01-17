@@ -1252,8 +1252,9 @@ if result:
                 marker=dict(
                     symbol='triangle-up',
                     size=buy_plot_df['buy_level'].map({'中': 12, '強': 18}),
-                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '強': '#00FF00'}),
+                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '強': '#00FF7F'}),
                     line=dict(width=1, color='black')
+                    opacity=1.0,              # 關鍵
                 ),
                 name='Buy Signal',
                 hovertext=buy_plot_df['buy_level'],
