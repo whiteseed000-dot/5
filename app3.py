@@ -115,14 +115,14 @@ lines_config = [
     ('TL-1SD', '#0096FF', '-1SD (偏低)', 'dash'), 
     ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
 ]
-def get_technical_indicators(df):
 
-    def calc_rsi(series, period):
-        delta = series.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        return 100 - (100 / (1 + rs))
+def calc_rsi(series, period):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+def get_technical_indicators(df):
 
 
     # --- RSI 依時間週期切換 ---
