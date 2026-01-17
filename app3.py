@@ -914,7 +914,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ===== 新增：多指標確認（不新增欄位） =====
         
             # ⑤ MACD 動能確認
-            (df['MACD'] > df['Signal'])
+            (df['MACD'].iloc[-2] < df['Signal'].iloc[-2]) & (df['MACD'].iloc[-1] > df['Signal'].iloc[-1])
         
             # ⑥ RSI 非過熱、在多方區
            # (df['RSI7'] > 20) &
@@ -982,6 +982,11 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             ((df['Close'] - df['Open']) > 0.5 * (df['High'] - df['Low'])),
             'buy_score'
         ] += 1
+                # 強勢 K（實體夠大）
+        df.loc[
+            (df['MACD'] > df['Signal']),
+            'buy_score'
+        ] += 10
         
         df['sell_score'] = 0
         
@@ -1279,7 +1284,7 @@ if result:
         
         buy_plot_df = df[
             (df['buy_signal']) &
-            (df['buy_level'].isin(['中', '弱']))
+            (df['buy_level'].isin(['中', '強']))
         ]
         
         sell_plot_df = df[
@@ -1294,8 +1299,8 @@ if result:
                 mode='markers',
                 marker=dict(
                     symbol='triangle-up',
-                    size=buy_plot_df['buy_level'].map({'中': 12, '弱': 18}),
-                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '弱': '#00FF7F'}),
+                    size=buy_plot_df['buy_level'].map({'中': 12, '強': 18}),
+                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '強': '#00FF7F'}),
                     opacity=1.0,
                     line=dict(width=1, color='black')
                 ),
