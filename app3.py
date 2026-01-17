@@ -1114,13 +1114,15 @@ if result:
             # 自定義 K 線懸浮文字格式
 
         ))
-            # 2️⃣ 取得除權日（用 df 日期，最安全）
-        ex_dates = get_ex_dividend_dates(
-            ticker_input,
-            df['Date'].min(),
-            df['Date'].max()
-        )
-        add_ex_dividend_lines(fig, ex_dates)
+        
+        current_ticker = st.session_state.get("ticker")  # ← 這裡對應你的實際變數
+        if current_ticker:
+            ex_dates = get_ex_dividend_dates(
+                current_ticker,
+                df['Date'].min(),
+                df['Date'].max()
+            )
+            add_ex_dividend_lines(fig, ex_dates)
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 從 df 取回 MA 週期（不會 NameError）
