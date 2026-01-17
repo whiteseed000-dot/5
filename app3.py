@@ -1176,28 +1176,7 @@ if result:
                 fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
                           
         ))
-        fig.add_trace(go.Scatter(
-            x=df.loc[df['buy_signal'], 'Date'],
-            y=df.loc[df['buy_signal'], 'Low'] * 0.995,   # 當日最低價下方
-            mode='markers',
-            marker=dict(
-                symbol='triangle-up',
-                size=12,
-                color='#00FF00'
-            ),
-            name='買入訊號'
-        ))
-        fig.add_trace(go.Scatter(
-            x=df.loc[df['sell_signal'], 'Date'],
-            y=df.loc[df['sell_signal'], 'High'] * 1.005, # 當日最高價上方
-            mode='markers',
-            marker=dict(
-                symbol='triangle-down',
-                size=12,
-                color='#FF3131'
-            ),
-            name='賣出訊號'
-        ))
+
 
 
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
