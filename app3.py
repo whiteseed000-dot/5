@@ -737,6 +737,31 @@ def update_pattern_history(ticker, patterns):
 
     return " | ".join(hist) if hist else ""
 
+def get_ex_dividend_dates(ticker, start, end):
+    t = yf.Ticker(ticker)
+    actions = t.actions  # Dividends + Stock Splits
+    
+    if actions is None or actions.empty:
+        return []
+
+    actions = actions.loc[start:end]
+    ex_dates = actions[
+        (actions['Dividends'] > 0) | (actions['Stock Splits'] != 0)
+    ].index
+
+    return pd.to_datetime(ex_dates)
+    
+def add_ex_dividend_lines(fig, ex_dates):
+    for d in ex_dates:
+        fig.add_vline(
+            x=d,
+            line_width=1,
+            line_dash="dot",
+            line_color="red",
+            opacity=0.6
+        )
+
+
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -1090,8 +1115,11 @@ if result:
             close=df['Close'].apply(lambda x: round(x, 1)),
             name="",
             increasing_line_color='#FF3131', # 漲：紅
-            decreasing_line_color='#00FF00'  # 跌：綠
+            decreasing_line_color='#00FF00',  # 跌：綠
             # 自定義 K 線懸浮文字格式
+            ex_dates = get_ex_dividend_dates(ticker, start, end),
+            add_ex_dividend_lines(fig, ex_dates)
+
         ))
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
