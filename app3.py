@@ -788,6 +788,7 @@ with st.sidebar:
     # =========================    
     use_adjusted_price = st.sidebar.toggle(
         "使用還原股價（含除權息）",
+        st.cache_data.clear),
         value=False,
         help="開啟：使用還原股價（適合長期趨勢）\n關閉：使用原始股價（適合短線、實際成交價）"
     )
@@ -803,7 +804,7 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
-def get_stock_data(ticker, years, time_frame="日"): # 新增參數
+def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): # 新增參數
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
