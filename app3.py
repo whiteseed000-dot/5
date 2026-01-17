@@ -973,22 +973,6 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             labels=['弱', '中', '強']
         )
 
-        offset = (df['High'] - df['Low']).mean() * 0.3
-        
-        df['buy_y']  = df['Low']  - offset
-        df['sell_y'] = df['High'] + offset
-        
-        buy_plot_df = df[
-            (df['buy_signal']) &
-            (df['buy_level'].isin(['中', '強']))
-        ]
-        
-        sell_plot_df = df[
-            (df['sell_signal']) &
-            (df['sell_level'].isin(['中', '強']))
-        ]
-
-
 # ----------------------------------        
 
         df.attrs['ma_periods'] = ma_periods
@@ -1245,7 +1229,20 @@ if result:
             decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
         ))
+        offset = (df['High'] - df['Low']).mean() * 0.3
         
+        df['buy_y']  = df['Low']  - offset
+        df['sell_y'] = df['High'] + offset
+        
+        buy_plot_df = df[
+            (df['buy_signal']) &
+            (df['buy_level'].isin(['中', '強']))
+        ]
+        
+        sell_plot_df = df[
+            (df['sell_signal']) &
+            (df['sell_level'].isin(['中', '強']))
+        ]
 
         fig.add_trace(
             go.Scatter(
