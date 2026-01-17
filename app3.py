@@ -1145,27 +1145,35 @@ if result:
             # 自定義 K 線懸浮文字格式
         ))
         
+        buy_df = df[df['buy_signal']]
+        
         fig.add_trace(go.Scatter(
-            x=df.loc[df['buy_signal'], 'Date'],
-            y=df.loc[df['buy_signal'], 'Low'] * 0.995,   # 當日最低價下方
+            x=buy_df['Date'],
+            y=buy_df['Low'] * 0.995,   # 稍微壓低，避免蓋住K線
             mode='markers',
+            name='Buy',
             marker=dict(
                 symbol='triangle-up',
-                size=12,
-                color='#00FF00'
+                size=16,
+                color='lime',
+                line=dict(color='black', width=1)
             ),
-            name='買入訊號'
+            hovertemplate='🟢 買進<br>%{x}<br>價格: %{y:.2f}<extra></extra>'
         ))
+        sell_df = df[df['sell_signal']]
+        
         fig.add_trace(go.Scatter(
-            x=df.loc[df['sell_signal'], 'Date'],
-            y=df.loc[df['sell_signal'], 'High'] * 1.005, # 當日最高價上方
+            x=sell_df['Date'],
+            y=sell_df['High'] * 1.005,  # 稍微拉高
             mode='markers',
+            name='Sell',
             marker=dict(
                 symbol='triangle-down',
-                size=12,
-                color='#FF3131'
+                size=16,
+                color='red',
+                line=dict(color='black', width=1)
             ),
-            name='賣出訊號'
+            hovertemplate='🔴 賣出<br>%{x}<br>價格: %{y:.2f}<extra></extra>'
         ))
 
 
