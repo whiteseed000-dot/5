@@ -867,7 +867,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
         df['sell_signal'] = (
             (df['Close'] < df[f'MA{ma_periods[3]}']) &
-            (df[f'MA{ma_periods[03]}_slope'] < 0) &
+            (df[f'MA{ma_periods[3]}_slope'] < 0) &
             (df['Close'] < df[f'MA{ma_periods[0]}']) &
             (df[f'MA{ma_periods[0]}_slope'] < 0) &
             (df['Close'] < df['Open']) &               # 本K黑
