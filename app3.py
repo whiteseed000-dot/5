@@ -888,7 +888,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         exp2 = df['Close'].ewm(span=26, adjust=False).mean()
         df['M-MACD'] = exp1 - exp2
         df['M-Signal'] = df['M-MACD'].ewm(span=9, adjust=False).mean()
-        R-m_diff = df['R-MACD'] - df['R-Signal']
+        Mm_diff = df['M-MACD'] - df['M-Signal']
         
 
         df['buy_signal'] = (
@@ -912,7 +912,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ===== 新增：多指標確認（不新增欄位） =====
         
             # ⑤ MACD 動能確認
-            ((df['M-MACD'] > df['M-Signal']) & (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1)) & R-m_diff >0)
+            ((df['M-MACD'] > df['M-Signal']) & (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1)) & Mm_diff >0)
       
             # ⑥ RSI 非過熱、在多方區
            #(df['RSI7'] < 20) 
