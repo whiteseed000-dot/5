@@ -1284,7 +1284,7 @@ if result:
         
         buy_plot_df = df[
             (df['buy_signal']) &
-            (df['buy_level'].isin(['中', '強']))
+            (df['buy_level'].isin(['中', '弱']))
         ]
         
         sell_plot_df = df[
@@ -1299,8 +1299,8 @@ if result:
                 mode='markers',
                 marker=dict(
                     symbol='triangle-up',
-                    size=buy_plot_df['buy_level'].map({'中': 12, '強': 18}),
-                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '強': '#00FF7F'}),
+                    size=buy_plot_df['buy_level'].map({'中': 12, '弱': 18}),
+                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '弱': '#00FF7F'}),
                     opacity=1.0,
                     line=dict(width=1, color='black')
                 ),
