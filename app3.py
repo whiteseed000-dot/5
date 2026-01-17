@@ -867,11 +867,11 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
         
         if time_frame == "日":
-            fast, slow = 5, 60
+            fast, slow = 5, 20
         elif time_frame == "週":
-            fast, slow = 13, 52
+            fast, slow = 4, 26
         elif time_frame == "月":
-            fast, slow = 6, 24
+            fast, slow = 3, 6
         df['buy_signal'] = (
             (df['Close'] > df[f'MA{slow}']) &
             (df[f'MA{slow}_slope'] > 0) &
