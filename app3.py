@@ -942,7 +942,8 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ⑤ MACD 動能轉空
             ((df['M-MACD'] < df['M-Signal']) & (df['M-MACD'].shift(1) >= df['M-Signal'].shift(1))) |
             # ⑥ RSI 在空方區、非超賣
-            ((df['R-RSI7'] < df['R-RSI14']) & (df['R-RSI7'].shift(1) >= df['R-RSI14'].shift(1)))
+            ((df['R-RSI7'] < df['R-RSI14']) & (df['R-RSI7'].shift(1) >= df['R-RSI14'].shift(1))) |
+            df['R-RSI7'] > 80
            # (df['RSI14'] > 70) &
         
             # ⑦ BIAS 無恐慌性乖離
