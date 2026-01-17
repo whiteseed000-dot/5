@@ -870,22 +870,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
  # --買/賣箭頭       
         df['MA5_slope'] = df['MA5'].diff()
         df['MA60_slope'] = df['MA60'].diff()
-        df['buy_signal'] = (
-            (df['Close'] > df['MA60']) &
-            (df['MA60_slope'] > 0) &
-            (df['Close'] > df['MA5']) &
-            (df['MA5_slope'] > 0) &
-            (df['Close'] > df['Open']) &              # 本K紅
-            (df['Close'].shift(1) < df['Open'].shift(1))  # 前K黑
-        )
-        df['sell_signal'] = (
-            (df['Close'] < df['MA60']) &
-            (df['MA60_slope'] < 0) &
-            (df['Close'] < df['MA5']) &
-            (df['MA5_slope'] < 0) &
-            (df['Close'] < df['Open']) &               # 本K黑
-            (df['Close'].shift(1) > df['Open'].shift(1))   # 前K紅
-        )
+
 # ----------------------------------        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
