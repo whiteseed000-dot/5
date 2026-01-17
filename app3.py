@@ -287,9 +287,7 @@ def detect_market_pattern(df, slope):
 
     W = 20  # 可調 10~20
     window = df.iloc[-W:]
-    n = len(window)
-    if n < 5:        # 最低容忍線
-        return {}   # 或跳過此股票
+
     # 區間價格趨勢（線性回歸）
     x = np.arange(W)
     price_slope = np.polyfit(x, window['Close'], 1)[0]
