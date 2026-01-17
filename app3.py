@@ -874,15 +874,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             fast_ma, slow_ma, trend_ma = 13, 26, 52
         elif time_frame == "月":
             fast_ma, slow_ma, trend_ma = 6, 12, 24
-
-
-        rsi_periods = [7, 14]        
-        for p in rsi_periods:
-            df[f'RSI{p}'] = calc_rsi(df['Close'], p)
-        
-        df.attrs['rsi_periods'] = rsi_periods
-        # --------------------------
-        
+       
 
 
         df['buy_signal'] = (
