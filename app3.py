@@ -895,11 +895,6 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         df['MA20'] = df['Close'].rolling(20).mean()
         df['BB_up'] = df['MA20'] + 2 * df['Close'].rolling(20).std()
         df['BB_low'] = df['MA20'] - 2 * df['Close'].rolling(20).std()
-        df['MA5'] = df['Close'].rolling(window=5).mean()
-        df['MA10'] = df['Close'].rolling(window=10).mean()
-        df['MA20'] = df['Close'].rolling(window=20).mean()
-        df['MA60'] = df['Close'].rolling(window=60).mean()
-        df['MA120'] = df['Close'].rolling(window=120).mean()
         
         # --- 樂活通道核心計算 (長線 100MA 邏輯) ---
         # 使用 100 日移動平均線作為長線中軸
