@@ -1114,7 +1114,9 @@ if result:
             # 自定義 K 線懸浮文字格式
 
         ))
-        
+
+            # 🔑 關鍵修正 2：x 軸指定為日期
+        fig.update_xaxes(type="date")
         current_ticker = st.session_state.get("ticker")  # ← 這裡對應你的實際變數
         if current_ticker:
             ex_dates = get_ex_dividend_dates(
