@@ -867,28 +867,51 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
         
         if time_frame == "日":
-            fast, slow = 5, 20
+            fast_ma, slow_ma, trend_ma = 5, 10, 60
         elif time_frame == "週":
-            fast, slow = 4, 26
+            fast_ma, slow_ma, trend_ma = 4, 13, 52
         elif time_frame == "月":
-            fast, slow = 3, 6
+            fast_ma, slow_ma, trend_ma = 3, 12, 24
+
+
         df['buy_signal'] = (
-            (df['Close'] > df[f'MA{slow}']) &
-            (df[f'MA{slow}_slope'] > 0) &
-            (df['Close'] > df[f'MA{fast}']) &
-            (df[f'MA{fast}_slope'] > 0) &
+            # ① 趨勢過濾（只做多頭）
+            (df['Close'] > df[f'MA{trend_ma}']) &
+        
+            # ② 價格突破快 / 慢 MA（突破確認）
+            (df['Close'] > df[f'MA{fast_ma}']) &
+            (df['Close'].shift(1) <= df[f'MA{fast_ma}'].shift(1)) &
+            (df['Close'] > df[f'MA{slow_ma}']) &
+        
+            # ③ MA 方向一致（連續斜率）
+            (df[f'MA{fast_ma}_slope'] > 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) > 0) &
+            (df[f'MA{slow_ma}_slope'] > 0) &
+        
+            # ④ K 線轉強
             (df['Close'] > df['Open']) &
             (df['Close'].shift(1) < df['Open'].shift(1))
-        ).fillna(False)
+        )
         
         df['sell_signal'] = (
-            (df['Close'] < df[f'MA{slow}']) &
-            (df[f'MA{slow}_slope'] < 0) &
-            (df['Close'] < df[f'MA{fast}']) &
-            (df[f'MA{fast}_slope'] < 0) &
+            # ① 趨勢過濾（只做空頭）
+            (df['Close'] < df[f'MA{trend_ma}']) &
+        
+            # ② 價格跌破快 / 慢 MA（跌破確認）
+            (df['Close'] < df[f'MA{fast_ma}']) &
+            (df['Close'].shift(1) >= df[f'MA{fast_ma}'].shift(1)) &
+            (df['Close'] < df[f'MA{slow_ma}']) &
+        
+            # ③ MA 方向一致
+            (df[f'MA{fast_ma}_slope'] < 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) < 0) &
+            (df[f'MA{slow_ma}_slope'] < 0) &
+        
+            # ④ K 線轉弱
             (df['Close'] < df['Open']) &
             (df['Close'].shift(1) > df['Open'].shift(1))
-        ).fillna(False)
+        )
+
 
         df.attrs['ma_periods'] = ma_periods
 
