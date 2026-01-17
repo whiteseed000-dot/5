@@ -1115,12 +1115,12 @@ if result:
             close=df['Close'].apply(lambda x: round(x, 1)),
             name="",
             increasing_line_color='#FF3131', # 漲：紅
-            decreasing_line_color='#00FF00',  # 跌：綠
+            decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
-            ex_dates = get_ex_dividend_dates(ticker, start, end),
-            add_ex_dividend_lines(fig, ex_dates)
 
         ))
+        ex_dates = get_ex_dividend_dates(ticker, start, end),
+        add_ex_dividend_lines(fig, ex_dates)
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 從 df 取回 MA 週期（不會 NameError）
