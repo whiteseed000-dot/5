@@ -1243,23 +1243,32 @@ if result:
             (df['sell_signal']) &
             (df['sell_level'].isin(['中', '強']))
         ]
+        
+        fig.add_trace(go.Scatter(
+            x=buy_df['Date'],
+            y=buy_df['buy_y'],
+            mode='markers',
+            marker=dict(
+                symbol='circle',
+                size=22,
+                color='rgba(0,255,0,0.35)',
+                line=dict(color='black', width=1)
+            ),
+            showlegend=False
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=buy_df['Date'],
+            y=buy_df['buy_y'],
+            mode='markers',
+            marker=dict(
+                symbol='triangle-up',
+                size=12,
+                color='lime'
+            ),
+            name='Buy'
+        ))
 
-        fig.add_trace(
-            go.Scatter(
-                x=buy_plot_df['Date'],
-                y=buy_plot_df['buy_y'],
-                mode='markers',
-                marker=dict(
-                    symbol='triangle-up',
-                    size=buy_plot_df['buy_level'].map({'中': 12, '強': 18}),
-                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '強': '#00FF7F'}),
-                    line=dict(width=1, color='black')
-                ),
-                name='Buy Signal',
-                hovertext=buy_plot_df['buy_level'],
-                hoverinfo='text'
-            )
-        )
         fig.add_trace(
             go.Scatter(
                 x=sell_plot_df['Date'],
