@@ -946,7 +946,6 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ===== 新增：多指標確認 =====
         
             # ⑤ MACD 動能轉空
-            (curr['MACD'] > prev['MACD'])
            
             # ⑥ RSI 在空方區、非超賣
            # (df['RSI14'] < 50) &
