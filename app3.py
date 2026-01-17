@@ -1142,29 +1142,6 @@ if result:
             # 自定義 K 線懸浮文字格式
         ))
 
-        fig.add_trace(go.Scatter(
-            x=df.loc[df['buy_signal'], 'Date'],
-            y=df.loc[df['buy_signal'], 'Low'] * 0.995,   # 當日最低價下方
-            mode='markers',
-            marker=dict(
-                symbol='triangle-up',
-                size=12,
-                color='#00FF00'
-            ),
-            name='買入訊號'
-        ))
-        fig.add_trace(go.Scatter(
-            x=df.loc[df['sell_signal'], 'Date'],
-            y=df.loc[df['sell_signal'], 'High'] * 1.005, # 當日最高價上方
-            mode='markers',
-            marker=dict(
-                symbol='triangle-down',
-                size=12,
-                color='#FF3131'
-            ),
-            name='賣出訊號'
-        ))
-
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 從 df 取回 MA 週期（不會 NameError）
