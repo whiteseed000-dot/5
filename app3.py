@@ -824,6 +824,12 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
+        # 🔒 強制保證 index 是 DatetimeIndex
+        df.index = pd.to_datetime(df.index)
+        # 1️⃣ 先切回測年數（用日K）
+        start_date = pd.Timestamp.now() - pd.DateOffset(years=backtest_years)
+        df = df[df.index >= start_date]
+
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
