@@ -921,7 +921,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         
             # ⑦ BIAS 沒有嚴重追高
             (df['BIAS'] > -5) &
-            (df['BIAS'] < 8) &
+            (df['BIAS'] < 8) 
         )
         
         df['sell_signal'] = (
