@@ -917,11 +917,11 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             (df['MACD'] > df['Signal']) &
         
             # ⑥ RSI 非過熱、在多方區
-            (df['RSI14'] > 50) &
+           # (df['RSI7'] > 20) &
             (df['RSI14'] < 70) &
         
             # ⑦ BIAS 沒有嚴重追高
-            (df['BIAS'] > -5) &
+           # (df['BIAS'] > -5) &
             (df['BIAS'] < 8) 
         )
         
@@ -949,12 +949,12 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             (df['MACD'] < df['Signal']) &
         
             # ⑥ RSI 在空方區、非超賣
-            (df['RSI14'] < 50) &
-            (df['RSI14'] > 30) &
+           # (df['RSI14'] < 50) &
+            (df['RSI14'] > 70) &
         
             # ⑦ BIAS 無恐慌性乖離
-            (df['BIAS'] < 5) &
-            (df['BIAS'] > -8)
+           # (df['BIAS'] < 5) &
+            (df['BIAS'] > 5)
         )
 
         # -------評分----------        
