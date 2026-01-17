@@ -868,8 +868,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
 
         df.attrs['ma_periods'] = ma_periods
  # --買/賣箭頭       
-        df['MA5_slope'] = df['MA5'].diff()
-        df['MA60_slope'] = df['MA60'].diff()
+
 
 # ----------------------------------        
         df = df.reset_index()
