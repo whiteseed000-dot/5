@@ -791,19 +791,7 @@ with st.sidebar:
         value=False,
         help="開啟：使用還原股價（適合長期趨勢）\n關閉：使用原始股價（適合短線、實際成交價）"
     )
-    # ----------------------------
-    # 還原股價設定
-    # ----------------------------
-    if use_adjusted_price:
-        st.cache_data.clear()
-        auto_adjust = True
-        actions = True
-        repair = True
-    else:
-        st.cache_data.clear()
-        auto_adjust = False
-        actions = False
-        repair = False
+
     st.divider()
 # 在側邊欄的登出按鈕部分
     if st.button("🚪 登出帳號"):
@@ -820,6 +808,19 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
+        # ----------------------------
+        # 還原股價設定
+        # ----------------------------
+        if use_adjusted_price:
+            st.cache_data.clear()
+            auto_adjust = True
+            actions = True
+            repair = True
+        else:
+            st.cache_data.clear()
+            auto_adjust = False
+            actions = False
+            repair = False
         df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=auto_adjust, actions=actions, repair=repair)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
