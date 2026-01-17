@@ -965,7 +965,7 @@ with col_btn:
             save_watchlist_to_google(username, st.session_state.watchlist_dict)
             st.rerun()
 
-result = get_stock_data(ticker_input, years_input, time_frame)
+result = get_stock_data(ticker_input, years_input, time_frame, use_adjusted_price)
 
 vix_val = get_vix_index()
 
