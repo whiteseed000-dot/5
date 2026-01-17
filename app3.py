@@ -912,8 +912,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ===== 新增：多指標確認（不新增欄位） =====
         
             # ⑤ MACD 動能確認
-           # ((df['M-MACD'] > df['M-Signal']) & (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1))) |
-            (df['M-MACD'] > df['M-Signal'])
+            ((df['M-MACD'] > df['M-Signal']) & (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1))) |
             # ⑥ RSI 非過熱、在多方區
            #(df['RSI7'] < 20) 
            # (df['RSI14'] < 70) &
@@ -943,7 +942,6 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             ((df['M-MACD'] < df['M-Signal']) & (df['M-MACD'].shift(1) >= df['M-Signal'].shift(1))) |
             # ⑥ RSI 在空方區、非超賣
             ((df['R-RSI7'] < df['R-RSI14']) & (df['R-RSI7'].shift(1) >= df['R-RSI14'].shift(1))) |
-            df['R-RSI7'] > 80
            # (df['RSI14'] > 70) &
         
             # ⑦ BIAS 無恐慌性乖離
