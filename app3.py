@@ -866,26 +866,25 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         for p in ma_periods:
             df[f'MA{p}'] = df['Close'].rolling(window=p).mean() 
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
+             # --買/賣箭頭       
+            df['buy_signal'] = (
+                (df['Close'] > df['MA60']) &
+                (df['MA60_slope'] > 0) &
+                (df['Close'] > df['MA5']) &
+                (df['MA5_slope'] > 0) &
+                (df['Close'] > df['Open']) &              # 本K紅
+                (df['Close'].shift(1) < df['Open'].shift(1))  # 前K黑
+            )
+            df['sell_signal'] = (
+                (df['Close'] < df['MA60']) &
+                (df['MA60_slope'] < 0) &
+                (df['Close'] < df['MA5']) &
+                (df['MA5_slope'] < 0) &
+                (df['Close'] < df['Open']) &               # 本K黑
+                (df['Close'].shift(1) > df['Open'].shift(1))   # 前K紅
+            )
         
         df.attrs['ma_periods'] = ma_periods
- # --買/賣箭頭       
-        df['buy_signal'] = (
-            (df['Close'] > df['MA60']) &
-            (df['MA60_slope'] > 0) &
-            (df['Close'] > df['MA5']) &
-            (df['MA5_slope'] > 0) &
-            (df['Close'] > df['Open']) &              # 本K紅
-            (df['Close'].shift(1) < df['Open'].shift(1))  # 前K黑
-        )
-        df['sell_signal'] = (
-            (df['Close'] < df['MA60']) &
-            (df['MA60_slope'] < 0) &
-            (df['Close'] < df['MA5']) &
-            (df['MA5_slope'] < 0) &
-            (df['Close'] < df['Open']) &               # 本K黑
-            (df['Close'].shift(1) > df['Open'].shift(1))   # 前K紅
-        )
-
 
 # ----------------------------------        
         df = df.reset_index()
