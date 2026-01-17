@@ -799,7 +799,7 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
-        df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=False)
+        df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=False, actions=False,repair=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
