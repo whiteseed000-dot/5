@@ -912,6 +912,84 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             (df['Close'].shift(1) > df['Open'].shift(1))
         )
 
+        # -------評分----------        
+        df['buy_score'] = 0
+        
+        # 趨勢方向（最重要）
+        df.loc[df['Close'] > df[f'MA{trend_ma}'], 'buy_score'] += 2
+        
+        # MA 排列
+        df.loc[
+            (df[f'MA{fast_ma}'] > df[f'MA{slow_ma}']) &
+            (df[f'MA{slow_ma}'] > df[f'MA{trend_ma}']),
+            'buy_score'
+        ] += 2
+        
+        # MA 斜率連續向上
+        df.loc[
+            (df[f'MA{fast_ma}_slope'] > 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) > 0),
+            'buy_score'
+        ] += 1
+        
+        # 強勢 K（實體夠大）
+        df.loc[
+            (df['Close'] > df['Open']) &
+            ((df['Close'] - df['Open']) > 0.5 * (df['High'] - df['Low'])),
+            'buy_score'
+        ] += 1
+        
+        df['sell_score'] = 0
+        
+        df.loc[df['Close'] < df[f'MA{trend_ma}'], 'sell_score'] += 2
+        
+        df.loc[
+            (df[f'MA{fast_ma}'] < df[f'MA{slow_ma}']) &
+            (df[f'MA{slow_ma}'] < df[f'MA{trend_ma}']),
+            'sell_score'
+        ] += 2
+        
+        df.loc[
+            (df[f'MA{fast_ma}_slope'] < 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) < 0),
+            'sell_score'
+        ] += 1
+        
+        df.loc[
+            (df['Close'] < df['Open']) &
+            ((df['Open'] - df['Close']) > 0.5 * (df['High'] - df['Low'])),
+            'sell_score'
+        ] += 1
+
+        df['buy_level'] = pd.cut(
+            df['buy_score'],
+            bins=[-1, 2, 4, 6],
+            labels=['弱', '中', '強']
+        )
+        
+        df['sell_level'] = pd.cut(
+            df['sell_score'],
+            bins=[-1, 2, 4, 6],
+            labels=['弱', '中', '強']
+        )
+
+        offset = (df['High'] - df['Low']).mean() * 0.3
+        
+        df['buy_y']  = df['Low']  - offset
+        df['sell_y'] = df['High'] + offset
+        
+        buy_plot_df = df[
+            (df['buy_signal']) &
+            (df['buy_level'].isin(['中', '強']))
+        ]
+        
+        sell_plot_df = df[
+            (df['sell_signal']) &
+            (df['sell_level'].isin(['中', '強']))
+        ]
+
+
+# ----------------------------------        
 
         df.attrs['ma_periods'] = ma_periods
 
