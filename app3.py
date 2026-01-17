@@ -1115,16 +1115,7 @@ if result:
 
         ))
 
-            # 🔑 關鍵修正 2：x 軸指定為日期
-        fig.update_xaxes(type="date")
-        current_ticker = st.session_state.get("ticker")  # ← 這裡對應你的實際變數
-        if current_ticker:
-            ex_dates = get_ex_dividend_dates(
-                current_ticker,
-                df['Date'].min(),
-                df['Date'].max()
-            )
-            add_ex_dividend_lines(fig, ex_dates)
+
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 從 df 取回 MA 週期（不會 NameError）
@@ -1144,6 +1135,16 @@ if result:
         ))
         
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
+                    # 🔑 關鍵修正 2：x 軸指定為日期
+        fig.update_xaxes(type="date")
+        current_ticker = st.session_state.get("ticker")  # ← 這裡對應你的實際變數
+        if current_ticker:
+            ex_dates = get_ex_dividend_dates(
+                current_ticker,
+                df['Date'].min(),
+                df['Date'].max()
+            )
+            add_ex_dividend_lines(fig, ex_dates)
 
     elif view_mode == "KD指標":
         fig.add_trace(go.Scatter(x=df['Date'], y=df['K'], name="K", line=dict(color='#FF3131', width=2), hovertemplate='%{y:.1f}'))
