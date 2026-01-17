@@ -871,6 +871,26 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         df = df.reset_index()
         df['x'] = np.arange(len(df))
 
+        df['MA5_slope'] = df['MA5'].diff()
+        df['MA60_slope'] = df['MA60'].diff()
+
+        df['buy_signal'] = (
+        (df['Close'] > df['MA60']) &
+        (df['MA60_slope'] > 0) &
+        (df['Close'] > df['MA5']) &
+        (df['MA5_slope'] > 0) &
+        (df['Close'] > df['Open']) &              # 本K紅
+        (df['Close'].shift(1) < df['Open'].shift(1))  # 前K黑
+        )
+        
+        df['sell_signal'] = (
+            (df['Close'] < df['MA60']) &
+            (df['MA60_slope'] < 0) &
+            (df['Close'] < df['MA5']) &
+            (df['MA5_slope'] < 0) &
+            (df['Close'] < df['Open']) &               # 本K黑
+            (df['Close'].shift(1) > df['Open'].shift(1))   # 前K紅
+        )
 
         # --- 趨勢線計算（週線使用加權回歸） ---
         x = df['x'].values
@@ -1137,7 +1157,31 @@ if result:
                 fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
                           
         ))
-        
+
+        fig.add_trace(go.Scatter(
+        x=df.index[df['buy_signal']],
+        y=df['Low'][df['buy_signal']] * 0.995,
+        mode='markers',
+        marker=dict(
+            symbol='triangle-up',
+            size=12,
+            color='green'
+        ),
+        name='買入'
+        ))
+
+        fig.add_trace(go.Scatter(
+        x=df.index[df['sell_signal']],
+        y=df['High'][df['sell_signal']] * 1.005,
+        mode='markers',
+        marker=dict(
+            symbol='triangle-down',
+            size=12,
+            color='red'
+        ),
+        name='賣出'
+        ))
+
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
 
     elif view_mode == "KD指標":
