@@ -783,6 +783,27 @@ with st.sidebar:
     )
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
 
+    # =========================
+    # 📊 股價還原設定
+    # =========================  
+    use_adjusted_price = st.sidebar.toggle(
+        "使用還原股價",
+        value=True,
+        help="開啟：適合長期趨勢\n關閉：適合短線、實際成交價"
+    )
+    # ----------------------------
+    # 還原股價設定
+    # ----------------------------
+    if use_adjusted_price:
+        st.cache_data.clear()
+        auto_adjust = True
+        actions = True
+        repair = True
+    else:
+        st.cache_data.clear()
+        auto_adjust = False
+        actions = False
+        repair = False
     st.divider()
 # 在側邊欄的登出按鈕部分
     if st.button("🚪 登出帳號"):
@@ -795,11 +816,11 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=3600)
-def get_stock_data(ticker, years, time_frame="日"): # 新增參數
+def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): # 新增參數
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
-        df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=False)
+        df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=auto_adjust, actions=actions, repair=repair)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
