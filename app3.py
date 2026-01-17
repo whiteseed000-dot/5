@@ -867,7 +867,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
         
         if time_frame == "日":
-            fast_ma, slow_ma, trend_ma = 5, 10, 60
+            fast_ma, slow_ma, trend_ma = 10, 20, 60
         elif time_frame == "週":
             fast_ma, slow_ma, trend_ma = 13, 26, 52
         elif time_frame == "月":
