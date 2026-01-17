@@ -870,15 +870,13 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         
         if time_frame == "日":
             fast_ma, slow_ma, trend_ma = 10, 20, 60
-            rsi_periods = [7, 14]
         elif time_frame == "週":
             fast_ma, slow_ma, trend_ma = 13, 26, 52
-            rsi_periods = [7, 14]
         elif time_frame == "月":
             fast_ma, slow_ma, trend_ma = 6, 12, 24
-            rsi_periods = [7, 14]
 
-        
+
+        rsi_periods = [7, 14]        
         for p in rsi_periods:
             df[f'RSI{p}'] = calc_rsi(df['Close'], p)
         
