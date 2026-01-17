@@ -869,6 +869,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         df.attrs['ma_periods'] = ma_periods
 # ----------------------------------        
         df = df.reset_index()
+        df.rename(columns={df.columns[0]: 'Date'}, inplace=True)
 
         # ✅ 統一時間欄位名稱（日 / 週 / 月都適用）
         if 'Date' not in df.columns:
