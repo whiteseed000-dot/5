@@ -1082,9 +1082,9 @@ if result:
         
         # 通道配置：顏色與五線譜連動，方便判斷位階
         h_lines_config = [ 
-            ('H_TL+1SD', '#FFBD03', '通道上軌 (+10%)', 'dash'), 
+            ('H_TL+1SD', '#FFBD03', '通道上軌', 'dash'), 
             ('H_TL', '#FFFFFF', '趨勢中軸', 'solid'), 
-            ('H_TL-1SD', '#0096FF', '通道下軌 (-10%)', 'dash'), 
+            ('H_TL-1SD', '#0096FF', '通道下軌', 'dash'), 
         ]
         
         for col, hex_color, name_tag, line_style in h_lines_config:
