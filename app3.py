@@ -886,8 +886,8 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         # MACD (12, 26, 9)
         exp1 = df['Close'].ewm(span=12, adjust=False).mean()
         exp2 = df['Close'].ewm(span=26, adjust=False).mean()
-        df['MACD'] = exp1 - exp2
-        df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        df['M-MACD'] = exp1 - exp2
+        df['M-Signal'] = df['M-MACD'].ewm(span=9, adjust=False).mean()
         
         # BIAS (20) & MA20
         df['MA20'] = df['Close'].rolling(window=20).mean()
@@ -914,7 +914,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ===== 新增：多指標確認（不新增欄位） =====
         
             # ⑤ MACD 動能確認
-            not((df['MACD'] < df['Signal']))
+            (df['M-MACD'] < df['M-Signal'])
         
             # ⑥ RSI 非過熱、在多方區
            # (df['RSI7'] > 20) &
