@@ -821,7 +821,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
         df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=auto_adjust, actions=actions, repair=repair)
-        if df.empty: return None
+
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
         # 🔒 強制保證 index 是 DatetimeIndex
