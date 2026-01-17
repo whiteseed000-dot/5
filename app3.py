@@ -1116,7 +1116,7 @@ if result:
         ))
             # 2️⃣ 取得除權日（用 df 日期，最安全）
         ex_dates = get_ex_dividend_dates(
-            ticker,
+            ticker_input,
             df['Date'].min(),
             df['Date'].max()
         )
