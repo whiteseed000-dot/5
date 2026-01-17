@@ -869,9 +869,9 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         if time_frame == "日":
             fast_ma, slow_ma, trend_ma = 5, 10, 60
         elif time_frame == "週":
-            fast_ma, slow_ma, trend_ma = 4, 13, 26
+            fast_ma, slow_ma, trend_ma = 13, 26, 52
         elif time_frame == "月":
-            fast_ma, slow_ma, trend_ma = 3, 6, 12
+            fast_ma, slow_ma, trend_ma = 3, 12, 24
 
 
         df['buy_signal'] = (
