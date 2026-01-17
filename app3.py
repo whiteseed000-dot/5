@@ -982,11 +982,6 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             ((df['Close'] - df['Open']) > 0.5 * (df['High'] - df['Low'])),
             'buy_score'
         ] += 1
-                # 強勢 K（實體夠大）
-        df.loc[
-            (df['MACD'] > df['Signal']),
-            'buy_score'
-        ] += 10
         
         df['sell_score'] = 0
         
