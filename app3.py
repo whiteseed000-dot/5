@@ -788,7 +788,7 @@ with st.sidebar:
     # =========================    
     use_adjusted_price = st.sidebar.toggle(
         "使用還原股價（含除權息）",
-        value=True,
+        value=False,
         help="開啟：使用還原股價（適合長期趨勢）\n關閉：使用原始股價（適合短線、實際成交價）"
     )
     st.divider()
@@ -965,7 +965,7 @@ with col_btn:
             save_watchlist_to_google(username, st.session_state.watchlist_dict)
             st.rerun()
 
-result = get_stock_data(ticker_input, years_input, time_frame, use_adjusted_price)
+result = get_stock_data(ticker_input, years_input, time_frame)
 
 vix_val = get_vix_index()
 
