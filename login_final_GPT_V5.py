@@ -853,8 +853,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
                 'Volume': 'sum'    # 當月成交量
             }).dropna()
 # ----------------------------------------------
-            
-        # ---------------------------
+
 # --- 依時間週期自動切換 MA 參數 ---
         if time_frame == "日":
             ma_periods = [5, 10, 20, 60, 120]
@@ -864,14 +863,39 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             ma_periods = [3, 6, 12, 24, 48, 96]
 
         for p in ma_periods:
-            df[f'MA{p}'] = df['Close'].rolling(window=p).mean()
+            df[f'MA{p}'] = df['Close'].rolling(window=p).mean() 
+            df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
+        
+        if time_frame == "日":
+            fast, slow = 5, 20
+        elif time_frame == "週":
+            fast, slow = 4, 26
+        elif time_frame == "月":
+            fast, slow = 3, 6
+        df['buy_signal'] = (
+            (df['Close'] > df[f'MA{slow}']) &
+            (df[f'MA{slow}_slope'] > 0) &
+            (df['Close'] > df[f'MA{fast}']) &
+            (df[f'MA{fast}_slope'] > 0) &
+            (df['Close'] > df['Open']) &
+            (df['Close'].shift(1) < df['Open'].shift(1))
+        ).fillna(False)
+        
+        df['sell_signal'] = (
+            (df['Close'] < df[f'MA{slow}']) &
+            (df[f'MA{slow}_slope'] < 0) &
+            (df['Close'] < df[f'MA{fast}']) &
+            (df[f'MA{fast}_slope'] < 0) &
+            (df['Close'] < df['Open']) &
+            (df['Close'].shift(1) > df['Open'].shift(1))
+        ).fillna(False)
 
         df.attrs['ma_periods'] = ma_periods
+
 # ----------------------------------        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
-
-
+        
         # --- 趨勢線計算（週線使用加權回歸） ---
         x = df['x'].values
         y = df['Close'].values
@@ -1120,6 +1144,38 @@ if result:
             decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
         ))
+        
+        buy_df = df[df['buy_signal']]
+        
+        fig.add_trace(go.Scatter(
+            x=buy_df['Date'],
+            y=buy_df['Low'] * 0.995,   # 稍微壓低，避免蓋住K線
+            mode='markers',
+            name='Buy',
+            marker=dict(
+                symbol='triangle-up',
+                size=16,
+                color='lime',
+                line=dict(color='black', width=1)
+            ),
+            hovertemplate='🟢 買進<br>%{x}<br>價格: %{y:.2f}<extra></extra>'
+        ))
+        sell_df = df[df['sell_signal']]
+        
+        fig.add_trace(go.Scatter(
+            x=sell_df['Date'],
+            y=sell_df['High'] * 1.005,  # 稍微拉高
+            mode='markers',
+            name='Sell',
+            marker=dict(
+                symbol='triangle-down',
+                size=16,
+                color='red',
+                line=dict(color='black', width=1)
+            ),
+            hovertemplate='🔴 賣出<br>%{x}<br>價格: %{y:.2f}<extra></extra>'
+        ))
+
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 從 df 取回 MA 週期（不會 NameError）
