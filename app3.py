@@ -869,11 +869,23 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         df.attrs['ma_periods'] = ma_periods
 # ----------------------------------        
         df = df.reset_index()
+
+        # ✅ 統一時間欄位名稱（日 / 週 / 月都適用）
+        if 'Date' not in df.columns:
+            if 'index' in df.columns:
+                df.rename(columns={'index': 'Date'}, inplace=True)
+            elif 'Datetime' in df.columns:
+                df.rename(columns={'Datetime': 'Date'}, inplace=True)
+        
+        # 保證是 datetime（Plotly 需要）
+        df['Date'] = pd.to_datetime(df['Date'])
+
         df['x'] = np.arange(len(df))
 
         df['MA5_slope'] = df['MA5'].diff()
         df['MA60_slope'] = df['MA60'].diff()
-
+        
+# ----------------------------------  
         df['buy_signal'] = (
         (df['Close'] > df['MA60']) &
         (df['MA60_slope'] > 0) &
