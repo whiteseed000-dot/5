@@ -867,11 +867,6 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             df[f'MA{p}'] = df['Close'].rolling(window=p).mean()
 
         df.attrs['ma_periods'] = ma_periods
-# ----------------------------------        
-        df = df.reset_index()
-        df['x'] = np.arange(len(df))
-
-
  # --買/賣箭頭       
         df['MA5_slope'] = df['MA5'].diff()
         df['MA60_slope'] = df['MA60'].diff()
@@ -891,7 +886,9 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             (df['Close'] < df['Open']) &               # 本K黑
             (df['Close'].shift(1) > df['Open'].shift(1))   # 前K紅
         )
-
+# ----------------------------------        
+        df = df.reset_index()
+        df['x'] = np.arange(len(df))
         
         # --- 趨勢線計算（週線使用加權回歸） ---
         x = df['x'].values
