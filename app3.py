@@ -865,7 +865,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
 
         for p in ma_periods:
             df[f'MA{p}'] = df['Close'].rolling(window=p).mean() 
-            df[f'MA{p}_slope'] = df[f'MA{p}'].diff(
+            df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
         
         df.attrs['ma_periods'] = ma_periods
  # --買/賣箭頭       
