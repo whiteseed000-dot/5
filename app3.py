@@ -820,7 +820,7 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         elif time_frame == "月":
     # 月線：整個月份，K棒時間放在「月底（最後交易日）」
             df = df.resample(
-                'M',
+                'ME',
                 label='right',     # 標記在月底
                 closed='right'     # 包含月底最後交易日
             ).agg({
