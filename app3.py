@@ -914,15 +914,15 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ===== 新增：多指標確認（不新增欄位） =====
         
             # ⑤ MACD 動能確認
-            (df['MACD'] > df['Signal']) &
+            (df['MACD'] > df['Signal'])
         
             # ⑥ RSI 非過熱、在多方區
            # (df['RSI7'] > 20) &
-            (df['RSI14'] < 70) &
+           # (df['RSI14'] < 70) &
         
             # ⑦ BIAS 沒有嚴重追高
            # (df['BIAS'] > -5) &
-            (df['BIAS'] < 8) 
+            #(df['BIAS'] < 8) 
         )
         
         df['sell_signal'] = (
@@ -946,15 +946,15 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ===== 新增：多指標確認 =====
         
             # ⑤ MACD 動能轉空
-            (df['MACD'] < df['Signal']) &
+            (df['MACD'] < df['Signal'])
         
             # ⑥ RSI 在空方區、非超賣
            # (df['RSI14'] < 50) &
-            (df['RSI14'] > 70) &
+           # (df['RSI14'] > 70) &
         
             # ⑦ BIAS 無恐慌性乖離
            # (df['BIAS'] < 5) &
-            (df['BIAS'] > 5)
+           # (df['BIAS'] > 5)
         )
 
         # -------評分----------        
