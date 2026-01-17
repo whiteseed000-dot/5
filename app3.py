@@ -1195,7 +1195,7 @@ if result:
             spikemode="across", # 穿過整個圖表
             spikethickness=1,
             spikecolor="white", # 設定為白色
-            spikedash="solid",   # 實線 (若要虛線改為 dash)
+            spikedash="solid"   # 實線 (若要虛線改為 dash)
         )
     )    
         # 如果有開啟副圖，額外設定副圖的 Y 軸指引線顏色為白色
