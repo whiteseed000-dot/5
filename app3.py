@@ -917,13 +917,23 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         df['BB_up'] = df['MA20'] + 2 * df['Close'].rolling(20).std()
         df['BB_low'] = df['MA20'] - 2 * df['Close'].rolling(20).std()
         
-        # --- 樂活通道核心計算 (長線 100MA 邏輯) ---
-        # 使用 100 日移動平均線作為長線中軸
-        df['H_TL'] = df['Close'].rolling(window=100).mean()
+
+        # --- 樂活通道核心計算（依時間尺度修正） ---
+        if time_frame == "日":
+            h_window = 100      # 約 5 個月
+            band_pct = 0.10
+        elif time_frame == "週":
+            h_window = 52       # 約 1 年
+            band_pct = 0.15
+        elif time_frame == "月":
+            h_window = 24       # 約 2 年
+            band_pct = 0.20
         
-        # 使用固定百分比帶寬，模擬五線譜的位階感
-        df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (+10%)
-        df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (-10%)
+        df['H_TL'] = df['Close'].rolling(window=h_window, min_periods=h_window//2).mean()
+        
+        df['H_TL+1SD'] = df['H_TL'] * (1 + band_pct)
+        df['H_TL-1SD'] = df['H_TL'] * (1 - band_pct)
+
 
         # 價格一階 / 二階差分（趨勢彎曲度）
         df['dP'] = df['Close'].diff()
