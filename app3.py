@@ -807,7 +807,18 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
-        df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=False, actions=False,repair=False)
+        # ----------------------------
+        # 還原股價設定
+        # ----------------------------
+        if use_adjusted_price:
+            auto_adjust = True
+            actions = True
+            repair = True
+        else:
+            auto_adjust = False
+            actions = False
+            repair = False
+        df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=auto_adjust, actions=actions, repair=repair)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
