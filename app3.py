@@ -1154,9 +1154,8 @@ if result:
             name='Buy',
             marker=dict(
                 symbol='triangle-up',
-                size=18,
+                size=16,
                 color='lime',
-                opacity=0.9,
                 line=dict(color='black', width=1)
             ),
             hovertemplate='🟢 買進<br>%{x}<br>價格: %{y:.2f}<extra></extra>'
