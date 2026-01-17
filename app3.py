@@ -1276,12 +1276,12 @@ if result:
         
         buy_plot_df = df[
             (df['buy_signal']) &
-            (df['buy_level'].isin(['中', '弱']))
+            (df['buy_level'].isin(['弱','中', '弱']))
         ]
         
         sell_plot_df = df[
             (df['sell_signal']) &
-            (df['sell_level'].isin(['中', '強']))
+            (df['sell_level'].isin(['弱','中', '弱']))
         ]
         
         fig.add_trace(
@@ -1291,8 +1291,8 @@ if result:
                 mode='markers',
                 marker=dict(
                     symbol='triangle-up',
-                    size=buy_plot_df['buy_level'].map({'中': 12, '弱': 18}),
-                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '弱': '#00FF7F'}),
+                    size=buy_plot_df['buy_level'].map({'弱': 10,'中': 12, '強': 18}),
+                    color=buy_plot_df['buy_level'].map({'弱': '#FFD700','中': '#FFD700', '強': '#00FF7F'}),
                     opacity=1.0,
                     line=dict(width=1, color='black')
                 ),
@@ -1309,8 +1309,8 @@ if result:
                 mode='markers',
                 marker=dict(
                     symbol='triangle-down',
-                    size=sell_plot_df['sell_level'].map({'中': 12, '強': 18}),
-                    color=sell_plot_df['sell_level'].map({'中': '#FFA500', '強': '#FF3333'}),
+                    size=sell_plot_df['sell_level'].map({'弱': 10,'中': 12, '強': 18}),
+                    color=sell_plot_df['sell_level'].map({'弱': '#FFA500','中': '#FFA500', '強': '#FF3333'}),
                     opacity=1.0,
                     line=dict(width=1, color='black')
                 ),
