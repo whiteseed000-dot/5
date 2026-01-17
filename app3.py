@@ -795,10 +795,12 @@ with st.sidebar:
     # 還原股價設定
     # ----------------------------
     if use_adjusted_price:
+        st.cache_data.clear()
         auto_adjust = True
         actions = True
         repair = True
     else:
+        st.cache_data.clear()
         auto_adjust = False
         actions = False
         repair = False
