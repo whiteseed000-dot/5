@@ -317,6 +317,7 @@ def detect_market_pattern(df, slope):
     ma_periods = df.attrs.get('ma_periods', [])
     
     ###區間型態###
+
     # =========================
     # 🟢 結構性底部（區間版）
     # =========================
@@ -324,42 +325,19 @@ def detect_market_pattern(df, slope):
         close.iloc[-20:].min() < df['TL-1SD'].iloc[-1] and
         close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
         df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean() and
-        -0.02 < price_slope < 0.05
+        -0.01 < price_slope < 0.05
     ):
         patterns.append("🟢 結構性底部（區間）")
 
-
-
-
-    # 1️⃣ 回測 50 日找出第一個最低點（第一底）
-    lookback = 50
-    sub_df = df.iloc[-lookback:]
-    first_min_idx = sub_df['Close'].idxmin()
-    first_bottom_price = df.loc[first_min_idx, 'Close']
-
-    # 2️⃣ 往右回測 ≥10 日，找「高於第一底」的次低點（第二底）
-    right_df = df.loc[first_min_idx:].iloc[10:]  # 至少隔 10 日
-    if len(right_df) > 10:
-
-        second_min_idx = right_df['Close'].idxmin()
-        second_bottom_price = df.loc[second_min_idx, 'Close']
-    
-        if second_bottom_price > first_bottom_price * 0.98:
-   
-            # 3️⃣ 次低點後 5 日斜率必須為正
-            post_prices = df.loc[second_min_idx:].iloc[:5]['Close'].values
-            if len(post_prices) > 5:
-
-                x = np.arange(5)
-                slope_post, _, _, _, _ = stats.linregress(x, post_prices)
-            
-                # 4️⃣ 現價需大於次低點
-                if (
-                    slope_post > 0 and
-                    curr['Close'] > second_bottom_price and
-                    curr['Close'] < curr['TL']
-                ):
-                    patterns.append("🟢 雙底確認（區間）")
+    # =========================
+    # 🟢 雙底確認（區間）
+    # =========================
+    if (
+        abs(close.iloc[-5:].mean() - close.iloc[-20:-15].mean()) /
+        close.iloc[-20:-15].mean() < 0.03 and
+        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-20:-15].mean()
+    ):
+        patterns.append("🟢 雙底確認（區間）")
 
     # =========================
     # 🟡 多頭旗形（新增）
@@ -380,46 +358,34 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🟡 多頭旗形（區間）")
 
+    # =========================
+    # 🟡 回檔不破趨勢（區間）
+    # =========================
+    if (
+        close.iloc[-10:].min() > tl.iloc[-1] and
+        slope > 0
+    ):
+        patterns.append("🟡 回檔不破趨勢（區間）")
 
     # =========================
     # 🟡 均線糾結（結構）
     # =========================
     if ma_periods:
         ma_s = df[f"MA{ma_periods[0]}"].iloc[-10:].mean()
-        ma_l = df[f"MA{ma_periods[2]}"].iloc[-10:].mean()
+        ma_l = df[f"MA{ma_periods[-1]}"].iloc[-10:].mean()
 
         if abs(ma_s - ma_l) / ma_l < 0.01:
             patterns.append("🟡 均線糾結（區間）")
-    
-    # =========================
-    # 1️⃣ 回測 50 日找最低點
-    lookback = 50
-    sub_df = df.iloc[-lookback:]
-    min_idx = sub_df['Close'].idxmin()
-    bottom_price = df.loc[min_idx, 'Close']
-    
-    # 2️⃣ 最低點左右斜率（各 5 日）
-    left_prices = df.loc[:min_idx].iloc[-5:]['Close'].values
-    right_prices = df.loc[min_idx:].iloc[:5]['Close'].values
 
-    if len(left_prices) == 5 and len(right_prices) == 5:
-        x = np.arange(5)
-        slope_left, _, _, _, _ = stats.linregress(x, left_prices)
-        slope_right, _, _, _, _ = stats.linregress(x, right_prices)
-
-        # 3️⃣ 現價回測 10 日，波動 ≤ 5%
-        recent_prices = df['Close'].iloc[-10:]
-        range_ratio = (recent_prices.max() - recent_prices.min()) / recent_prices.mean()
-
-        if (
-            slope_left < 0 and                 # 左側下跌
-            slope_right > 0 and                # 右側回升
-            range_ratio <= 0.05 and             # 區間盤整
-            rsi_slope > 0 and                   # 動能回升
-            curr['Close'] < curr['TL'] and      # 位於低檔結構
-            curr['Close'] > bottom_price * 1.05         # ✅ 現價需高於碗底
-        ):
-            patterns.append("🟢 碗型底（區間）")
+    # === 🟢 區間碗型底（Rounded Bottom）===
+    if (
+        price_curve > 0 and
+        -0.01 < price_slope < 0.02 and
+        higher_lows and
+        rsi_slope > 0 and
+        curr['Close'] < curr['TL-1SD']
+    ):
+        patterns.append("🟢 區間碗型底（區間）")
 
     # === ⚪ 區間盤整（非趨勢）===
     if (
@@ -428,6 +394,12 @@ def detect_market_pattern(df, slope):
         45 < curr['RSI14'] < 55
     ):
         patterns.append("⚪ 區間盤整（區間）")
+
+    if price_slope > 0 and rsi_slope > 0:
+        patterns.append("🟡 上升趨勢結構（區間）")
+
+    if price_slope < 0 and rsi_slope < 0:
+        patterns.append("🔴 弱勢趨勢結構（區間）")
 
     
         # === ⚪ 箱型整理 ===
@@ -444,7 +416,7 @@ def detect_market_pattern(df, slope):
         macd_slope < 0 and
         curr['Close'] > curr['TL+1SD']
     ):
-        patterns.append("🔴 頭部形成（區間）")
+        patterns.append("🔴 區間頭部派發（區間）")
 
 
     # =========================
@@ -483,31 +455,13 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🔴 趨勢末端（動能衰竭）")
 
-    
-    # === 🟢 V 型反轉 ===
-    # 1️⃣ 回測 50 日找最低點
-    lookback = 10
-    sub_df = df.iloc[-lookback:]
-    min_idx = sub_df['Close'].idxmin()
-    bottom_price = df.loc[min_idx, 'Close']
-    
-    # 2️⃣ 最低點左右斜率（各 3 日）
-    left_prices = df.loc[:min_idx].iloc[-3:]['Close'].values
-    right_prices = df.loc[min_idx:].iloc[:3]['Close'].values
-
-    if len(left_prices) == 3 and len(right_prices) == 3:
-        x = np.arange(3)
-        slope_left, _, _, _, _ = stats.linregress(x, left_prices)
-        slope_right, _, _, _, _ = stats.linregress(x, right_prices)
-
-        if (
-            slope_left < 0 and                 # 左側下跌
-            slope_right > 0 and                # 右側回升
-            rsi_slope > 0 and                   # 動能回升
-            curr['Close'] > bottom_price * 1.1         # ✅ 現價需高於碗底
-        ):
-            patterns.append("🟢 V 型反轉")
-
+        # === 🟢 V 型反轉 ===
+    if (
+        prev['Close'] < curr['TL-2SD'] and
+        curr['Close'] > curr['TL-1SD'] and
+        (curr['RSI14'] - prev['RSI14']) > 10
+    ):
+        patterns.append("🟢 V 型反轉")
 
         # === 🟢 雙底確認 ===
     if (
@@ -612,11 +566,19 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🟢 底部背離（潛在反轉）")
 
+    # --- 回檔不破 TL（多頭續行） ---
+    if (
+        curr['Close'] > curr['TL'] and
+        prev['Close'] < curr['TL+1SD'] and
+        slope > 0 and
+        curr['RSI14'] > 45
+    ):
+        patterns.append("🟡 回檔不破趨勢")
 
     # --- 均線糾結突破 ---
     if ma_periods:
         ma_short = df[f"MA{ma_periods[0]}"]
-        ma_long = df[f"MA{ma_periods[2]}"]
+        ma_long = df[f"MA{ma_periods[-1]}"]
     
         if (
             abs(ma_short.iloc[-1] - ma_long.iloc[-1]) / ma_long.iloc[-1] < 0.01 and
@@ -651,18 +613,6 @@ def detect_market_pattern(df, slope):
         abs(curr['MACD']) < abs(prev['MACD'])
     ):
         patterns.append("⚪ 盤整收斂")
-    
-    # =========================
-    # 🔵 爆大量（Volume Spike）
-    # =========================
-
-    # 1️⃣ 最新收盤日與前一日成交量
-    vol_today = df['Volume'].iloc[-1]
-    vol_prev = df['Volume'].iloc[-2]
-
-    # 2️⃣ 今日成交量 > 前一日 3 倍
-    if vol_today > vol_prev * 3:
-        patterns.append("🔵 爆大量")
     
     return patterns
 
@@ -1271,7 +1221,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
-                "AI 市場型態": st.column_config.TextColumn(),
+                "AI 市場型態": st.column_config.TextColumn(width="large"),
             }
         )
     else:
