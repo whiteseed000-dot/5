@@ -879,7 +879,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         rsi_periods = [7, 14]
         
         for p in rsi_periods:
-            df[f'M-RSI{p}'] = calc_rsi(df['Close'], p)
+            df[f'RSI{p}'] = calc_rsi(df['Close'], p)
         
         df.attrs['rsi_periods'] = rsi_periods
         # --------------------------        
@@ -889,9 +889,6 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         df['M-MACD'] = exp1 - exp2
         df['M-Signal'] = df['M-MACD'].ewm(span=9, adjust=False).mean()
         
-        # BIAS (20) & MA20
-        df['MA20'] = df['Close'].rolling(window=20).mean()
-        df['BIAS'] = ((df['Close'] - df['MA20']) / df['MA20']) * 100
 
         df['buy_signal'] = (
             # ① 趨勢過濾（只做多頭）
