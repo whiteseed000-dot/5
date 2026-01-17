@@ -115,14 +115,14 @@ lines_config = [
     ('TL-1SD', '#0096FF', '-1SD (偏低)', 'dash'), 
     ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
 ]
-def get_technical_indicators(df):
 
-    def calc_rsi(series, period):
-        delta = series.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        return 100 - (100 / (1 + rs))
+def calc_rsi(series, period):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+def get_technical_indicators(df):
 
 
     # --- RSI 依時間週期切換 ---
@@ -287,7 +287,7 @@ def detect_market_pattern(df, slope):
 
     W = 20  # 可調 10~20
     window = df.iloc[-W:]
-    
+
     # 區間價格趨勢（線性回歸）
     x = np.arange(W)
     price_slope = np.polyfit(x, window['Close'], 1)[0]
@@ -865,32 +865,161 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         for p in ma_periods:
             df[f'MA{p}'] = df['Close'].rolling(window=p).mean() 
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
-        
-        if time_frame == "日":
-            fast, slow = 5, 20
-        elif time_frame == "週":
-            fast, slow = 4, 26
-        elif time_frame == "月":
-            fast, slow = 3, 6
-        df['buy_signal'] = (
-            (df['Close'] > df[f'MA{slow}']) &
-            (df[f'MA{slow}_slope'] > 0) &
-            (df['Close'] > df[f'MA{fast}']) &
-            (df[f'MA{fast}_slope'] > 0) &
-            (df['Close'] > df['Open']) &
-            (df['Close'].shift(1) < df['Open'].shift(1))
-        ).fillna(False)
-        
-        df['sell_signal'] = (
-            (df['Close'] < df[f'MA{slow}']) &
-            (df[f'MA{slow}_slope'] < 0) &
-            (df['Close'] < df[f'MA{fast}']) &
-            (df[f'MA{fast}_slope'] < 0) &
-            (df['Close'] < df['Open']) &
-            (df['Close'].shift(1) > df['Open'].shift(1))
-        ).fillna(False)
 
         df.attrs['ma_periods'] = ma_periods
+        
+        if time_frame == "日":
+            fast_ma, slow_ma, trend_ma = 10, 20, 60
+        elif time_frame == "週":
+            fast_ma, slow_ma, trend_ma = 13, 26, 52
+        elif time_frame == "月":
+            fast_ma, slow_ma, trend_ma = 6, 12, 24
+       
+
+        rsi_periods = [7, 14]
+        
+        for p in rsi_periods:
+            df[f'RSI{p}'] = calc_rsi(df['Close'], p)
+        
+        df.attrs['rsi_periods'] = rsi_periods
+        # --------------------------        
+        # MACD (12, 26, 9)
+        exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+        df['MACD'] = exp1 - exp2
+        df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        
+        # BIAS (20) & MA20
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        df['BIAS'] = ((df['Close'] - df['MA20']) / df['MA20']) * 100
+
+        df['buy_signal'] = (
+            # ① 趨勢過濾（只做多頭）
+            (df['Close'] > df[f'MA{trend_ma}']) &
+        
+            # ② 價格突破快 / 慢 MA（突破確認）
+            (df['Close'] > df[f'MA{fast_ma}']) &
+            (df['Close'].shift(1) <= df[f'MA{fast_ma}'].shift(1)) &
+            (df['Close'] > df[f'MA{slow_ma}']) &
+        
+            # ③ MA 方向一致（連續斜率）
+            (df[f'MA{fast_ma}_slope'] > 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) > 0) &
+            (df[f'MA{slow_ma}_slope'] > 0) &
+        
+            # ④ K 線轉強
+            (df['Close'] > df['Open']) &
+            (df['Close'].shift(1) < df['Open'].shift(1)) &
+        
+            # ===== 新增：多指標確認（不新增欄位） =====
+        
+            # ⑤ MACD 動能確認
+            (df['MACD'] > df['Signal'])
+        
+            # ⑥ RSI 非過熱、在多方區
+           # (df['RSI7'] > 20) &
+           # (df['RSI14'] < 70) &
+        
+            # ⑦ BIAS 沒有嚴重追高
+           # (df['BIAS'] > -5) &
+            #(df['BIAS'] < 8) 
+        )
+        
+        df['sell_signal'] = (
+            # ① 趨勢過濾（只做空頭）
+            (df['Close'] < df[f'MA{trend_ma}']) &
+        
+            # ② 價格跌破快 / 慢 MA（跌破確認）
+            (df['Close'] < df[f'MA{fast_ma}']) &
+            (df['Close'].shift(1) >= df[f'MA{fast_ma}'].shift(1)) &
+            (df['Close'] < df[f'MA{slow_ma}']) &
+        
+            # ③ MA 方向一致
+            (df[f'MA{fast_ma}_slope'] < 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) < 0) &
+            (df[f'MA{slow_ma}_slope'] < 0) &
+        
+            # ④ K 線轉弱
+            (df['Close'] < df['Open']) &
+            (df['Close'].shift(1) > df['Open'].shift(1)) &
+        
+            # ===== 新增：多指標確認 =====
+        
+            # ⑤ MACD 動能轉空
+            (df['MACD'] < df['Signal'])
+        
+            # ⑥ RSI 在空方區、非超賣
+           # (df['RSI14'] < 50) &
+           # (df['RSI14'] > 70) &
+        
+            # ⑦ BIAS 無恐慌性乖離
+           # (df['BIAS'] < 5) &
+           # (df['BIAS'] > 5)
+        )
+
+        # -------評分----------        
+        df['buy_score'] = 0
+        
+        # 趨勢方向（最重要）
+        df.loc[df['Close'] > df[f'MA{trend_ma}'], 'buy_score'] += 2
+        
+        # MA 排列
+        df.loc[
+            (df[f'MA{fast_ma}'] > df[f'MA{slow_ma}']) &
+            (df[f'MA{slow_ma}'] > df[f'MA{trend_ma}']),
+            'buy_score'
+        ] += 2
+        
+        # MA 斜率連續向上
+        df.loc[
+            (df[f'MA{fast_ma}_slope'] > 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) > 0),
+            'buy_score'
+        ] += 1
+        
+        # 強勢 K（實體夠大）
+        df.loc[
+            (df['Close'] > df['Open']) &
+            ((df['Close'] - df['Open']) > 0.5 * (df['High'] - df['Low'])),
+            'buy_score'
+        ] += 1
+        
+        df['sell_score'] = 0
+        
+        df.loc[df['Close'] < df[f'MA{trend_ma}'], 'sell_score'] += 2
+        
+        df.loc[
+            (df[f'MA{fast_ma}'] < df[f'MA{slow_ma}']) &
+            (df[f'MA{slow_ma}'] < df[f'MA{trend_ma}']),
+            'sell_score'
+        ] += 2
+        
+        df.loc[
+            (df[f'MA{fast_ma}_slope'] < 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) < 0),
+            'sell_score'
+        ] += 1
+        
+        df.loc[
+            (df['Close'] < df['Open']) &
+            ((df['Open'] - df['Close']) > 0.5 * (df['High'] - df['Low'])),
+            'sell_score'
+        ] += 1
+
+        df['buy_level'] = pd.cut(
+            df['buy_score'],
+            bins=[-1, 2, 4, 6],
+            labels=['弱', '中', '強']
+        )
+        
+        df['sell_level'] = pd.cut(
+            df['sell_score'],
+            bins=[-1, 2, 4, 6],
+            labels=['弱', '中', '強']
+        )
+    
+
+
 
 # ----------------------------------        
         df = df.reset_index()
@@ -1144,37 +1273,57 @@ if result:
             decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
         ))
+        offset = (df['High'] - df['Low']).mean() * 0.3
         
-        buy_df = df[df['buy_signal']]
+        df['buy_y']  = df['Low']  - offset
+        df['sell_y'] = df['High'] + offset
         
-        fig.add_trace(go.Scatter(
-            x=buy_df['Date'],
-            y=buy_df['Low'] * 0.995,   # 稍微壓低，避免蓋住K線
-            mode='markers',
-            name='Buy',
-            marker=dict(
-                symbol='triangle-up',
-                size=16,
-                color='lime',
-                line=dict(color='black', width=1)
-            ),
-            hovertemplate='🟢 買進<br>%{x}<br>價格: %{y:.2f}<extra></extra>'
-        ))
-        sell_df = df[df['sell_signal']]
+        buy_plot_df = df[
+            (df['buy_signal']) &
+            (df['buy_level'].isin(['中', '強']))
+        ]
         
-        fig.add_trace(go.Scatter(
-            x=sell_df['Date'],
-            y=sell_df['High'] * 1.005,  # 稍微拉高
-            mode='markers',
-            name='Sell',
-            marker=dict(
-                symbol='triangle-down',
-                size=16,
-                color='red',
-                line=dict(color='black', width=1)
-            ),
-            hovertemplate='🔴 賣出<br>%{x}<br>價格: %{y:.2f}<extra></extra>'
-        ))
+        sell_plot_df = df[
+            (df['sell_signal']) &
+            (df['sell_level'].isin(['中', '強']))
+        ]
+        
+        fig.add_trace(
+            go.Scatter(
+                x=buy_plot_df['Date'],
+                y=buy_plot_df['buy_y'],
+                mode='markers',
+                marker=dict(
+                    symbol='triangle-up',
+                    size=buy_plot_df['buy_level'].map({'中': 12, '強': 18}),
+                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '強': '#00FF7F'}),
+                    opacity=1.0,
+                    line=dict(width=1, color='black')
+                ),
+                name='Buy Signal',
+                hovertext=buy_plot_df['buy_level'],
+                hoverinfo='text'
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=sell_plot_df['Date'],
+                y=sell_plot_df['sell_y'],
+                mode='markers',
+                marker=dict(
+                    symbol='triangle-down',
+                    size=sell_plot_df['sell_level'].map({'中': 12, '強': 18}),
+                    color=sell_plot_df['sell_level'].map({'中': '#FFA500', '強': '#FF3333'}),
+                    opacity=1.0,
+                    line=dict(width=1, color='black')
+                ),
+                name='Sell Signal',
+                hovertext=sell_plot_df['sell_level'],
+                hoverinfo='text'
+            )
+        )
+
 
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
