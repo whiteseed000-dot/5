@@ -788,7 +788,7 @@ with st.sidebar:
     # =========================  
     use_adjusted_price = st.sidebar.toggle(
         "使用還原股價",
-        value=True,
+        value=False,
         help="開啟：適合長期趨勢\n關閉：適合短線、實際成交價"
     )
     # ----------------------------
