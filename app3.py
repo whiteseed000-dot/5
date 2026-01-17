@@ -870,7 +870,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
 # ----------------------------------        
         df = df.reset_index()
         df['x'] = np.arange(len(df))
-        df['log_Close'] = np.log(df['Close'])
+
 
         # --- 趨勢線計算（週線使用加權回歸） ---
         x = df['x'].values
@@ -918,48 +918,21 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         df['BB_low'] = df['MA20'] - 2 * df['Close'].rolling(20).std()
         
 
-        # --- 樂活通道參數（log + ATR）---
+        # --- 樂活通道核心計算（依時間尺度修正） ---
         if time_frame == "日":
-            h_window = 100
-            atr_window = 14
-            atr_mult = 2.0
+            h_window = 100      # 約 5 個月
+            band_pct = 0.10
         elif time_frame == "週":
-            h_window = 52
-            atr_window = 14
-            atr_mult = 2.5
+            h_window = 52       # 約 1 年
+            band_pct = 0.15
         elif time_frame == "月":
-            h_window = 24
-            atr_window = 12
-            atr_mult = 3.0
-
-        # --- log 中軸（樂活趨勢）---
-        df['H_TL_log'] = (
-            df['log_Close']
-            .rolling(window=h_window, min_periods=h_window//2)
-            .mean()
-        )
-
-        # --- ATR 計算 ---
-        high_low = df['High'] - df['Low']
-        high_close = np.abs(df['High'] - df['Close'].shift())
-        low_close = np.abs(df['Low'] - df['Close'].shift())
+            h_window = 24       # 約 2 年
+            band_pct = 0.20
         
-        tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+        df['H_TL'] = df['Close'].rolling(window=h_window, min_periods=h_window//2).mean()
         
-        df['ATR'] = tr.rolling(window=atr_window).mean()
-
-        # ATR 轉為 log 波動（比例化）
-        df['ATR_log'] = df['ATR'] / df['Close']
-
-        # --- 樂活通道（log + ATR）---
-        df['H_TL_log_up'] = df['H_TL_log'] + atr_mult * df['ATR_log']
-        df['H_TL_log_dn'] = df['H_TL_log'] - atr_mult * df['ATR_log']
-        
-        # 還原回價格（給 Plotly 畫）
-        df['H_TL'] = np.exp(df['H_TL_log'])
-        df['H_TL+1SD'] = np.exp(df['H_TL_log_up'])
-        df['H_TL-1SD'] = np.exp(df['H_TL_log_dn'])
-
+        df['H_TL+1SD'] = df['H_TL'] * (1 + band_pct)
+        df['H_TL-1SD'] = df['H_TL'] * (1 - band_pct)
 
 
         # 價格一階 / 二階差分（趨勢彎曲度）
