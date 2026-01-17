@@ -941,7 +941,20 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         
             # ④ K 線轉弱
             (df['Close'] < df['Open']) &
-            (df['Close'].shift(1) > df['Open'].shift(1))
+            (df['Close'].shift(1) > df['Open'].shift(1)) &
+        
+            # ===== 新增：多指標確認 =====
+        
+            # ⑤ MACD 動能轉空
+            (df['MACD'] < df['Signal']) &
+        
+            # ⑥ RSI 在空方區、非超賣
+            (df['RSI14'] < 50) &
+            (df['RSI14'] > 30) &
+        
+            # ⑦ BIAS 無恐慌性乖離
+            (df['BIAS'] < 5) &
+            (df['BIAS'] > -8) &
         )
 
         # -------評分----------        
