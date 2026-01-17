@@ -1264,9 +1264,9 @@ if result:
             go.Scatter(
                 x=buy_plot_df['Date'],
                 y=buy_plot_df['buy_y'],
-                mode='markers',
-                marker=dict(
-                    symbol='square',
+                mode='text',
+                text=['B'] * len(buy_df),
+                textfont=dict(
                     size=14,
                     color='lime'
                 ),
