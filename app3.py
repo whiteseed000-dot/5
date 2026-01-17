@@ -885,12 +885,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         df.attrs['rsi_periods'] = rsi_periods
         # --------------------------
         
-        # MACD (12, 26, 9)
-        exp1 = df['Close'].ewm(span=12, adjust=False).mean()
-        exp2 = df['Close'].ewm(span=26, adjust=False).mean()
-        df['MACD'] = exp1 - exp2
-        df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
-        df['BIAS'] = ((df['Close'] - df['MA20']) / df['MA20']) * 100
+
 
         df['buy_signal'] = (
             # ① 趨勢過濾（只做多頭）
