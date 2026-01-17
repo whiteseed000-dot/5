@@ -1246,36 +1246,40 @@ if result:
             # 自定義 K 線懸浮文字格式
         ))
         
-        buy_df = df[df['buy_signal']]
-        
-        fig.add_trace(go.Scatter(
-            x=buy_df['Date'],
-            y=buy_df['Low'] * 0.995,   # 稍微壓低，避免蓋住K線
-            mode='markers',
-            name='Buy',
-            marker=dict(
-                symbol='triangle-up',
-                size=16,
-                color='lime',
-                line=dict(color='black', width=1)
-            ),
-            hovertemplate='🟢 買進<br>%{x}<br>價格: %{y:.2f}<extra></extra>'
-        ))
-        sell_df = df[df['sell_signal']]
-        
-        fig.add_trace(go.Scatter(
-            x=sell_df['Date'],
-            y=sell_df['High'] * 1.005,  # 稍微拉高
-            mode='markers',
-            name='Sell',
-            marker=dict(
-                symbol='triangle-down',
-                size=16,
-                color='red',
-                line=dict(color='black', width=1)
-            ),
-            hovertemplate='🔴 賣出<br>%{x}<br>價格: %{y:.2f}<extra></extra>'
-        ))
+
+        fig.add_trace(
+            go.Scatter(
+                x=buy_plot_df['Date'],
+                y=buy_plot_df['buy_y'],
+                mode='markers',
+                marker=dict(
+                    symbol='triangle-up',
+                    size=buy_plot_df['buy_level'].map({'中': 12, '強': 18}),
+                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '強': '#00FF7F'}),
+                    line=dict(width=1, color='black')
+                ),
+                name='Buy Signal',
+                hovertext=buy_plot_df['buy_level'],
+                hoverinfo='text'
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=sell_plot_df['Date'],
+                y=sell_plot_df['sell_y'],
+                mode='markers',
+                marker=dict(
+                    symbol='triangle-down',
+                    size=sell_plot_df['sell_level'].map({'中': 12, '強': 18}),
+                    color=sell_plot_df['sell_level'].map({'中': '#FFA500', '強': '#FF3333'}),
+                    line=dict(width=1, color='black')
+                ),
+                name='Sell Signal',
+                hovertext=sell_plot_df['sell_level'],
+                hoverinfo='text'
+            )
+        )
+
 
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
