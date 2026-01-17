@@ -122,7 +122,7 @@ def get_lohas_data(ticker, years):
     try:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=int(years * 365))
-        df = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        df = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
