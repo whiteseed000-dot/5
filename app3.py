@@ -865,14 +865,32 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         for p in ma_periods:
             df[f'MA{p}'] = df['Close'].rolling(window=p).mean() 
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
+
+        df.attrs['ma_periods'] = ma_periods
         
         if time_frame == "日":
             fast_ma, slow_ma, trend_ma = 10, 20, 60
+            rsi_periods = [7, 14]
         elif time_frame == "週":
             fast_ma, slow_ma, trend_ma = 13, 26, 52
+            rsi_periods = [7, 14]
         elif time_frame == "月":
             fast_ma, slow_ma, trend_ma = 6, 12, 24
+            rsi_periods = [7, 14]
 
+        
+        for p in rsi_periods:
+            df[f'RSI{p}'] = calc_rsi(df['Close'], p)
+        
+        df.attrs['rsi_periods'] = rsi_periods
+        # --------------------------
+        
+        # MACD (12, 26, 9)
+        exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+        df['MACD'] = exp1 - exp2
+        df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        df['BIAS'] = ((df['Close'] - df['MA20']) / df['MA20']) * 100
 
         df['buy_signal'] = (
             # ① 趨勢過濾（只做多頭）
@@ -989,10 +1007,9 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             bins=[-1, 2, 4, 6],
             labels=['弱', '中', '強']
         )
+    
 
-# ----------------------------------        
 
-        df.attrs['ma_periods'] = ma_periods
 
 # ----------------------------------        
         df = df.reset_index()
