@@ -1265,7 +1265,7 @@ if result:
                 x=buy_plot_df['Date'],
                 y=buy_plot_df['buy_y'],
                 mode='text',
-                text=['B'] * len(buy_df),
+                text=['B'] * len(=buy_plot_df),
                 textfont=dict(
                     size=14,
                     color='lime'
