@@ -876,9 +876,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         elif timeframe == '月':
             ma_slopes = ['MA3', 'MA12']
 
-        for ma in ma_slopes:
-            if ma in df.columns:
-                df[f'{ma}_slope'] = df[ma].diff()
+
 
 # ----------------------------------        
         df = df.reset_index()
