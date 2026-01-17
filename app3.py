@@ -914,7 +914,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ===== 新增：多指標確認（不新增欄位） =====
         
             # ⑤ MACD 動能確認
-            (df['MACD'].iloc[-1] > df['Signal'].iloc[-1])
+            ((df['MACD'] > df['Signal']) & (df['MACD'].shift(1) <= df['Signal'].shift(1)))
         
             # ⑥ RSI 非過熱、在多方區
            # (df['RSI7'] > 20) &
