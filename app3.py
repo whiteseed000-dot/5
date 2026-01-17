@@ -853,8 +853,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
                 'Volume': 'sum'    # 當月成交量
             }).dropna()
 # ----------------------------------------------
-            
-        # ---------------------------
+
 # --- 依時間週期自動切換 MA 參數 ---
         if time_frame == "日":
             ma_periods = [5, 10, 20, 60, 120]
@@ -868,7 +867,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
         df['sell_signal'] = (
             (df['Close'] < df[f'MA{ma_periods[3]}']) &
-            (df[f'MA{ma_periods[03}_slope'] < 0) &
+            (df[f'MA{ma_periods[03]}_slope'] < 0) &
             (df['Close'] < df[f'MA{ma_periods[0]}']) &
             (df[f'MA{ma_periods[0]}_slope'] < 0) &
             (df['Close'] < df['Open']) &               # 本K黑
@@ -881,7 +880,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             (df[f'MA{ma_periods[0]}_slope'] > 0) &
             (df['Close'] > df['Open']) &              # 本K紅
             (df['Close'].shift(1) < df['Open'].shift(1))  # 前K黑
-        )   
+        )
         df.attrs['ma_periods'] = ma_periods
 
 # ----------------------------------        
