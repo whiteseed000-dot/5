@@ -1266,12 +1266,11 @@ if result:
                 y=buy_plot_df['buy_y'],
                 mode='markers',
                 marker=dict(
-                    symbol='circle',
-                    size=22,
-                    color='rgba(0,255,0,0.35)',
-                    line=dict(color='black', width=1)
+                    symbol='square',
+                    size=14,
+                    color='lime'
                 ),
-                showlegend=False
+                name='Buy zone'
             )
         )
 
