@@ -895,7 +895,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
 
         df['buy_signal'] = (
             # ① 趨勢過濾（只做多頭）
-            (df['Close'] > df[f'MA{trend_ma}']) &
+            ((df['Close'] > df[f'MA{trend_ma}']) &
         
             # ② 價格突破快 / 慢 MA（突破確認）
             (df['Close'] > df[f'MA{fast_ma}']) &
@@ -909,7 +909,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         
             # ④ K 線轉強
             (df['Close'] > df['Open']) &
-            (df['Close'].shift(1) < df['Open'].shift(1)) &
+            (df['Close'].shift(1) < df['Open'].shift(1))) or 
         
             # ===== 新增：多指標確認（不新增欄位） =====
         
