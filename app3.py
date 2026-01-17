@@ -924,7 +924,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         
         df['sell_signal'] = (
             # ① 趨勢過濾（只做空頭）
-            (df['Close'] < df[f'MA{trend_ma}']) &
+            ((df['Close'] < df[f'MA{trend_ma}']) &
         
             # ② 價格跌破快 / 慢 MA（跌破確認）
             (df['Close'] < df[f'MA{fast_ma}']) &
@@ -938,7 +938,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         
             # ④ K 線轉弱
             (df['Close'] < df['Open']) &
-            (df['Close'].shift(1) > df['Open'].shift(1)) 
+            (df['Close'].shift(1) > df['Open'].shift(1))) |
         
             # ===== 新增：多指標確認 =====
         
