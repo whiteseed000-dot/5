@@ -1271,6 +1271,7 @@ if result:
                     symbol='triangle-down',
                     size=sell_plot_df['sell_level'].map({'中': 12, '強': 18}),
                     color=sell_plot_df['sell_level'].map({'中': '#FFA500', '強': '#FF3333'}),
+                    opacity=1.0,
                     line=dict(width=1, color='black')
                 ),
                 name='Sell Signal',
