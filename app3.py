@@ -1252,7 +1252,7 @@ if result:
                 marker=dict(
                     symbol='triangle-up',
                     size=buy_plot_df['buy_level'].map({'中': 12, '強': 18}),
-                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '強': '#00FF7F'}),
+                    color=buy_plot_df['buy_level'].map({'中': '#FFD700', '強': '#00FF00'}),
                     line=dict(width=1, color='black')
                 ),
                 name='Buy Signal',
@@ -1260,20 +1260,6 @@ if result:
                 hoverinfo='text'
             )
         )
-        fig.add_trace(
-            go.Scatter(
-                x=buy_plot_df['Date'],
-                y=buy_plot_df['buy_y'],
-                mode='text',
-                text=['B'] * len(buy_plot_df),
-                textfont=dict(
-                    size=14,
-                    color='lime'
-                ),
-                name='Buy zone'
-            )
-        )
-
 
         fig.add_trace(
             go.Scatter(
