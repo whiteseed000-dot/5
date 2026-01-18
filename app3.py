@@ -1457,7 +1457,7 @@ if result:
 
     if not dt_breaks.empty:
         fig.update_xaxes(
-            rangebreaks=[dict(values=dt_breaks.tolist()),dict(values=df['Date'])]
+            rangebreaks=[dict(values=df['Date'])]
         )
 # 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
 # -----------------------------------
