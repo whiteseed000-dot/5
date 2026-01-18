@@ -912,10 +912,11 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         
         df.attrs['rsi_periods'] = rsi_periods
         # --------------------------        
+        
         Klow_9 = df['Low'].rolling(9).min();
         Khigh_9 = df['High'].rolling(9).max()
         Krsv = 100 * (df['Close'] - Klow_9) / (Khigh_9 - Klow_9)
-        df['KK'] = rsv.ewm(com=2).mean()
+        df['KK'] = Krsv.ewm(com=2).mean()
         df['KD'] = df['KK'].ewm(com=2).mean()
         
         # MACD (12, 26, 9)
