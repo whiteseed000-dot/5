@@ -1447,18 +1447,18 @@ if result:
     # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
 
     # --- X 軸缺口處理（只適用於日線） ---
-    if time_frame == "日":
-        dt_all = pd.date_range(
-            start=df['Date'].min(),
-            end=df['Date'].max(),
-            freq='D'
-        )
-        dt_breaks = dt_all.difference(df['Date'])
+    #if time_frame == "日":
+    dt_all = pd.date_range(
+        start=df['Date'].min(),
+        end=df['Date'].max(),
+        freq='D'
+    )
+    dt_breaks = dt_all.difference(df['Date'])
 
-        if not dt_breaks.empty:
-            fig.update_xaxes(
-                rangebreaks=[dict(values=dt_breaks.tolist())]
-            )
+    if not dt_breaks.empty:
+        fig.update_xaxes(
+            rangebreaks=[dict(values=dt_breaks.tolist()),dict(values=df['Date'])]
+        )
 # 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
 # -----------------------------------
 
