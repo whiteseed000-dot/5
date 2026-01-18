@@ -912,10 +912,8 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ===== 新增：多指標確認（不新增欄位） =====
         
             # ⑤ MACD 動能確認
-            ((df['M-MACD'] > df['M-Signal']) & (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1)))
-            # ⑥ RSI 非過熱、在多方區
-           #(df['RSI7'] < 20) 
-           # (df['RSI14'] < 70) &
+            ((df['M-MACD'] > df['M-Signal']) & (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1))) |
+            ((df['R-RSI7'] > df['R-RSI14']) & (df['R-RSI7'].shift(1) <= df['R-RSI14'].shift(1)))
         )
         
         df['sell_signal'] = (
@@ -942,32 +940,40 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             ((df['M-MACD'] < df['M-Signal']) & (df['M-MACD'].shift(1) >= df['M-Signal'].shift(1))) |
             # ⑥ RSI 在空方區、非超賣
             ((df['R-RSI7'] < df['R-RSI14']) & (df['R-RSI7'].shift(1) >= df['R-RSI14'].shift(1)))
-           # (df['RSI14'] > 70) &
-        
-            # ⑦ BIAS 無恐慌性乖離
-           # (df['BIAS'] < 5) &
-           # (df['BIAS'] > 5)
         )
 
-        # -------評分----------        
         df['buy_score'] = 0
-        
-        # 趨勢方向（最重要）
-        df.loc[df['Close'] > df[f'MA{trend_ma}'], 'buy_score'] += 2
-        
-        # MA 排列
+
+        # === 1️⃣ MA 趨勢結構（最重要） ===
         df.loc[
+            (df['Close'] > df[f'MA{trend_ma}']) &
             (df[f'MA{fast_ma}'] > df[f'MA{slow_ma}']) &
             (df[f'MA{slow_ma}'] > df[f'MA{trend_ma}']),
             'buy_score'
-        ] += 2
+        ] += 3
         
-        # MA 斜率連續向上
+        # === 2️⃣ MA 動能（斜率） ===
         df.loc[
             (df[f'MA{fast_ma}_slope'] > 0) &
             (df[f'MA{fast_ma}_slope'].shift(1) > 0),
             'buy_score'
         ] += 1
+        
+        # === 3️⃣ MACD 黃金交叉（你箭頭用的） ===
+        df.loc[
+            (df['M-MACD'] > df['M-Signal']) &
+            (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1)),
+            'buy_score'
+        ] += 1
+        
+        # === 4️⃣ RSI 動能翻多（你箭頭用的） ===
+        df.loc[
+            (df['R-RSI7'] > df['R-RSI14']) &
+            (df['R-RSI7'].shift(1) <= df['R-RSI14'].shift(1)),
+            'buy_score'
+        ] += 1
+
+
         
         # 強勢 K（實體夠大）
         df.loc[
@@ -979,21 +985,36 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
 
         
         df['sell_score'] = 0
-        
-        df.loc[df['Close'] < df[f'MA{trend_ma}'], 'sell_score'] += 2
-        
+
+        # === 1️⃣ MA 空頭結構 ===
         df.loc[
+            (df['Close'] < df[f'MA{trend_ma}']) &
             (df[f'MA{fast_ma}'] < df[f'MA{slow_ma}']) &
             (df[f'MA{slow_ma}'] < df[f'MA{trend_ma}']),
             'sell_score'
-        ] += 2
+        ] += 3
         
+        # === 2️⃣ MA 動能 ===
         df.loc[
             (df[f'MA{fast_ma}_slope'] < 0) &
             (df[f'MA{fast_ma}_slope'].shift(1) < 0),
             'sell_score'
         ] += 1
         
+        # === 3️⃣ MACD 死亡交叉 ===
+        df.loc[
+            (df['M-MACD'] < df['M-Signal']) &
+            (df['M-MACD'].shift(1) >= df['M-Signal'].shift(1)),
+            'sell_score'
+        ] += 1
+        
+        # === 4️⃣ RSI 動能翻空 ===
+        df.loc[
+            (df['R-RSI7'] < df['R-RSI14']) &
+            (df['R-RSI7'].shift(1) >= df['R-RSI14'].shift(1)),
+            'sell_score'
+        ] += 1
+
         df.loc[
             (df['Close'] < df['Open']) &
             ((df['Open'] - df['Close']) > 0.5 * (df['High'] - df['Low'])),
@@ -1002,13 +1023,13 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
 
         df['buy_level'] = pd.cut(
             df['buy_score'],
-            bins=[-1, 2, 4, 6],
+            bins=[-1, 2, 4, 7],
             labels=['弱', '中', '強']
         )
         
         df['sell_level'] = pd.cut(
             df['sell_score'],
-            bins=[-1, 2, 4, 6],
+            bins=[-1, 2, 4, 7],
             labels=['弱', '中', '強']
         )
     
