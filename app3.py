@@ -1586,7 +1586,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
             
             if last_buy:
                 lvl = str(tdf['buy_level'].iloc[-1])
-                icon = f"🟢▲ {lvl}"
+                icon = f"🔺 {lvl}"
             
             elif last_sell:
                 lvl = str(tdf['sell_level'].iloc[-1])
