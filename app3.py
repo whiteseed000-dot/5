@@ -1456,8 +1456,6 @@ if result:
         dt_breaks = dt_all.difference(df['Date'])
     
         fig.update_xaxes(
-            range=[df.index.min(), df.index.max()],
-            fixedrange=True,
             rangebreaks=[
                 dict(bounds=["sat", "mon"]),        # 週末
                 dict(values=dt_breaks.tolist())     # 停市日（含農曆年）
@@ -1466,8 +1464,6 @@ if result:
     
     else:
         # 週K / 月K：不要使用 rangebreaks
-        range=[df.index.min(), df.index.max()],
-        fixedrange=True,
         fig.update_xaxes(rangebreaks=[])
 
 # 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
