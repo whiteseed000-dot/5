@@ -737,30 +737,6 @@ def update_pattern_history(ticker, patterns):
 
     return " | ".join(hist) if hist else ""
 
-def set_xaxis_by_backtest(fig, df, years_input, time_frame):
-
-    if time_frame == "日":
-        bars_per_year = 252
-    elif time_frame == "週":
-        bars_per_year = 52
-    elif time_frame == "月":
-        bars_per_year = 12
-    else:
-        return fig
-
-    bars = int(years_input * bars_per_year)
-
-    x_end = df.index.max()
-    x_start = df.index[-bars] if len(df) >= bars else df.index[0]
-
-    fig.update_xaxes(
-        range=[x_start, x_end],
-        fixedrange=True
-    )
-
-    return fig
-
-
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -1489,15 +1465,6 @@ if result:
     else:
         # 週K / 月K：不要使用 rangebreaks
         fig.update_xaxes(rangebreaks=[])
-
-    # 所有 K 線 / MA / 訊號 都畫完
-    fig = set_xaxis_by_backtest(
-        fig,
-        df,
-        years_input=years_input,
-        time_frame=time_frame
-    )
-
 
 # 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
 # -----------------------------------
