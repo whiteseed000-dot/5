@@ -1578,7 +1578,28 @@ if st.button("🔄 開始掃描所有標的狀態"):
             elif p > tdf['TL-1SD'].iloc[-1]: pos = "⚪ 合理"
             elif p > tdf['TL-2SD'].iloc[-1]: pos = "🔵 偏低"
             else: pos = "🟢 特價"
-            summary.append({"代號": t, "名稱": name, "最新價格": f"{p:.1f}", "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", "位階狀態": pos})
+
+            # === 最後一根 K 的買賣訊號 ===
+            last_buy  = bool(tdf['buy_signal'].iloc[-1])
+            last_sell = bool(tdf['sell_signal'].iloc[-1])
+            icon = "—"
+
+            if last_buy:
+                lvl = str(tdf['buy_level'].iloc[-1])
+                icon = f"▲ {lvl}"
+            
+            elif last_sell:
+                lvl = str(tdf['sell_level'].iloc[-1])
+                icon = f"▼ {lvl}"
+                
+            summary.append({
+                "代號": t,
+                "名稱": name,
+                "最新價格": f"{p:.1f}",
+                "偏離中心線": f"{((p - t_tl) / t_tl) * 100:+.1f}%",
+                "位階狀態": pos,
+                "K線訊號": icon
+            })
     if summary: st.table(pd.DataFrame(summary))
 # --- 3. UI 顯示部分 (放置於指標儀表板下方) ---
 
