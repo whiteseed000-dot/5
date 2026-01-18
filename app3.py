@@ -1479,7 +1479,7 @@ if result:
         
         xaxis=dict(
             # 新增下面這行：強制 X 軸範圍貼齊資料的最左與最右端
-            range=[df['Date'].min(), df['Date'].max()], 
+            range=[(df['Date'].min() +0.5) , df['Date'].max() -0.5], 
             # 確保不自動增加緩衝空間
             autorange=False,
             showspikes=True, # 顯示指引線
