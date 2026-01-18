@@ -804,6 +804,21 @@ with st.sidebar:
         auto_adjust = False
         actions = False
         repair = False
+
+    show_weak_signal = st.sidebar.checkbox(
+    "顯示【弱】訊號",
+    value=False
+    )
+    if show_weak_signal:
+        st.cache_data.clear()
+        buy_levels_to_show  = ['弱', '中', '強']
+        sell_levels_to_show = ['弱', '中', '強']
+    else:
+        st.cache_data.clear()
+        buy_levels_to_show  = ['中', '強']
+        sell_levels_to_show = ['中', '強']
+
+
     st.divider()
 # 在側邊欄的登出按鈕部分
     if st.button("🚪 登出帳號"):
@@ -1292,15 +1307,15 @@ if result:
         
         df['buy_y']  = df['Low']  - offset
         df['sell_y'] = df['High'] + offset
-        
+
         buy_plot_df = df[
             (df['buy_signal']) &
-            (df['buy_level'].isin(['弱','中', '弱']))
+            (df['buy_level'].isin(buy_levels_to_show))
         ]
         
         sell_plot_df = df[
             (df['sell_signal']) &
-            (df['sell_level'].isin(['弱','中', '弱']))
+            (df['sell_level'].isin(sell_levels_to_show))
         ]
         
         fig.add_trace(
@@ -1338,8 +1353,6 @@ if result:
                 hoverinfo='text'
             )
         )
-
-
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 從 df 取回 MA 週期（不會 NameError）
