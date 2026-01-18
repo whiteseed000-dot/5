@@ -804,19 +804,33 @@ with st.sidebar:
         auto_adjust = False
         actions = False
         repair = False
-
-    show_weak_signal = st.sidebar.checkbox(
-    "顯示【弱】訊號",
-    value=False
+    
+    # 主開關：是否顯示任何箭頭
+    show_all_signals = st.sidebar.toggle(
+        "顯示全部訊號",
+        value=True
     )
-    if show_weak_signal:
+    
+    # 子開關：是否顯示【弱】訊號（只有主開關開啟時才有意義）
+    show_weak_signal = st.sidebar.toggle(
+        "顯示【弱】訊號",
+        value=False,
+        disabled=not show_all_signals
+    )
+    if not show_all_signals:
         st.cache_data.clear()
-        buy_levels_to_show  = ['弱', '中', '強']
-        sell_levels_to_show = ['弱', '中', '強']
+        buy_levels_to_show  = []
+        sell_levels_to_show = []
     else:
-        st.cache_data.clear()
-        buy_levels_to_show  = ['中', '強']
-        sell_levels_to_show = ['中', '強']
+        if show_weak_signal:
+            st.cache_data.clear()
+            buy_levels_to_show  = ['弱', '中', '強']
+            sell_levels_to_show = ['弱', '中', '強']
+        else:
+            st.cache_data.clear()
+            buy_levels_to_show  = ['中', '強']
+            sell_levels_to_show = ['中', '強']
+
 
 
     st.divider()
@@ -1307,7 +1321,7 @@ if result:
         
         df['buy_y']  = df['Low']  - offset
         df['sell_y'] = df['High'] + offset
-
+        
         buy_plot_df = df[
             (df['buy_signal']) &
             (df['buy_level'].isin(buy_levels_to_show))
@@ -1317,6 +1331,7 @@ if result:
             (df['sell_signal']) &
             (df['sell_level'].isin(sell_levels_to_show))
         ]
+
         
         fig.add_trace(
             go.Scatter(
