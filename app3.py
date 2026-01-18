@@ -1586,11 +1586,11 @@ if st.button("🔄 開始掃描所有標的狀態"):
             
             if last_buy:
                 lvl = str(tdf['buy_level'].iloc[-1])
-                icon = f"▲ {lvl}"
+                icon = f"🟢▲ {lvl}"
             
             elif last_sell:
                 lvl = str(tdf['sell_level'].iloc[-1])
-                icon = f"▼ {lvl}"
+                icon = f"🔴▼ {lvl}"
                 
             if last_buy:
                 arrow = "🟢 買"
@@ -1607,7 +1607,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 "最新價格": f"{p:.1f}",
                 "偏離中心線": f"{((p - t_tl) / t_tl) * 100:+.1f}%",
                 "位階狀態": pos,
-                "最後K訊號": icon
+                "K線訊號": icon
             })
     if summary: st.table(pd.DataFrame(summary))
 # --- 3. UI 顯示部分 (放置於指標儀表板下方) ---
