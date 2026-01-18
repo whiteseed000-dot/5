@@ -1478,6 +1478,10 @@ if result:
         margin=dict(l=10, r=100, t=10, b=10),
         
         xaxis=dict(
+            # 新增下面這行：強制 X 軸範圍貼齊資料的最左與最右端
+            range=[df['Date'].min(), df['Date'].max()], 
+            # 確保不自動增加緩衝空間
+            autorange=False,
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
             spikethickness=1,
@@ -1489,6 +1493,10 @@ if result:
     if show_sub_chart:
         fig.update_layout(
         xaxis2=dict(
+            # 新增下面這行：強制 X 軸範圍貼齊資料的最左與最右端
+            range=[df['Date'].min(), df['Date'].max()], 
+            # 確保不自動增加緩衝空間
+            autorange=False,
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
             spikethickness=1,
