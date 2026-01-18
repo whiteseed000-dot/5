@@ -737,7 +737,7 @@ def update_pattern_history(ticker, patterns):
 
     return " | ".join(hist) if hist else ""
 
-def set_xaxis_by_backtest(fig, df, backtest_years, time_frame):
+def set_xaxis_by_backtest(fig, df, years_input, time_frame):
 
     if time_frame == "日":
         bars_per_year = 252
@@ -748,7 +748,7 @@ def set_xaxis_by_backtest(fig, df, backtest_years, time_frame):
     else:
         return fig
 
-    bars = int(backtest_years * bars_per_year)
+    bars = int(years_input * bars_per_year)
 
     x_end = df.index.max()
     x_start = df.index[-bars] if len(df) >= bars else df.index[0]
@@ -1494,7 +1494,7 @@ if result:
     fig = set_xaxis_by_backtest(
         fig,
         df,
-        backtest_years=backtest_years,
+        years_input=years_input,
         time_frame=time_frame
     )
 
