@@ -1500,7 +1500,7 @@ if result:
             spikedash="solid"   # 實線 (若要虛線改為 dash)
         )
     )
-    fig.update_traces(cliponaxis=False)
+
     st.plotly_chart(fig, use_container_width=True)
     
 # ==================================================
