@@ -949,7 +949,8 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
         
             # ⑤ MACD 動能確認
             ((df['M-MACD'] > df['M-Signal']) & (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1))) |
-            ((df['R-RSI7'] > df['R-RSI14']) & (df['R-RSI7'].shift(1) <= df['R-RSI14'].shift(1)))
+            
+            ((df['KK'] > df['KD']) & (df['KK'].shift(1) <= df['KD'].shift(1)) & (df['KK'].shift(1) < 20 ))
         )
         
         df['sell_signal'] = (
@@ -975,7 +976,8 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             # ⑤ MACD 動能轉空
             ((df['M-MACD'] < df['M-Signal']) & (df['M-MACD'].shift(1) >= df['M-Signal'].shift(1))) |
             # ⑥ RSI 在空方區、非超賣
-            ((df['R-RSI7'] < df['R-RSI14']) & (df['R-RSI7'].shift(1) >= df['R-RSI14'].shift(1)))
+            #((df['R-RSI7'] < df['R-RSI14']) & (df['R-RSI7'].shift(1) >= df['R-RSI14'].shift(1)))
+            ((df['KK'] < df['KD']) & (df['KK'].shift(1) >= df['KD'].shift(1)) & (df['KK'].shift(1) > 60 ))
         )
 
         df['buy_score'] = 0
@@ -1002,15 +1004,13 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             'buy_score'
         ] += 1
         
-        # === 4️⃣ RSI 動能翻多（你箭頭用的） ===
+        # === 4️⃣ KD 黃金交叉（你箭頭用的） ===
         df.loc[
-            (df['R-RSI7'] > df['R-RSI14']) &
-            (df['R-RSI7'].shift(1) <= df['R-RSI14'].shift(1)),
+            (df['KK'] > df['KD']) & 
+            (df['KK'].shift(1) <= df['KD'].shift(1)),
             'buy_score'
         ] += 1
 
-
-        
         # 強勢 K（實體夠大）
         df.loc[
             (df['Close'] > df['Open']) &
@@ -1044,10 +1044,10 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): #
             'sell_score'
         ] += 1
         
-        # === 4️⃣ RSI 動能翻空 ===
+        # === 4️⃣ KD 死亡交叉 ===
         df.loc[
-            (df['R-RSI7'] < df['R-RSI14']) &
-            (df['R-RSI7'].shift(1) >= df['R-RSI14'].shift(1)),
+            (df['KK'] < df['KD']) & 
+            (df['KK'].shift(1) >= df['KD'].shift(1)),
             'sell_score'
         ] += 1
 
