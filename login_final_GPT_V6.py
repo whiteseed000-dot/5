@@ -1454,14 +1454,20 @@ if result:
             freq='D'
         )
         dt_breaks = dt_all.difference(df['Date'])
+    
+        fig.update_xaxes(
+            rangebreaks=[
+                dict(bounds=["sat", "mon"]),        # 週末
+                dict(values=dt_breaks.tolist())     # 停市日（含農曆年）
+            ]
+        )
+    
+    else:
+        # 週K / 月K：不要使用 rangebreaks
+        fig.update_xaxes(rangebreaks=[])
 
-        if not dt_breaks.empty:
-            fig.update_xaxes(
-                rangebreaks=[dict(values=dt_breaks.tolist())]
-            )
 # 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
 # -----------------------------------
-
 
     fig.update_layout(
         height=800 if show_sub_chart else 650,
