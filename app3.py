@@ -1583,24 +1583,15 @@ if st.button("🔄 開始掃描所有標的狀態"):
             last_buy  = bool(tdf['buy_signal'].iloc[-1])
             last_sell = bool(tdf['sell_signal'].iloc[-1])
             icon = "—"
-            
+
             if last_buy:
                 lvl = str(tdf['buy_level'].iloc[-1])
-                icon = f"🔺 {lvl}"
+                icon = f"▲ {lvl}"
             
             elif last_sell:
                 lvl = str(tdf['sell_level'].iloc[-1])
-                icon = f"🔴▼ {lvl}"
+                icon = f"▼ {lvl}"
                 
-            if last_buy:
-                arrow = "🟢 買"
-                level = str(tdf['buy_level'].iloc[-1])
-            elif last_sell:
-                arrow = "🔴 賣"
-                level = str(tdf['sell_level'].iloc[-1])
-            else:
-                arrow = "—"
-                level = "—"
             summary.append({
                 "代號": t,
                 "名稱": name,
