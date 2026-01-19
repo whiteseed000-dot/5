@@ -48,6 +48,32 @@ def save_watchlist_to_google(watchlist_dict):
     except Exception as e:
         st.error(f"儲存並排序失敗: {e}")
 
+def get_intraday_price(ticker):
+    """
+    取得 Yahoo Finance 盤中延遲價格（約 15 分鐘）
+    用來覆蓋今天那一根日 K
+    """
+    try:
+        df_i = yf.Ticker(ticker).history(
+            period="1d",
+            interval="1m"
+        )
+
+        if df_i.empty:
+            return None
+
+        last = df_i.iloc[-1]
+
+        return {
+            "open": float(df_i.iloc[0]["Open"]),
+            "high": float(df_i["High"].max()),
+            "low": float(df_i["Low"].min()),
+            "close": float(last["Close"]),
+            "volume": float(df_i["Volume"].sum())
+        }
+    except:
+        return None
+
 # --- 2. 初始化 ---
 st.set_page_config(page_title="股市五線譜 Pro", layout="wide")
 
@@ -117,7 +143,7 @@ def get_vix_index():
     except:
         return 0.0
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=60)
 def get_lohas_data(ticker, years):
     try:
         end_date = datetime.now()
@@ -126,6 +152,17 @@ def get_lohas_data(ticker, years):
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
+        # === 2️⃣ 盤中延遲資料 → 覆蓋今天那一根 ===
+        intraday = get_intraday_price(ticker)
+
+        if intraday is not None:
+            today = df.index[-1]
+
+            df.loc[today, "Open"]   = intraday["open"]
+            df.loc[today, "High"]   = intraday["high"]
+            df.loc[today, "Low"]    = intraday["low"]
+            df.loc[today, "Close"]  = intraday["close"]
+            df.loc[today, "Volume"] = intraday["volume"]
         
         df = df[['Close']].reset_index()
         df.columns = ['Date', 'Close']
