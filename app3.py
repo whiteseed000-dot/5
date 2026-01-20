@@ -925,26 +925,23 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df.loc[today, "Volume"] = intraday["volume"]
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
-# --- 修正後的數據重採樣邏輯 ---
+# --- 1. 修正重採樣後的日期來源 ---
         if time_frame == "週":
-            # 1. 先把目前的日期索引轉成一個暫時的欄位 'TempDate'
             df['TempDate'] = df.index 
             df = df.resample('W').agg({
-                'TempDate': 'last',   # 關鍵：取該週內最後一個有開盤的日期
+                'TempDate': 'last',  # 抓區間內最後一個實際交易日
                 'Open': 'first',
                 'High': 'max',
                 'Low': 'min',
                 'Close': 'last',
                 'Volume': 'sum'
             }).dropna()
-            # 2. 將索引重新設為剛才抓到的實際交易日
             df.index = df['TempDate']
-            df = df.drop(columns=['TempDate'])
 
         elif time_frame == "月":
             df['TempDate'] = df.index
             df = df.resample('ME').agg({
-                'TempDate': 'last',   # 關鍵：取該月內最後一個有開盤的日期
+                'TempDate': 'last', # 抓區間內最後一個實際交易日
                 'Open': 'first',
                 'High': 'max',
                 'Low': 'min',
@@ -952,12 +949,20 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                 'Volume': 'sum'
             }).dropna()
             df.index = df['TempDate']
-            df = df.drop(columns=['TempDate'])
 
-        # --- 重要：確保後續 Plotly 繪圖能抓到 'Date' 欄位 ---
-        df = df.reset_index().rename(columns={'index': 'Date', 'Date': 'Date'})
-        if 'Date' not in df.columns:
-            df.insert(0, 'Date', df.index)
+        # --- 2. 強制格式化：解決「日期變數字」的問題 ---
+        # 確保 index 是 Datetime 格式
+        df.index = pd.to_datetime(df.index)
+        
+        # 重設索引並命名為 Date
+        df = df.reset_index(drop=True)
+        df.insert(0, 'Date', pd.to_datetime(df.index if 'TempDate' not in df.columns else df['TempDate']))
+        
+        # 最後的保險：強制轉換 Date 欄位
+        df['Date'] = pd.to_datetime(df['Date'])
+        
+        if 'TempDate' in df.columns:
+            df = df.drop(columns=['TempDate'])
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
