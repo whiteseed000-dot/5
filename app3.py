@@ -763,6 +763,17 @@ def get_intraday_price(ticker):
     except:
         return None
 
+# ===============================
+# 市場狀態判斷（台股）
+# ===============================
+def is_market_open():
+    now = datetime.now()
+    if now.weekday() >= 5:
+        return False
+    return (now.hour > 9 or (now.hour == 9 and now.minute >= 0)) and (now.hour < 13 or (now.hour == 13 and now.minute <= 30))
+
+
+
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -872,7 +883,7 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=60)  # 盤中每分鐘刷新
-def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
+def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _ts=None):
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
@@ -906,7 +917,10 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df.loc[today, "Low"]    = intraday["low"]
             df.loc[today, "Close"]  = intraday["close"]
             df.loc[today, "Volume"] = intraday["volume"]
-            
+
+        if time_frame in ["週", "月"] and market_open:
+            # ❌ 盤中不做 resample（避免錯位）
+            df = df.iloc[:-1]
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
