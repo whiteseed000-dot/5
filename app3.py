@@ -737,6 +737,49 @@ def update_pattern_history(ticker, patterns):
 
     return " | ".join(hist) if hist else ""
 
+
+def get_intraday_price(ticker, last_close):
+    """
+    Yahoo 台股盤中資料補救版
+    - 1m 有資料 → 用 1m 組 today K
+    - 1m 沒資料 → 至少回傳一根 today K（避免整天沒 K）
+    """
+    try:
+        df_i = yf.Ticker(ticker).history(
+            period="1d",
+            interval="1m"
+        )
+
+        # === 情況 1：有盤中資料 ===
+        if not df_i.empty:
+            return {
+                "open": float(df_i.iloc[0]["Open"]),
+                "high": float(df_i["High"].max()),
+                "low": float(df_i["Low"].min()),
+                "close": float(df_i.iloc[-1]["Close"]),
+                "volume": float(df_i["Volume"].sum())
+            }
+
+        # === 情況 2：盤中但 Yahoo 尚未給資料 ===
+        now = datetime.now()
+
+        # 台股交易時間 09:00–13:30
+        if now.hour >= 9 and now.hour < 14:
+            return {
+                "open": last_close,
+                "high": last_close,
+                "low": last_close,
+                "close": last_close,
+                "volume": 0
+            }
+
+        return None
+
+    except:
+        return None
+
+
+
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -844,15 +887,43 @@ with st.sidebar:
         st.rerun()
 
 # --- 5. 核心運算 ---
-@st.cache_data(ttl=3600)
-def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): # 新增參數
+@st.cache_data(ttl=60)  # 盤中每分鐘刷新
+def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
-        df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=auto_adjust, actions=actions, repair=repair)
-        if df.empty: return None
-        if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
+        # === 1️⃣ 抓「日線歷史資料」（結構用） ===
+        df = yf.download(
+            ticker,
+            start=start,
+            end=end,
+            interval="1d",
+            progress=False,
+            auto_adjust=auto_adjust,
+            actions=actions,
+            repair=repair
+        )
+
+        if df.empty:
+            return None
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        # === 2️⃣ 盤中延遲資料 → 覆蓋今天那一根 ===
+        last_close = df["Close"].iloc[-1]
+        intraday = get_intraday_price(ticker, last_close)
+
+        if intraday is not None:
+            today = df.index[-1]
+
+            df.loc[today, "Open"]   = intraday["open"]
+            df.loc[today, "High"]   = intraday["high"]
+            df.loc[today, "Low"]    = intraday["low"]
+            df.loc[today, "Close"]  = intraday["close"]
+            df.loc[today, "Volume"] = intraday["volume"]
+            
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
