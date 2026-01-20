@@ -925,45 +925,33 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df.loc[today, "Volume"] = intraday["volume"]
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
-# --- 1. 修正重採樣後的日期來源 ---
         if time_frame == "週":
-            df['TempDate'] = df.index 
-            df = df.resample('W').agg({
-                'TempDate': 'last',  # 抓區間內最後一個實際交易日
-                'Open': 'first',
-                'High': 'max',
-                'Low': 'min',
-                'Close': 'last',
-                'Volume': 'sum'
+    # 週線：週一～週五，K棒時間放在「週五」
+            df = df.resample(
+                'W-FRI',
+                label='right',     # 時間標籤放在區間右側（週五）
+                closed='right'     # 包含週五當天
+            ).agg({
+                'Open': 'first',   # 週一開盤
+                'High': 'max',     # 全週最高
+                'Low': 'min',      # 全週最低
+                'Close': 'last',   # 週五收盤
+                'Volume': 'sum'    # 全週成交量
             }).dropna()
-            df.index = df['TempDate']
 
         elif time_frame == "月":
-            df['TempDate'] = df.index
-            df = df.resample('ME').agg({
-                'TempDate': 'last', # 抓區間內最後一個實際交易日
-                'Open': 'first',
-                'High': 'max',
-                'Low': 'min',
-                'Close': 'last',
-                'Volume': 'sum'
+    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
+            df = df.resample(
+                'ME',
+                label='right',     # 標記在月底
+                closed='right'     # 包含月底最後交易日
+            ).agg({
+                'Open': 'first',   # 月初開盤
+                'High': 'max',     # 當月最高
+                'Low': 'min',      # 當月最低
+                'Close': 'last',   # 月底收盤
+                'Volume': 'sum'    # 當月成交量
             }).dropna()
-            df.index = df['TempDate']
-        
-        if time_frame != "日":
-            # --- 2. 強制格式化：解決「日期變數字」的問題 ---
-            # 確保 index 是 Datetime 格式
-            df.index = pd.to_datetime(df.index)
-            
-            # 重設索引並命名為 Date
-            df = df.reset_index(drop=True)
-            df.insert(0, 'Date', pd.to_datetime(df.index if 'TempDate' not in df.columns else df['TempDate']))
-            
-            # 最後的保險：強制轉換 Date 欄位
-            df['Date'] = pd.to_datetime(df['Date'])
-            
-            if 'TempDate' in df.columns:
-                df = df.drop(columns=['TempDate'])
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
