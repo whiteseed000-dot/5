@@ -925,38 +925,33 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df.loc[today, "Volume"] = intraday["volume"]
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
-        # --- 週 / 月 K 線重採樣（使用實際最後交易日作為日期） ---
-        if time_frame in ["週", "月"]:
-            df = df.copy()
-        
-            period = "W" if time_frame == "週" else "M"
-        
-            # 建立 Period 分組
-            df["_period"] = df.index.to_period(period)
-        
-            # OHLCV 聚合
-            df = (
-                df.groupby("_period")
-                  .agg({
-                      "Open": "first",
-                      "High": "max",
-                      "Low": "min",
-                      "Close": "last",
-                      "Volume": "sum"
-                  })
-            )
-        
-            # ⭐ 關鍵：取「該週 / 該月最後一個實際交易日」
-            last_trade_date = (
-                df.groupby("_period")
-                  .apply(lambda x: x.index[-1])
-            )
-        
-            # 用實際交易日當 index
-            df.index = pd.to_datetime(last_trade_date.values)
-        
-            df = df.sort_index()
+        if time_frame == "週":
+    # 週線：週一～週五，K棒時間放在「週五」
+            df = df.resample(
+                'W-FRI',
+                label='right',     # 時間標籤放在區間右側（週五）
+                closed='right'     # 包含週五當天
+            ).agg({
+                'Open': 'first',   # 週一開盤
+                'High': 'max',     # 全週最高
+                'Low': 'min',      # 全週最低
+                'Close': 'last',   # 週五收盤
+                'Volume': 'sum'    # 全週成交量
+            }).dropna()
 
+        elif time_frame == "月":
+    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
+            df = df.resample(
+                'ME',
+                label='right',     # 標記在月底
+                closed='right'     # 包含月底最後交易日
+            ).agg({
+                'Open': 'first',   # 月初開盤
+                'High': 'max',     # 當月最高
+                'Low': 'min',      # 當月最低
+                'Close': 'last',   # 月底收盤
+                'Volume': 'sum'    # 當月成交量
+            }).dropna()
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
