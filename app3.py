@@ -927,31 +927,32 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
 # --- 修正後的數據重採樣邏輯：以實際交易日為準 ---
         if time_frame == "週":
-            # 先將索引設為日期以便計算
-            df['Date_calc'] = df.index 
+            # 建立一個臨時欄位存放日期，用於聚合
+            df['Actual_Date'] = df.index 
             df = df.resample('W').agg({
-                'Date_calc': 'last',  # 取該週最後一個有交易的日期
-                'Open': 'first',      # 週一（或該週首個交易日）開盤
-                'High': 'max',        # 全週最高
-                'Low': 'min',         # 全週最低
-                'Close': 'last',      # 該週最後交易日收盤
-                'Volume': 'sum'       # 全週成交量
+                'Actual_Date': 'last',  # 取該週「最後一個有交易」的日期
+                'Open': 'first',
+                'High': 'max',
+                'Low': 'min',
+                'Close': 'last',
+                'Volume': 'sum'
             }).dropna()
-            df.index = df['Date_calc'] # 將索引替換為實際收盤日期
-            df = df.drop(columns=['Date_calc'])
+            # 將索引替換為實際收盤日，並確保繪圖用的 'Date' 欄位同步更新
+            df.index = df['Actual_Date']
+            df = df.drop(columns=['Actual_Date'])
 
         elif time_frame == "月":
-            df['Date_calc'] = df.index
+            df['Actual_Date'] = df.index
             df = df.resample('ME').agg({
-                'Date_calc': 'last',  # 取該月最後一個有交易的日期
-                'Open': 'first',      # 月初開盤
-                'High': 'max',        # 當月最高
-                'Low': 'min',         # 當月最低
-                'Close': 'last',      # 月底最後交易日收盤
-                'Volume': 'sum'       # 當月成交量
+                'Actual_Date': 'last',  # 取該月「最後一個有交易」的日期
+                'Open': 'first',
+                'High': 'max',
+                'Low': 'min',
+                'Close': 'last',
+                'Volume': 'sum'
             }).dropna()
-            df.index = df['Date_calc']
-            df = df.drop(columns=['Date_calc'])
+            df.index = df['Actual_Date']
+            df = df.drop(columns=['Actual_Date'])
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
