@@ -955,7 +955,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             # 用實際交易日當 index
             df.index = pd.to_datetime(last_trade_date.values)
         
-            df = df_agg.sort_index()
+            df = df.sort_index()
 
 # ----------------------------------------------
 
