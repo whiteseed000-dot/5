@@ -924,31 +924,44 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _t
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
-            df = df.resample(
-                'W-FRI',
-                label='right',     # 時間標籤放在區間右側（週五）
-                closed='right'     # 包含週五當天
-            ).agg({
-                'Open': 'first',   # 週一開盤
-                'High': 'max',     # 全週最高
-                'Low': 'min',      # 全週最低
-                'Close': 'last',   # 週五收盤
-                'Volume': 'sum'    # 全週成交量
-            }).dropna()
+            df["week"] = df.index.to_period("W")
+            
+            df_week = (
+                df.groupby("week")
+                  .agg({
+                      "Open": "first",
+                      "High": "max",
+                      "Low": "min",
+                      "Close": "last",
+                      "Volume": "sum"
+                  })
+            )
+            
+            # 關鍵：用該週「最後一筆交易日」當 index
+            df_week.index = (
+                df.groupby("week").apply(lambda x: x.index[-1])
+            )
+
 
         elif time_frame == "月":
     # 月線：整個月份，K棒時間放在「月底（最後交易日）」
-            df = df.resample(
-                'ME',
-                label='right',     # 標記在月底
-                closed='right'     # 包含月底最後交易日
-            ).agg({
-                'Open': 'first',   # 月初開盤
-                'High': 'max',     # 當月最高
-                'Low': 'min',      # 當月最低
-                'Close': 'last',   # 月底收盤
-                'Volume': 'sum'    # 當月成交量
-            }).dropna()
+            df["month"] = df.index.to_period("M")
+            
+            df_month = (
+                df.groupby("month")
+                  .agg({
+                      "Open": "first",
+                      "High": "max",
+                      "Low": "min",
+                      "Close": "last",
+                      "Volume": "sum"
+                  })
+            )
+            
+            df_month.index = (
+                df.groupby("month").apply(lambda x: x.index[-1])
+            )
+
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
