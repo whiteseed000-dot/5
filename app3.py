@@ -926,7 +926,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _t
     # 週線：週一～週五，K棒時間放在「週五」
             df["week"] = df.index.to_period("W")
             
-            df_week = (
+            df = (
                 df.groupby("week")
                   .agg({
                       "Open": "first",
@@ -938,7 +938,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _t
             )
             
             # 關鍵：用該週「最後一筆交易日」當 index
-            df_week.index = (
+            df.index = (
                 df.groupby("week").apply(lambda x: x.index[-1])
             )
 
