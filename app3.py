@@ -925,34 +925,39 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df.loc[today, "Volume"] = intraday["volume"]
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
-# --- 修正後的數據重採樣邏輯：以實際交易日為準 ---
+# --- 修正後的數據重採樣邏輯 ---
         if time_frame == "週":
-            # 建立一個臨時欄位存放日期，用於聚合
-            df['Actual_Date'] = df.index 
+            # 1. 先把目前的日期索引轉成一個暫時的欄位 'TempDate'
+            df['TempDate'] = df.index 
             df = df.resample('W').agg({
-                'Actual_Date': 'last',  # 取該週「最後一個有交易」的日期
+                'TempDate': 'last',   # 關鍵：取該週內最後一個有開盤的日期
                 'Open': 'first',
                 'High': 'max',
                 'Low': 'min',
                 'Close': 'last',
                 'Volume': 'sum'
             }).dropna()
-            # 將索引替換為實際收盤日，並確保繪圖用的 'Date' 欄位同步更新
-            df.index = df['Actual_Date']
-            df = df.drop(columns=['Actual_Date'])
+            # 2. 將索引重新設為剛才抓到的實際交易日
+            df.index = df['TempDate']
+            df = df.drop(columns=['TempDate'])
 
         elif time_frame == "月":
-            df['Actual_Date'] = df.index
+            df['TempDate'] = df.index
             df = df.resample('ME').agg({
-                'Actual_Date': 'last',  # 取該月「最後一個有交易」的日期
+                'TempDate': 'last',   # 關鍵：取該月內最後一個有開盤的日期
                 'Open': 'first',
                 'High': 'max',
                 'Low': 'min',
                 'Close': 'last',
                 'Volume': 'sum'
             }).dropna()
-            df.index = df['Actual_Date']
-            df = df.drop(columns=['Actual_Date'])
+            df.index = df['TempDate']
+            df = df.drop(columns=['TempDate'])
+
+        # --- 重要：確保後續 Plotly 繪圖能抓到 'Date' 欄位 ---
+        df = df.reset_index().rename(columns={'index': 'Date', 'Date': 'Date'})
+        if 'Date' not in df.columns:
+            df.insert(0, 'Date', df.index)
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
