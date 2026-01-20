@@ -928,7 +928,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
             df = df.resample(
-                'W-FRI',
+                'W',
                 label='right',     # 時間標籤放在區間右側（週五）
                 closed='right'     # 包含週五當天
             ).agg({
@@ -942,7 +942,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         elif time_frame == "月":
     # 月線：整個月份，K棒時間放在「月底（最後交易日）」
             df = df.resample(
-                'ME',
+                'M',
                 label='right',     # 標記在月底
                 closed='right'     # 包含月底最後交易日
             ).agg({
