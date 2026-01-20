@@ -949,20 +949,21 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                 'Volume': 'sum'
             }).dropna()
             df.index = df['TempDate']
-
-        # --- 2. 強制格式化：解決「日期變數字」的問題 ---
-        # 確保 index 是 Datetime 格式
-        df.index = pd.to_datetime(df.index)
         
-        # 重設索引並命名為 Date
-        df = df.reset_index(drop=True)
-        df.insert(0, 'Date', pd.to_datetime(df.index if 'TempDate' not in df.columns else df['TempDate']))
-        
-        # 最後的保險：強制轉換 Date 欄位
-        df['Date'] = pd.to_datetime(df['Date'])
-        
-        if 'TempDate' in df.columns:
-            df = df.drop(columns=['TempDate'])
+        if time_frame != "日":
+            # --- 2. 強制格式化：解決「日期變數字」的問題 ---
+            # 確保 index 是 Datetime 格式
+            df.index = pd.to_datetime(df.index)
+            
+            # 重設索引並命名為 Date
+            df = df.reset_index(drop=True)
+            df.insert(0, 'Date', pd.to_datetime(df.index if 'TempDate' not in df.columns else df['TempDate']))
+            
+            # 最後的保險：強制轉換 Date 欄位
+            df['Date'] = pd.to_datetime(df['Date'])
+            
+            if 'TempDate' in df.columns:
+                df = df.drop(columns=['TempDate'])
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
