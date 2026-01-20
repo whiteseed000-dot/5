@@ -118,8 +118,8 @@ lines_config = [
 
 def calc_rsi(series, period):
     delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period,, min_periods=max(2, p // 2)).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period,, min_periods=max(2, p // 2)).mean()
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 def get_technical_indicators(df):
@@ -961,7 +961,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _t
             ma_periods = [3, 6, 12, 24, 48, 96]
 
         for p in ma_periods:
-            df[f'MA{p}'] = df['Close'].rolling(window=p).mean() 
+            df[f'MA{p}'] = df['Close'].rolling(window=p, min_periods=max(2, p // 3)).mean() 
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
 
         df.attrs['ma_periods'] = ma_periods
