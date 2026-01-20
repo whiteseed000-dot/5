@@ -925,33 +925,36 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df.loc[today, "Volume"] = intraday["volume"]
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
+# 進行 Resample
         if time_frame == "週":
-    # 週線：週一～週五，K棒時間放在「週五」
-            df = df.resample(
-                'W-FRI',
-                label='right',     # 時間標籤放在區間右側（週五）
-                closed='right'     # 包含週五當天
-            ).agg({
-                'Open': 'first',   # 週一開盤
-                'High': 'max',     # 全週最高
-                'Low': 'min',      # 全週最低
-                'Close': 'last',   # 週五收盤
-                'Volume': 'sum'    # 全週成交量
+            df['ActualDate'] = df.index
+            df = df.resample('W').agg({
+                'ActualDate': 'last', # 取該週最後一個交易日
+                'Open': 'first',
+                'High': 'max',
+                'Low': 'min',
+                'Close': 'last',
+                'Volume': 'sum'
             }).dropna()
-
+            df['Date'] = df['ActualDate'].dt.strftime('%Y-%m-%d')
         elif time_frame == "月":
-    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
-            df = df.resample(
-                'ME',
-                label='right',     # 標記在月底
-                closed='right'     # 包含月底最後交易日
-            ).agg({
-                'Open': 'first',   # 月初開盤
-                'High': 'max',     # 當月最高
-                'Low': 'min',      # 當月最低
-                'Close': 'last',   # 月底收盤
-                'Volume': 'sum'    # 當月成交量
+            df['ActualDate'] = df.index
+            df = df.resample('ME').agg({
+                'ActualDate': 'last', # 取該月最後一個交易日
+                'Open': 'first',
+                'High': 'max',
+                'Low': 'min',
+                'Close': 'last',
+                'Volume': 'sum'
             }).dropna()
+            df['Date'] = df['ActualDate'].dt.strftime('%Y-%m-%d')
+        else:
+            df = df.reset_index()
+            df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
+
+        # 移除暫存欄位並整理
+        if 'ActualDate' in df.columns:
+            df = df.drop(columns=['ActualDate'])
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
