@@ -935,7 +935,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df["_period"] = df.index.to_period(period)
         
             # OHLCV 聚合
-            df_agg = (
+            df = (
                 df.groupby("_period")
                   .agg({
                       "Open": "first",
