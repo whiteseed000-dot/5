@@ -960,11 +960,11 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             
             # 最後的保險：強制轉換 Date 欄位
             df['Date'] = pd.to_datetime(df['Date'])
-            else:
-                df = df.reset_index()
-                df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
-            if 'TempDate' in df.columns:
-                df = df.drop(columns=['TempDate'])
+        else:
+            df = df.reset_index()
+            df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
+        if 'TempDate' in df.columns:
+            df = df.drop(columns=['TempDate'])
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
