@@ -872,7 +872,7 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=60)  # 盤中每分鐘刷新
-def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
+def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _ts=None):
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
