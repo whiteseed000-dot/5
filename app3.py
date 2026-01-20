@@ -118,8 +118,8 @@ lines_config = [
 
 def calc_rsi(series, period):
     delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period, min_periods=max(2, p // 2)).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period, min_periods=max(2, p // 2)).mean()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 def get_technical_indicators(df):
@@ -763,17 +763,6 @@ def get_intraday_price(ticker):
     except:
         return None
 
-# ===============================
-# 市場狀態判斷（台股）
-# ===============================
-def is_market_open():
-    now = datetime.now()
-    if now.weekday() >= 5:
-        return False
-    return (now.hour > 9 or (now.hour == 9 and now.minute >= 0)) and (now.hour < 13 or (now.hour == 13 and now.minute <= 30))
-
-
-
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -883,7 +872,7 @@ with st.sidebar:
 
 # --- 5. 核心運算 ---
 @st.cache_data(ttl=60)  # 盤中每分鐘刷新
-def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _ts=None):
+def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
@@ -917,39 +906,35 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _t
             df.loc[today, "Low"]    = intraday["low"]
             df.loc[today, "Close"]  = intraday["close"]
             df.loc[today, "Volume"] = intraday["volume"]
-
-        if time_frame in ["週", "月"] and market_open:
-            # ❌ 盤中不做 resample（避免錯位）
-            df = df.iloc[:-1]
+            
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
+        if time_frame == "週":
+    # 週線：週一～週五，K棒時間放在「週五」
+            df = df.resample(
+                'W-FRI',
+                label='right',     # 時間標籤放在區間右側（週五）
+                closed='right'     # 包含週五當天
+            ).agg({
+                'Open': 'first',   # 週一開盤
+                'High': 'max',     # 全週最高
+                'Low': 'min',      # 全週最低
+                'Close': 'last',   # 週五收盤
+                'Volume': 'sum'    # 全週成交量
+            }).dropna()
 
-        # --- 新增：數據重採樣邏輯（使用實際最後交易日） ---
-        if time_frame in ["週", "月"]:
-            df = df.copy()
-        
-            period = "W" if time_frame == "週" else "M"
-            df["__period"] = df.index.to_period(period)
-        
-            df_agg = (
-                df.groupby("__period")
-                  .agg({
-                      "Open": "first",
-                      "High": "max",
-                      "Low": "min",
-                      "Close": "last",
-                      "Volume": "sum"
-                  })
-            )
-        
-            # ⭐ 關鍵：用該週 / 該月最後一筆「實際交易日」當 index
-            last_trade_date = (
-                df.groupby("__period")
-                  .apply(lambda x: x.index[-1])
-            )
-        
-            df_agg.index = last_trade_date.values
-            df = df_agg.sort_index()
-
+        elif time_frame == "月":
+    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
+            df = df.resample(
+                'ME',
+                label='right',     # 標記在月底
+                closed='right'     # 包含月底最後交易日
+            ).agg({
+                'Open': 'first',   # 月初開盤
+                'High': 'max',     # 當月最高
+                'Low': 'min',      # 當月最低
+                'Close': 'last',   # 月底收盤
+                'Volume': 'sum'    # 當月成交量
+            }).dropna()
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
@@ -961,7 +946,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _t
             ma_periods = [3, 6, 12, 24, 48, 96]
 
         for p in ma_periods:
-            df[f'MA{p}'] = df['Close'].rolling(window=p, min_periods=max(2, p // 3)).mean() 
+            df[f'MA{p}'] = df['Close'].rolling(window=p).mean() 
             df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
 
         df.attrs['ma_periods'] = ma_periods
