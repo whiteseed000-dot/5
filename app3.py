@@ -925,33 +925,33 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df.loc[today, "Volume"] = intraday["volume"]
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
+# --- 修正後的數據重採樣邏輯：以實際交易日為準 ---
         if time_frame == "週":
-    # 週線：週一～週五，K棒時間放在「週五」
-            df = df.resample(
-                'W',
-                label='right',     # 時間標籤放在區間右側（週五）
-                closed='right'     # 包含週五當天
-            ).agg({
-                'Open': 'first',   # 週一開盤
-                'High': 'max',     # 全週最高
-                'Low': 'min',      # 全週最低
-                'Close': 'last',   # 週五收盤
-                'Volume': 'sum'    # 全週成交量
+            # 先將索引設為日期以便計算
+            df['Date_calc'] = df.index 
+            df = df.resample('W').agg({
+                'Date_calc': 'last',  # 取該週最後一個有交易的日期
+                'Open': 'first',      # 週一（或該週首個交易日）開盤
+                'High': 'max',        # 全週最高
+                'Low': 'min',         # 全週最低
+                'Close': 'last',      # 該週最後交易日收盤
+                'Volume': 'sum'       # 全週成交量
             }).dropna()
+            df.index = df['Date_calc'] # 將索引替換為實際收盤日期
+            df = df.drop(columns=['Date_calc'])
 
         elif time_frame == "月":
-    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
-            df = df.resample(
-                'M',
-                label='right',     # 標記在月底
-                closed='right'     # 包含月底最後交易日
-            ).agg({
-                'Open': 'first',   # 月初開盤
-                'High': 'max',     # 當月最高
-                'Low': 'min',      # 當月最低
-                'Close': 'last',   # 月底收盤
-                'Volume': 'sum'    # 當月成交量
+            df['Date_calc'] = df.index
+            df = df.resample('ME').agg({
+                'Date_calc': 'last',  # 取該月最後一個有交易的日期
+                'Open': 'first',      # 月初開盤
+                'High': 'max',        # 當月最高
+                'Low': 'min',         # 當月最低
+                'Close': 'last',      # 月底最後交易日收盤
+                'Volume': 'sum'       # 當月成交量
             }).dropna()
+            df.index = df['Date_calc']
+            df = df.drop(columns=['Date_calc'])
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
