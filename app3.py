@@ -925,36 +925,46 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df.loc[today, "Volume"] = intraday["volume"]
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
-# 進行 Resample
+# --- 1. 修正重採樣後的日期來源 ---
         if time_frame == "週":
-            df['ActualDate'] = df.index
+            df['TempDate'] = df.index 
             df = df.resample('W').agg({
-                'ActualDate': 'last', # 取該週最後一個交易日
+                'TempDate': 'last',  # 抓區間內最後一個實際交易日
                 'Open': 'first',
                 'High': 'max',
                 'Low': 'min',
                 'Close': 'last',
                 'Volume': 'sum'
             }).dropna()
-            df['Date'] = df['ActualDate'].dt.strftime('%Y-%m-%d')
-        elif time_frame == "月":
-            df['ActualDate'] = df.index
-            df = df.resample('ME').agg({
-                'ActualDate': 'last', # 取該月最後一個交易日
-                'Open': 'first',
-                'High': 'max',
-                'Low': 'min',
-                'Close': 'last',
-                'Volume': 'sum'
-            }).dropna()
-            df['Date'] = df['ActualDate'].dt.strftime('%Y-%m-%d')
-        else:
-            df = df.reset_index()
-            df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
+            df.index = df['TempDate']
 
-        # 移除暫存欄位並整理
-        if 'ActualDate' in df.columns:
-            df = df.drop(columns=['ActualDate'])
+        elif time_frame == "月":
+            df['TempDate'] = df.index
+            df = df.resample('ME').agg({
+                'TempDate': 'last', # 抓區間內最後一個實際交易日
+                'Open': 'first',
+                'High': 'max',
+                'Low': 'min',
+                'Close': 'last',
+                'Volume': 'sum'
+            }).dropna()
+            df.index = df['TempDate']
+        if time_frame != "日":
+            # --- 2. 強制格式化：解決「日期變數字」的問題 ---
+            # 確保 index 是 Datetime 格式
+            df.index = pd.to_datetime(df.index)
+            
+            # 重設索引並命名為 Date
+            df = df.reset_index(drop=True)
+            df.insert(0, 'Date', pd.to_datetime(df.index if 'TempDate' not in df.columns else df['TempDate']))
+            
+            # 最後的保險：強制轉換 Date 欄位
+            df['Date'] = pd.to_datetime(df['Date'])
+            else:
+                df = df.reset_index()
+                df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
+            if 'TempDate' in df.columns:
+                df = df.drop(columns=['TempDate'])
 # ----------------------------------------------
 
 # --- 依時間週期自動切換 MA 參數 ---
