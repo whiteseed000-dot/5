@@ -1532,9 +1532,6 @@ if result:
                 dict(values=dt_breaks.tolist())     # 停市日（含農曆年）
             ],
             type='category', # 關鍵：將 X 軸設為類別型態，這會消除日期不連續產生的空隙
-            tickformat='%Y-%m-%d', # 保持日期格式
-            nticks=10, # 限制顯示的標籤數量，避免字疊在一起
-            rangeslider_visible=False # 關閉範圍滑桿（視需求而定）
         )
     
     else:
