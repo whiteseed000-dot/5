@@ -922,12 +922,16 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _t
             # ❌ 盤中不做 resample（避免錯位）
             df = df.iloc[:-1]
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
-        if time_frame == "週":
-    # 週線：週一～週五，K棒時間放在「週五」
-            df["week"] = df.index.to_period("W")
-            
-            df = (
-                df.groupby("week")
+
+        # --- 新增：數據重採樣邏輯（使用實際最後交易日） ---
+        if time_frame in ["週", "月"]:
+            df = df.copy()
+        
+            period = "W" if time_frame == "週" else "M"
+            df["__period"] = df.index.to_period(period)
+        
+            df_agg = (
+                df.groupby("__period")
                   .agg({
                       "Open": "first",
                       "High": "max",
@@ -936,31 +940,15 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False, _t
                       "Volume": "sum"
                   })
             )
-            
-            # 關鍵：用該週「最後一筆交易日」當 index
-            df.index = (
-                df.groupby("week").apply(lambda x: x.index[-1])
+        
+            # ⭐ 關鍵：用該週 / 該月最後一筆「實際交易日」當 index
+            last_trade_date = (
+                df.groupby("__period")
+                  .apply(lambda x: x.index[-1])
             )
-
-
-        elif time_frame == "月":
-    # 月線：整個月份，K棒時間放在「月底（最後交易日）」
-            df["month"] = df.index.to_period("M")
-            
-            df_month = (
-                df.groupby("month")
-                  .agg({
-                      "Open": "first",
-                      "High": "max",
-                      "Low": "min",
-                      "Close": "last",
-                      "Volume": "sum"
-                  })
-            )
-            
-            df_month.index = (
-                df.groupby("month").apply(lambda x: x.index[-1])
-            )
+        
+            df_agg.index = last_trade_date.values
+            df = df_agg.sort_index()
 
 # ----------------------------------------------
 
