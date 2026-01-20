@@ -118,8 +118,8 @@ lines_config = [
 
 def calc_rsi(series, period):
     delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period,, min_periods=max(2, p // 2)).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period,, min_periods=max(2, p // 2)).mean()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period, min_periods=max(2, p // 2)).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period, min_periods=max(2, p // 2)).mean()
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 def get_technical_indicators(df):
