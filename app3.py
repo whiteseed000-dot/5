@@ -1539,7 +1539,13 @@ if result:
     
     else:
         # 週K / 月K：不要使用 rangebreaks
-        fig.update_xaxes(rangebreaks=[])
+        fig.update_xaxes(rangebreaks=[],
+                        type='category', # 關鍵：將 X 軸設為類別型態，這會消除日期不連續產生的空隙
+                        tickformat='%Y-%m-%d', # 保持日期格式
+                        nticks=10, # 限制顯示的標籤數量，避免字疊在一起
+                        rangeslider_visible=False # 關閉範圍滑桿（視需求而定）
+                        
+                        )
 
 # 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
 # -----------------------------------
