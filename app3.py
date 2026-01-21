@@ -737,33 +737,6 @@ def update_pattern_history(ticker, patterns):
 
     return " | ".join(hist) if hist else ""
 
-def get_intraday_price(ticker):
-    """
-    取得 Yahoo Finance 盤中延遲價格（約 15 分鐘）
-    用來覆蓋今天那一根日 K
-    """
-    try:
-        df_i = yf.Ticker(ticker).history(
-            period="1d",
-            interval="1m"
-        )
-
-        if df_i.empty:
-            return None
-
-        last = df_i.iloc[-1]
-
-        return {
-            "open": float(df_i.iloc[0]["Open"]),
-            "high": float(df_i["High"].max()),
-            "low": float(df_i["Low"].min()),
-            "close": float(last["Close"]),
-            "volume": float(df_i["Volume"].sum())
-        }
-    except:
-        return None
-
-
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -871,42 +844,15 @@ with st.sidebar:
         st.rerun()
 
 # --- 5. 核心運算 ---
-@st.cache_data(ttl=60)  # 盤中每分鐘刷新
-def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
+@st.cache_data(ttl=3600)
+def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False): # 新增參數
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
+        df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=auto_adjust, actions=actions, repair=repair)
+        if df.empty: return None
+        if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
-        # === 1️⃣ 抓「日線歷史資料」（結構用） ===
-        df = yf.download(
-            ticker,
-            start=start,
-            end=end,
-            interval="1d",
-            progress=False,
-            auto_adjust=auto_adjust,
-            actions=actions,
-            repair=repair
-        )
-
-        if df.empty:
-            return None
-
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        # === 2️⃣ 盤中延遲資料 → 覆蓋今天那一根 ===
-        intraday = get_intraday_price(ticker)
-
-        if intraday is not None:
-            today = df.index[-1]
-
-            df.loc[today, "Open"]   = intraday["open"]
-            df.loc[today, "High"]   = intraday["high"]
-            df.loc[today, "Low"]    = intraday["low"]
-            df.loc[today, "Close"]  = intraday["close"]
-            df.loc[today, "Volume"] = intraday["volume"]
-            
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
