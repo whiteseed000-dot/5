@@ -1244,7 +1244,7 @@ def get_vix_index():
 # --- 6. 介面形式恢復 ---
 col_title, col_btn = st.columns([4, 1])
 with col_title:
-    st.markdown(f'#  {ticker_input} ({stock_name})', unsafe_allow_html=True, help="若無法顯示資料，請按右上角 ⋮ → Clear cache")
+    st.markdown(f'#  {ticker_input} ({stock_name})', unsafe_allow_html=True, help="若無法顯示資料，請按🔄 重新取價")
 
 with col_btn:
     if ticker_input in st.session_state.watchlist_dict:
