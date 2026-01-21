@@ -737,12 +737,10 @@ def update_pattern_history(ticker, patterns):
 
     return " | ".join(hist) if hist else ""
 
-
-def get_intraday_price(ticker, last_close):
+def get_intraday_price(ticker):
     """
-    Yahoo 台股盤中資料補救版
-    - 1m 有資料 → 用 1m 組 today K
-    - 1m 沒資料 → 至少回傳一根 today K（避免整天沒 K）
+    取得 Yahoo Finance 盤中延遲價格（約 15 分鐘）
+    用來覆蓋今天那一根日 K
     """
     try:
         df_i = yf.Ticker(ticker).history(
@@ -750,34 +748,20 @@ def get_intraday_price(ticker, last_close):
             interval="1m"
         )
 
-        # === 情況 1：有盤中資料 ===
-        if not df_i.empty:
-            return {
-                "open": float(df_i.iloc[0]["Open"]),
-                "high": float(df_i["High"].max()),
-                "low": float(df_i["Low"].min()),
-                "close": float(df_i.iloc[-1]["Close"]),
-                "volume": float(df_i["Volume"].sum())
-            }
+        if df_i.empty:
+            return None
 
-        # === 情況 2：盤中但 Yahoo 尚未給資料 ===
-        now = datetime.now()
+        last = df_i.iloc[-1]
 
-        # 台股交易時間 09:00–13:30
-        if now.hour >= 9 and now.hour < 14:
-            return {
-                "open": last_close,
-                "high": last_close,
-                "low": last_close,
-                "close": last_close,
-                "volume": 0
-            }
-
-        return None
-
+        return {
+            "open": float(df_i.iloc[0]["Open"]),
+            "high": float(df_i["High"].max()),
+            "low": float(df_i["Low"].min()),
+            "close": float(last["Close"]),
+            "volume": float(df_i["Volume"].sum())
+        }
     except:
         return None
-
 
 
 # --- 4. 側邊欄 ---
@@ -912,8 +896,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             df.columns = df.columns.get_level_values(0)
 
         # === 2️⃣ 盤中延遲資料 → 覆蓋今天那一根 ===
-        last_close = df["Close"].iloc[-1]
-        intraday = get_intraday_price(ticker, last_close)
+        intraday = get_intraday_price(ticker)
 
         if intraday is not None:
             today = df.index[-1]
