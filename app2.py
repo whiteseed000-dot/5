@@ -152,17 +152,36 @@ def get_lohas_data(ticker, years):
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-        # === 2️⃣ 盤中延遲資料 → 覆蓋今天那一根 ===
+
         intraday = get_intraday_price(ticker)
-
+        
         if intraday is not None:
-            today = df.index[-1]
-
-            df.loc[today, "Open"]   = intraday["open"]
-            df.loc[today, "High"]   = intraday["high"]
-            df.loc[today, "Low"]    = intraday["low"]
-            df.loc[today, "Close"]  = intraday["close"]
-            df.loc[today, "Volume"] = intraday["volume"]
+        
+            today_date = pd.Timestamp(datetime.now().date())
+        
+            if today_date in df.index:
+                # ✅ 已經有今天（少見，但保險）
+                df.loc[today_date, ["Open", "High", "Low", "Close", "Volume"]] = [
+                    intraday["open"],
+                    intraday["high"],
+                    intraday["low"],
+                    intraday["close"],
+                    intraday["volume"]
+                ]
+            else:
+                # 🔥 盤中：主動新增「今天這一根 K」
+                new_row = pd.DataFrame(
+                    {
+                        "Open":   intraday["open"],
+                        "High":   intraday["high"],
+                        "Low":    intraday["low"],
+                        "Close":  intraday["close"],
+                        "Volume": intraday["volume"]
+                    },
+                    index=[today_date]
+                )
+        
+                df = pd.concat([df, new_row])
         
         df = df[['Close']].reset_index()
         df.columns = ['Date', 'Close']
