@@ -882,7 +882,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             ticker,
             start=start,
             end=end,
-            interval="1d",
+            interval="1m",
             progress=False,
             auto_adjust=auto_adjust,
             actions=actions,
