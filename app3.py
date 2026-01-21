@@ -874,7 +874,7 @@ with st.sidebar:
         st.rerun()
 
 # --- 5. 核心運算 ---
-@st.cache_data(ttl=60)  # 盤中每分鐘刷新
+@st.cache_data(ttl=3600)  
 def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
     try:
         end = datetime.now()
