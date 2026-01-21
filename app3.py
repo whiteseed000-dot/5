@@ -737,12 +737,10 @@ def update_pattern_history(ticker, patterns):
 
     return " | ".join(hist) if hist else ""
 
-
-def get_intraday_price(ticker, last_close):
+def get_intraday_price(ticker):
     """
-    Yahoo 台股盤中資料補救版
-    - 1m 有資料 → 用 1m 組 today K
-    - 1m 沒資料 → 至少回傳一根 today K（避免整天沒 K）
+    取得 Yahoo Finance 盤中延遲價格（約 15 分鐘）
+    用來覆蓋今天那一根日 K
     """
     try:
         df_i = yf.Ticker(ticker).history(
@@ -750,34 +748,20 @@ def get_intraday_price(ticker, last_close):
             interval="1m"
         )
 
-        # === 情況 1：有盤中資料 ===
-        if not df_i.empty:
-            return {
-                "open": float(df_i.iloc[0]["Open"]),
-                "high": float(df_i["High"].max()),
-                "low": float(df_i["Low"].min()),
-                "close": float(df_i.iloc[-1]["Close"]),
-                "volume": float(df_i["Volume"].sum())
-            }
+        if df_i.empty:
+            return None
 
-        # === 情況 2：盤中但 Yahoo 尚未給資料 ===
-        now = datetime.now()
+        last = df_i.iloc[-1]
 
-        # 台股交易時間 09:00–13:30
-        if now.hour >= 9 and now.hour < 14:
-            return {
-                "open": last_close,
-                "high": last_close,
-                "low": last_close,
-                "close": last_close,
-                "volume": 0
-            }
-
-        return None
-
+        return {
+            "open": float(df_i.iloc[0]["Open"]),
+            "high": float(df_i["High"].max()),
+            "low": float(df_i["Low"].min()),
+            "close": float(last["Close"]),
+            "volume": float(df_i["Volume"].sum())
+        }
     except:
         return None
-
 
 
 # --- 4. 側邊欄 ---
@@ -911,18 +895,38 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        # === 2️⃣ 盤中延遲資料 → 覆蓋今天那一根 ===
-        last_close = df["Close"].iloc[-1]
-        intraday = get_intraday_price(ticker, last_close)
 
+        # === 2️⃣ 盤中延遲價格 → 正確處理「今日 K」 ===
+        intraday = get_intraday_price(ticker)
+        
         if intraday is not None:
-            today = df.index[-1]
+        
+            today_date = pd.Timestamp(datetime.now().date())
+        
+            if today_date in df.index:
+                # ✅ 已經有今天（少見，但保險）
+                df.loc[today_date, ["Open", "High", "Low", "Close", "Volume"]] = [
+                    intraday["open"],
+                    intraday["high"],
+                    intraday["low"],
+                    intraday["close"],
+                    intraday["volume"]
+                ]
+            else:
+                # 🔥 盤中：主動新增「今天這一根 K」
+                new_row = pd.DataFrame(
+                    {
+                        "Open":   intraday["open"],
+                        "High":   intraday["high"],
+                        "Low":    intraday["low"],
+                        "Close":  intraday["close"],
+                        "Volume": intraday["volume"]
+                    },
+                    index=[today_date]
+                )
+        
+                df = pd.concat([df, new_row])
 
-            df.loc[today, "Open"]   = intraday["open"]
-            df.loc[today, "High"]   = intraday["high"]
-            df.loc[today, "Low"]    = intraday["low"]
-            df.loc[today, "Close"]  = intraday["close"]
-            df.loc[today, "Volume"] = intraday["volume"]
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
