@@ -1149,6 +1149,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
 
 # ----------------------------------        
         df = df.reset_index()
+        df.rename(columns={df.columns[0]: "Date"}, inplace=True)
         df['x'] = np.arange(len(df))
         
         # --- 趨勢線計算（週線使用加權回歸） ---
