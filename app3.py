@@ -857,8 +857,11 @@ with st.sidebar:
             st.cache_data.clear()
             buy_levels_to_show  = ['中', '強']
             sell_levels_to_show = ['中', '強']
-
-
+    
+    st.divider()
+# 在側邊欄的登出按鈕部分
+    if st.button("🔄 重新取價"):
+        st.cache_data.clear()
 
     st.divider()
 # 在側邊欄的登出按鈕部分
