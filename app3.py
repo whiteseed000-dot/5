@@ -1606,13 +1606,28 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
         curr_price = float(tdf['Close'].iloc[-1])
         tl_last = tdf['TL'].iloc[-1]
         dist_pct = ((curr_price - tl_last) / tl_last) * 100
-    
+
+
+        # === 最後一根 K 的買賣訊號 ===
+        last_buy  = bool(tdf['buy_signal'].iloc[-1])
+        last_sell = bool(tdf['sell_signal'].iloc[-1])
+        icon = "—"
+
+        if last_buy:
+            lvl = str(tdf['buy_level'].iloc[-1])
+            icon = f"▲ {lvl}"
+        
+        elif last_sell:
+            lvl = str(tdf['sell_level'].iloc[-1])
+            icon = f"▼ {lvl}"
+            
         resonance_rows.append({
             "代號": ticker,
             "名稱": name,
             "共振分數": score,
             "共振分數V2": f"{score_V2:.1f}",
             "狀態": score_label(score),
+            "K線訊號": icon
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
             "AI 市場型態": stable_pattern,
@@ -1635,6 +1650,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
                 "共振分數": st.column_config.NumberColumn(width="small"),
                 "共振分數V2": st.column_config.NumberColumn(width="small"),
                 "狀態": st.column_config.TextColumn(width="small"),
+                "K線訊號": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
                 "AI 市場型態": st.column_config.TextColumn(),
