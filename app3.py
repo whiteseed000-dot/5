@@ -1627,7 +1627,7 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
             "共振分數": score,
             "共振分數V2": f"{score_V2:.1f}",
             "狀態": score_label(score),
-            "K線訊號": icon
+            "K線訊號": icon ,
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
             "AI 市場型態": stable_pattern,
