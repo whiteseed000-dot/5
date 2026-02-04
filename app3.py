@@ -1458,7 +1458,7 @@ if result:
         
         for col, color, name in ma_list:
             if col in df.columns:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
+                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}',hoverinfo="none"
                           
         ))
         fig.add_trace(go.Candlestick(
