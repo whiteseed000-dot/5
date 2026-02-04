@@ -1403,6 +1403,21 @@ if result:
             decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
         ))
+
+        fig.add_trace(
+            go.Scatter(
+                x=df['Date'],
+                y=df['Close'],
+                mode='markers',
+                marker=dict(
+                    size=1,
+                    color='rgba(0,0,0,0)'  # 完全透明
+                ),
+                hoverinfo='skip',   # 不顯示 hover
+                showlegend=False,
+                name='_close_anchor'  # 只是錨點
+            )
+        )
         offset = (df['High'] - df['Low']).mean() * 0.3
         
         df['buy_y']  = df['Low']  - offset
@@ -1543,10 +1558,10 @@ if result:
         fig.update_yaxes(
             showspikes=True,
             spikemode="across",
-            spikesnap="cursor",
-            spikedash="dot",
+            spikesnap="data",     # ⭐ 關鍵：鎖在資料點
             spikecolor="white",
             spikethickness=1,
+            spikedash="dot"
         )
     
     else:
