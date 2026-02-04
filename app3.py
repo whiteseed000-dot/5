@@ -1410,7 +1410,7 @@ if result:
                 y=df['Close'].round(1),
                 mode='markers',
                 marker=dict(
-                    size=1,
+                    size=8,
                     color='rgba(0,0,0,0)'  # 完全透明
                 ),
                 hoverinfo='skip',   # 不顯示 hover
@@ -1483,7 +1483,7 @@ if result:
         
         for col, color, name in ma_list:
             if col in df.columns:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
+                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}',hoverinfo='skip',   # ⭐ 關鍵：不參與吸附
                           
         ))
         
