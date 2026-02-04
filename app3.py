@@ -1455,12 +1455,7 @@ if result:
             for i, p in enumerate(ma_periods)
         ]
 
-        
-        for col, color, name in ma_list:
-            if col in df.columns:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}',hoverinfo="none"
-                          
-        ))
+
         fig.add_trace(go.Candlestick(
             x=df['Date'],
             open=df['Open'].apply(lambda x: round(x, 1)), 
