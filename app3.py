@@ -1410,7 +1410,7 @@ if result:
                 y=df['Close'].round(1),
                 mode='markers',
                 marker=dict(
-                    size=8,
+                    size=40,
                     color='rgba(0,0,0,0)'  # 完全透明
                 ),
                 hoverinfo='skip',   # 不顯示 hover
