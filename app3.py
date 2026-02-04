@@ -1583,7 +1583,7 @@ if result:
                     spikethickness=1,
                     spikecolor="white", # 水平線顏色設為白色
                     spikedash="dot",    # 實線
-                    spikesnap="cursor",   # 捕捉滑鼠位置
+                    spikesnap="data",   # 捕捉滑鼠位置
                 )
     )    
         # 如果有開啟副圖，額外設定副圖的 Y 軸指引線顏色為白色
