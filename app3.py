@@ -1578,7 +1578,8 @@ if result:
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
         showlegend=False, 
         margin=dict(l=10, r=100, t=10, b=10),
-        
+        hoverdistance=5,    # ⭐ 限制 hover 搜尋距離（像素）
+        spikedistance=5,     # ⭐ 限制 spike 搜尋距離
         xaxis=dict(
             showspikes=True, # 顯示指引線
             spikemode="across", # 穿過整個圖表
