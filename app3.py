@@ -1467,15 +1467,20 @@ if result:
             decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
         ))
-        fig.add_trace(go.Scatter(
-            x=df['Date'], 
-            y=df['Close'],
-            name="收盤價錨點",
-            mode='markers',
-            marker=dict(opacity=0), # 完全透明
-            hoverinfo="all",        # 允許被捕捉
-            showlegend=False
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=df['Date'],
+                y=df['Close'].round(1),
+                mode='markers',
+                marker=dict(
+                    size=40,                    # ⭐ 一定要大（30~50）
+                    color='rgba(0,0,0,0)',      # 完全透明
+                ),
+                hoverinfo='all',
+                showlegend=False,
+                name='_close_anchor'
+            )
+        )
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
 
     elif view_mode == "KD指標":
