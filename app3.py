@@ -1448,7 +1448,7 @@ if result:
                 ),
                 name='Buy Signal',
                 hovertext=buy_plot_df['buy_level'],
-                hoverinfo='text'
+                hoverinfo='skip'
             )
         )
 
@@ -1466,7 +1466,7 @@ if result:
                 ),
                 name='Sell Signal',
                 hovertext=sell_plot_df['sell_level'],
-                hoverinfo='text'
+                hoverinfo='skip'
             )
         )
 
