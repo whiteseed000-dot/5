@@ -1392,17 +1392,7 @@ if result:
                     )
     elif view_mode == "K線指標":
         # 1. 繪製 K 線，並設定 hovertemplate 顯示小數點第一位
-        fig.add_trace(go.Candlestick(
-            x=df['Date'],
-            open=df['Open'].apply(lambda x: round(x, 1)), 
-            high=df['High'].apply(lambda x: round(x, 1)),
-            low=df['Low'].apply(lambda x: round(x, 1)), 
-            close=df['Close'].apply(lambda x: round(x, 1)),
-            name="",
-            increasing_line_color='#FF3131', # 漲：紅
-            decreasing_line_color='#00FF00'  # 跌：綠
-            # 自定義 K 線懸浮文字格式
-        ))
+
         offset = (df['High'] - df['Low']).mean() * 0.3
         
         df['buy_y']  = df['Low']  - offset
@@ -1468,8 +1458,19 @@ if result:
         
         for col, color, name in ma_list:
             if col in df.columns:
-                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}',hoverinfo="skip"
+                fig.add_trace(go.Scatter(x=df['Date'], y=df[col], name=name, line=dict(color=color, width=1.2), hovertemplate='%{y:.1f}'
                           
+        ))
+        fig.add_trace(go.Candlestick(
+            x=df['Date'],
+            open=df['Open'].apply(lambda x: round(x, 1)), 
+            high=df['High'].apply(lambda x: round(x, 1)),
+            low=df['Low'].apply(lambda x: round(x, 1)), 
+            close=df['Close'].apply(lambda x: round(x, 1)),
+            name="",
+            increasing_line_color='#FF3131', # 漲：紅
+            decreasing_line_color='#00FF00'  # 跌：綠
+            # 自定義 K 線懸浮文字格式
         ))
         
         fig.update_layout(xaxis_rangeslider_visible=False) # 隱藏下方的滑桿
