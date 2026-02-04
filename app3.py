@@ -1562,7 +1562,7 @@ if result:
             spikethickness=1,
             spikecolor="white", # 設定為白色
             spikedash="solid",   # 實線 (若要虛線改為 dash)
-        )
+        ),
         # Y 軸設定：這就是你要的「滑鼠位置水平線」
         # 當 hovermode="x unified" 時，指引線會鎖定在該點的數值上
         yaxis=dict(
