@@ -1406,7 +1406,7 @@ if result:
         fig.add_trace(
             go.Scatter(
                 x=df['Date'],
-                y=df['Close'],
+                y=df['Close'].round(1),
                 mode='markers',
                 marker=dict(
                     size=40,                    # ⭐ 一定要大（30~50）
