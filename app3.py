@@ -1563,6 +1563,16 @@ if result:
             spikecolor="white", # 設定為白色
             spikedash="solid",   # 實線 (若要虛線改為 dash)
         )
+        # Y 軸設定：這就是你要的「滑鼠位置水平線」
+        # 當 hovermode="x unified" 時，指引線會鎖定在該點的數值上
+        yaxis=dict(
+            showspikes=True,
+            spikemode="across", # 橫跨整個圖表
+            spikethickness=1,
+            spikecolor="#FFFFFF", # 水平線顏色設為白色
+            spikedash="solid",    # 實線
+            spikesnap="cursor",   # 捕捉滑鼠位置
+        )
     )    
         # 如果有開啟副圖，額外設定副圖的 Y 軸指引線顏色為白色
     if show_sub_chart:
