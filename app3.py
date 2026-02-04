@@ -1540,6 +1540,14 @@ if result:
                 dict(values=dt_breaks.tolist())     # 停市日（含農曆年）
             ]
         )
+        fig.update_yaxes(
+            showspikes=True,
+            spikemode="across",
+            spikesnap="cursor",
+            spikedash="dot",
+            spikecolor="white",
+            spikethickness=1,
+        )
     
     else:
         # 週K / 月K：不要使用 rangebreaks
