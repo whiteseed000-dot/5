@@ -1696,16 +1696,26 @@ if st.button("🔄 開始掃描所有標的狀態"):
             else: pos = "🟢 特價"
 
             # === 最後一根 K 的買賣訊號 ===
-            last_buy  = bool(tdf['buy_signal'].iloc[-1])
-            last_sell = bool(tdf['sell_signal'].iloc[-1])
+      #      last_buy  = bool(tdf['buy_signal'].iloc[-1])
+     #       last_sell = bool(tdf['sell_signal'].iloc[-1])
+
+            # ========= 鎖定最後交易日 =========
+            tdf_valid = tdf.dropna(subset=["Close"])
+            last_trade_date = tdf_valid.index.max()
+            last_row = tdf_valid.loc[last_trade_date]
+        
+            last_buy  = bool(last_row['buy_signal'])
+            last_sell = bool(last_row['sell_signal'])
             icon = "—"
+          #  last_trade_date = df.index.max()
+          #  last_row = df.loc[last_trade_date]
 
             if last_buy:
-                lvl = str(tdf['buy_level'].iloc[-1])
+                lvl = str(last_row['buy_level'])
                 icon = f"▲ {lvl}"
             
             elif last_sell:
-                lvl = str(tdf['sell_level'].iloc[-1])
+                lvl = str(last_row['sell_level'])
                 icon = f"▼ {lvl}"
                 
             summary.append({
