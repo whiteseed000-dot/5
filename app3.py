@@ -1700,8 +1700,10 @@ if st.button("🔄 開始掃描所有標的狀態"):
      #       last_sell = bool(tdf['sell_signal'].iloc[-1])
 
             # ========= 鎖定最後交易日 =========
-            last_trade_date = df.index.max()
-            last_row = df.loc[last_trade_date]
+
+            tdf_valid = tdf.dropna(subset=["Close", "Date"])
+            last_trade_date = tdf_valid["Date"].max()
+            last_row = tdf_valid[tdf_valid["Date"] == last_trade_date].iloc[0]
 
         
             last_buy  = bool(last_row['buy_signal'])
