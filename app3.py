@@ -902,7 +902,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         # === 2️⃣ 盤中延遲價格 → 正確處理「今日 K」 ===
         intraday = get_intraday_price(ticker)
         
-        if intraday is not None:
+        if intraday is not None and not np.isnan(intraday.get("close", np.nan)):
         
             today_date = pd.Timestamp(datetime.now().date())
         
