@@ -1701,7 +1701,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
 
             # ========= 鎖定最後交易日 =========
 
-            last_row = tdf.iloc[-3] 
+            last_row = tdf.iloc[-2] 
             last_buy = bool(last_row['buy_signal'])
             last_sell = bool(last_row['sell_signal'])
             icon = "—"
