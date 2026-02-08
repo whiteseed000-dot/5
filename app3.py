@@ -891,45 +891,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
             repair=repair
         )
 
-        if df.empty:
-            return None
 
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-
-        # === 2️⃣ 盤中延遲價格 → 正確處理「今日 K」 ===
-        intraday = get_intraday_price(ticker)
-        
-        if intraday is not None and not np.isnan(intraday.get("close", np.nan)):
-        
-            today_date = pd.Timestamp(datetime.now().date())
-        
-            if today_date in df.index:
-                # ✅ 已經有今天（少見，但保險）
-                df.loc[today_date, ["Open", "High", "Low", "Close", "Volume"]] = [
-                    intraday["open"],
-                    intraday["high"],
-                    intraday["low"],
-                    intraday["close"],
-                    intraday["volume"]
-                ]
-            else:
-                # 🔥 盤中：主動新增「今天這一根 K」
-                new_row = pd.DataFrame(
-                    {
-                        "Open":   intraday["open"],
-                        "High":   intraday["high"],
-                        "Low":    intraday["low"],
-                        "Close":  intraday["close"],
-                        "Volume": intraday["volume"]
-                    },
-                    index=[today_date]
-                )
-        
-                df = pd.concat([df, new_row])
-        df = df.dropna(subset=['Close'])
-            
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
