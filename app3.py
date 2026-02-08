@@ -1701,19 +1701,15 @@ if st.button("🔄 開始掃描所有標的狀態"):
 
             # ========= 鎖定最後交易日 =========
 
-            tdf_valid = tdf.dropna(subset=["Close", "Date"])
-            last_trade_date = tdf_valid["Date"].max()
-            last_row = tdf_valid[tdf_valid["Date"] == last_trade_date].iloc[0]
-
-        
-            last_buy  = bool(last_row['buy_signal'])
+            last_row = tdf.iloc[-1] 
+            last_buy = bool(last_row['buy_signal'])
             last_sell = bool(last_row['sell_signal'])
             icon = "—"
-
+            
             if last_buy:
+                # 這裡確保抓到最後一天的 level
                 lvl = str(last_row['buy_level'])
                 icon = f"▲ {lvl}"
-            
             elif last_sell:
                 lvl = str(last_row['sell_level'])
                 icon = f"▼ {lvl}"
