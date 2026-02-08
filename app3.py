@@ -1628,18 +1628,19 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
         tl_last = tdf['TL'].iloc[-1]
         dist_pct = ((curr_price - tl_last) / tl_last) * 100
 
-        # === 最後一根 K 的買賣訊號 ===
-        last_buy  = bool(tdf['buy_signal'].iloc[-1])
-        last_sell = bool(tdf['sell_signal'].iloc[-1])
-        icon = "—"
-
-        if last_buy:
-            lvl = str(tdf['buy_level'].iloc[-1])
-            icon = f"▲ {lvl}"
-        
-        elif last_sell:
-            lvl = str(tdf['sell_level'].iloc[-1])
-            icon = f"▼ {lvl}"
+# === 修正：確保取到的是有計算出訊號的最後一行 ===
+        valid_tdf = tdf.dropna(subset=['buy_signal', 'sell_signal'])
+        if not valid_tdf.empty:
+            last_row = valid_tdf.iloc[-1]
+            last_buy  = bool(last_row['buy_signal'])
+            last_sell = bool(last_row['sell_signal'])
+            icon = "—"
+            if last_buy:
+                icon = f"▲ {last_row['buy_level']}"
+            elif last_sell:
+                icon = f"▼ {last_row['sell_level']}"
+        else:
+            icon = "—"
             
         resonance_rows.append({
             "代號": ticker,
