@@ -747,8 +747,7 @@ def get_intraday_price(ticker):
             period="1d",
             interval="1m"
         )
-
-        if df_i.empty:
+        if df_i.empty or len(df_i) < 1: # 確保真的有資料
             return None
 
         last = df_i.iloc[-1]
