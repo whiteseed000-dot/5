@@ -304,8 +304,16 @@ if ticker_input:
                 spikemode="across", # 穿過整個圖表
                 spikethickness=1,
                 spikecolor="white", # 設定為白色
-                spikedash="solid"   # 實線 (若要虛線改為 dash)
+                spikedash="solid",   # 實線 (若要虛線改為 dash)
         )
+                yaxis=dict(
+                showspikes=True,
+                spikemode="across", # 橫跨整個圖表
+                spikethickness=1,
+                spikecolor="white", # 水平線顏色設為白色
+                spikedash="dot",    # 實線
+                spikesnap="data",   # 捕捉滑鼠位置
+            )
         )
         st.plotly_chart(fig, use_container_width=True)
 
