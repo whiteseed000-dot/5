@@ -297,7 +297,7 @@ if ticker_input:
                 ),
                 hoverinfo='all',
                 showlegend=False,
-                name='_close_anchor'
+                name='_close_anchor',
             )
         )
         # 日期斷點處理
@@ -319,7 +319,7 @@ if ticker_input:
                 spikethickness=1,
                 spikecolor="white", # 設定為白色
                 spikedash="solid",   # 實線 (若要虛線改為 dash)
-        )
+            )
                 yaxis=dict(
                 showspikes=True,
                 spikemode="across", # 橫跨整個圖表
