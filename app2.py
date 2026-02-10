@@ -319,8 +319,8 @@ if ticker_input:
                 spikethickness=1,
                 spikecolor="white", # 設定為白色
                 spikedash="solid",   # 實線 (若要虛線改為 dash)
-            )
-                yaxis=dict(
+            ),
+            yaxis=dict(
                 showspikes=True,
                 spikemode="across", # 橫跨整個圖表
                 spikethickness=1,
