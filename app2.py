@@ -129,7 +129,7 @@ with st.sidebar:
 
     st.divider()
     if st.button("🔄 重新取價"):
-    st.cache_data.clear()
+        st.cache_data.clear()
     st.subheader("📌 線段說明")
     st.markdown(f'<span style="color:#F08C8C; font-size:18px;">●</span> 每日收盤價', unsafe_allow_html=True)
     for col, hex_color, name_tag, line_style in lines_config:
