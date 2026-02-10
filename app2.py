@@ -299,6 +299,7 @@ if ticker_input:
                 showlegend=False,
                 name='_close_anchor'
             )
+        )
         # 日期斷點處理
         dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
         dt_breaks = dt_all.difference(df['Date'])
