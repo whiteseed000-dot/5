@@ -286,6 +286,19 @@ if ticker_input:
             font=dict(color="#FFFFFF", size=14, family="Arial Black"),
             bgcolor="rgba(0,0,0,0)"
         )
+        fig.add_trace(
+            go.Scatter(
+                x=df['Date'],
+                y=df['Close'].round(1),
+                mode='markers',
+                marker=dict(
+                    size=40,                    # ⭐ 一定要大（30~50）
+                    color='rgba(0,0,0,0)',      # 完全透明
+                ),
+                hoverinfo='all',
+                showlegend=False,
+                name='_close_anchor'
+            )
         # 日期斷點處理
         dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
         dt_breaks = dt_all.difference(df['Date'])
