@@ -1420,9 +1420,9 @@ if result:
                     size=40,                    # ⭐ 一定要大（30~50）
                     color='rgba(0,0,0,0)',      # 完全透明
                 ),
-                hoverinfo='all',
+                hoverinfo='skip',
                 showlegend=False,
-                name='_close_anchor'
+                #name='_close_anchor'
             )
         )
         offset = (df['High'] - df['Low']).mean() * 0.3
