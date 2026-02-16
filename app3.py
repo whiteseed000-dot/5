@@ -1410,16 +1410,14 @@ if result:
         fig.add_trace(
             go.Scatter(
                 x=df['Date'],
-                y=df['Close'].round(1),
+                y=df['Close'],
                 mode='markers',
                 marker=dict(
                     size=40,
                     color='rgba(0,0,0,0)',
                 ),
-                hoverinfo='none',      # ⭐ 不顯示預設 hover
-                hovertemplate='<extra></extra>',  # ⭐ 關鍵：移除 trace name
-                showlegend=False,
-                name='_close_anchor'
+                hoverinfo='skip',   # ⭐ 讓它不產生 unified hover 列
+                showlegend=False
             )
         )
         offset = (df['High'] - df['Low']).mean() * 0.3
