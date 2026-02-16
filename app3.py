@@ -1570,6 +1570,8 @@ if result:
         height=800 if show_sub_chart else 650,
         plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
+        hoverdistance=50,
+        spikedistance=50,    
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
         showlegend=False, 
         margin=dict(l=10, r=100, t=10, b=10),
