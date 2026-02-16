@@ -1409,15 +1409,14 @@ if result:
         fig.add_trace(
             go.Scatter(
                 x=df['Date'],
-                y=df['Close'].round(1),
+                y=df['Close'],
                 mode='markers',
                 marker=dict(
-                    size=40,                    # ⭐ 一定要大（30~50）
-                    color='rgba(0,0,0,0)',      # 完全透明
+                    size=40,
+                    color='rgba(0,0,0,0)',
                 ),
-                hoverinfo='all',
-                showlegend=False,
-                name='_close_anchor'
+                hovertemplate='<extra></extra>',
+                showlegend=False
             )
         )
         offset = (df['High'] - df['Low']).mean() * 0.3
