@@ -1407,19 +1407,6 @@ if result:
             decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
         ))
-        fig.add_trace(
-            go.Scatter(
-                x=df['Date'],
-                y=df['Close'],
-                mode='markers',
-                marker=dict(
-                    size=40,
-                    opacity=0,        # ⭐ 不用透明色，用 opacity
-                ),
-                hovertemplate=None,
-                showlegend=False
-            )
-        )
 
         offset = (df['High'] - df['Low']).mean() * 0.3
         
