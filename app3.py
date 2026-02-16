@@ -1414,12 +1414,13 @@ if result:
                 mode='markers',
                 marker=dict(
                     size=40,
-                    color='rgba(0,0,0,0)',
+                    opacity=0,        # ⭐ 不用透明色，用 opacity
                 ),
-                hoverinfo='skip',   # ⭐ 讓它不產生 unified hover 列
+                hovertemplate=None,
                 showlegend=False
             )
         )
+
         offset = (df['High'] - df['Low']).mean() * 0.3
         
         df['buy_y']  = df['Low']  - offset
