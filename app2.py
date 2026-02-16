@@ -288,20 +288,22 @@ if ticker_input:
             font=dict(color="#FFFFFF", size=14, family="Arial Black"),
             bgcolor="rgba(0,0,0,0)"
         )
+        fig.update_layout(hovermode='x unified')
+        
         fig.add_trace(
             go.Scatter(
                 x=df['Date'],
-                y=df['Close'].round(1),
+                y=df['Close'],
                 mode='markers',
                 marker=dict(
-                    size=40,                    # ⭐ 一定要大（30~50）
-                    color='rgba(0,0,0,0)',      # 完全透明
+                    size=40,
+                    color='rgba(0,0,0,0)',
                 ),
-                hoverinfo='all',
-                showlegend=False,
-                name='_close_anchor',
+                hovertemplate='<extra></extra>',
+                showlegend=False
             )
         )
+
         # 日期斷點處理
         dt_all = pd.date_range(start=df['Date'].min(), end=df['Date'].max())
         dt_breaks = dt_all.difference(df['Date'])
