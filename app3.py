@@ -1422,7 +1422,7 @@ if result:
                 ),
                 hoverinfo='all',
                 showlegend=False,
-               # name='_close_anchor'
+                name='_close_anchor'
             )
         )
         offset = (df['High'] - df['Low']).mean() * 0.3
