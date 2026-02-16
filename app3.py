@@ -1417,12 +1417,13 @@ if result:
                 y=df['Close'].round(1),
                 mode='markers',
                 marker=dict(
-                    size=40,                    # ⭐ 一定要大（30~50）
-                    color='rgba(0,0,0,0)',      # 完全透明
+                    size=40,
+                    color='rgba(0,0,0,0)',
                 ),
-                hoverinfo='skip',
+                hoverinfo='none',      # ⭐ 不顯示預設 hover
+                hovertemplate='<extra></extra>',  # ⭐ 關鍵：移除 trace name
                 showlegend=False,
-                #name='_close_anchor'
+                name='_close_anchor'
             )
         )
         offset = (df['High'] - df['Low']).mean() * 0.3
