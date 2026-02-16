@@ -908,11 +908,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         
             # ⭐ 用「日線資料是否已有今天」來判斷是否為交易日
             last_data_date = df.index.max()
-            
-            is_trading_day = (
-                today_date.weekday() < 5 and
-                today_date.date() >= last_data_date.date()
-            )
+            is_trading_day = (last_data_date.date() == today_date.date())
         
             if is_trading_day:
         
