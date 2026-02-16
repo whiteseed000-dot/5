@@ -905,15 +905,15 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         if intraday is not None:
             now = datetime.now()
             today_date = pd.Timestamp(now.date())
-        
-            # ⭐ 用「日線資料是否已有今天」來判斷是否為交易日
-            last_data_date = df.index.max()
-        
-            is_trading_day = (last_data_date.date() == today_date.date())
-        
-            if is_trading_day:
-        
+            
+            # --- [新增：判斷是否為交易日] ---
+            # weekday() 0-4 是週一到週五，5 是週六，6 是週日
+            is_weekend = now.weekday() >= 5 
+            
+            # 只有在「非週末」才新增或更新今日 K 線
+            if not is_weekend:
                 if today_date in df.index:
+                    # ✅ 已經有今天（少見，但保險）
                     df.loc[today_date, ["Open", "High", "Low", "Close", "Volume"]] = [
                         intraday["open"],
                         intraday["high"],
@@ -922,6 +922,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                         intraday["volume"]
                     ]
                 else:
+                    # 🔥 盤中：主動新增「今天這一根 K」
                     new_row = pd.DataFrame(
                         {
                             "Open":   intraday["open"],
@@ -933,7 +934,10 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                         index=[today_date]
                     )
                     df = pd.concat([df, new_row])
-
+            else:
+                # 如果是週末，我們不新增今日 K 線
+                # 這樣 df 的最後一根 (iloc[-1]) 就會維持在最後一個收盤日 (如週五)
+                pass
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
@@ -1407,7 +1411,20 @@ if result:
             decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
         ))
-
+        fig.add_trace(
+            go.Scatter(
+                x=df['Date'],
+                y=df['Close'].round(1),
+                mode='markers',
+                marker=dict(
+                    size=40,                    # ⭐ 一定要大（30~50）
+                    color='rgba(0,0,0,0)',      # 完全透明
+                ),
+                hoverinfo='all',
+                showlegend=False,
+                name='_close_anchor'
+            )
+        )
         offset = (df['High'] - df['Low']).mean() * 0.3
         
         df['buy_y']  = df['Low']  - offset
@@ -1557,8 +1574,6 @@ if result:
         height=800 if show_sub_chart else 650,
         plot_bgcolor='#0E1117', paper_bgcolor='#0E1117',
         hovermode="x unified",
-        hoverdistance=50,
-        spikedistance=50,    
         hoverlabel=dict(bgcolor="#1E1E1E", font_size=12),
         showlegend=False, 
         margin=dict(l=10, r=100, t=10, b=10),
