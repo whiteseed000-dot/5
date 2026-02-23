@@ -933,7 +933,8 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                         index=[today_date]
                     )
                     df = pd.concat([df, new_row])
-
+            else:
+                pass
             
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
