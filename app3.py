@@ -908,12 +908,16 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         
             is_weekday = now.weekday() < 5
         
-            # ⭐ 關鍵：只要有 intraday 成交量才新增
-            has_volume = intraday["volume"] > 0
+            # ⭐ 台股交易時間判斷（9:00~13:30）
+            market_open  = now.replace(hour=9,  minute=0,  second=0)
+            market_close = now.replace(hour=13, minute=30, second=0)
         
-            if is_weekday and has_volume:
+            is_market_hours = market_open <= now <= market_close
+        
+            if is_weekday and is_market_hours:
         
                 if today_date in df.index:
+                    # 已存在 → 更新
                     df.loc[today_date, ["Open", "High", "Low", "Close", "Volume"]] = [
                         intraday["open"],
                         intraday["high"],
@@ -922,6 +926,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                         intraday["volume"]
                     ]
                 else:
+                    # 不存在 → 新增（台股早盤需要這個）
                     new_row = pd.DataFrame(
                         {
                             "Open":   intraday["open"],
@@ -933,6 +938,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                         index=[today_date]
                     )
                     df = pd.concat([df, new_row])
+        
             else:
                 pass
             
