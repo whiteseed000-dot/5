@@ -934,6 +934,11 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                     )
                     df = pd.concat([df, new_row])
             
+            else:
+                # 如果是週末，我們不新增今日 K 線
+                # 這樣 df 的最後一根 (iloc[-1]) 就會維持在最後一個收盤日 (如週五)
+                pass
+                
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
