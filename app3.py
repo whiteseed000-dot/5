@@ -905,15 +905,19 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         if intraday is not None:
             now = datetime.now()
             today_date = pd.Timestamp(now.date())
-            
-            # --- [新增：判斷是否為交易日] ---
-            # weekday() 0-4 是週一到週五，5 是週六，6 是週日
-            is_weekend = now.weekday() >= 5 
-            
-            # 只有在「非週末」才新增或更新今日 K 線
-            if not is_weekend:
+        
+            is_weekday = now.weekday() < 5
+        
+            # ⭐ 台股交易時間判斷（9:00~13:30）
+            market_open  = now.replace(hour=9,  minute=0,  second=0)
+            market_close = now.replace(hour=13, minute=30, second=0)
+        
+            is_market_hours = market_open <= now <= market_close
+        
+            if is_weekday and is_market_hours:
+        
                 if today_date in df.index:
-                    # ✅ 已經有今天（少見，但保險）
+                    # 已存在 → 更新
                     df.loc[today_date, ["Open", "High", "Low", "Close", "Volume"]] = [
                         intraday["open"],
                         intraday["high"],
@@ -922,7 +926,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                         intraday["volume"]
                     ]
                 else:
-                    # 🔥 盤中：主動新增「今天這一根 K」
+                    # 不存在 → 新增（台股早盤需要這個）
                     new_row = pd.DataFrame(
                         {
                             "Open":   intraday["open"],
@@ -934,9 +938,8 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                         index=[today_date]
                     )
                     df = pd.concat([df, new_row])
+        
             else:
-                # 如果是週末，我們不新增今日 K 線
-                # 這樣 df 的最後一根 (iloc[-1]) 就會維持在最後一個收盤日 (如週五)
                 pass
 
             
