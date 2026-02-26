@@ -1264,7 +1264,7 @@ def get_vix_index():
 col_title, col_btn = st.columns([4, 1])
 with col_title:
     st.markdown(
-    f"## {stock_id} - {stock_name} <span style='color:{color};'>{daily_pct:+.2f}%</span>", 
+    f"## {ticker_input} ({stock_name} <span style='color:{color};'>{daily_pct:+.2f}%</span>", 
     unsafe_allow_html=True
 )
 
