@@ -1250,9 +1250,34 @@ def get_vix_index():
     except: return 0.0
 
 # --- 6. 介面形式恢復 ---
-col_title, col_btn = st.columns([4, 1])
+col_title, col_change, col_btn = st.columns([3.2, 1.3, 1])
+
+# ===== 左邊：標題 =====
 with col_title:
-    st.markdown(f'#  {ticker_input} ({stock_name})', unsafe_allow_html=True, help="若無法顯示資料，請按🔄重新取價")
+    st.markdown(
+        f'#  {ticker_input} ({stock_name})',
+        unsafe_allow_html=True,
+        help="若無法顯示資料，請按🔄重新取價"
+    )
+
+# ===== 中間：當日漲幅（紅框位置）=====
+with col_change:
+    if yesterday_close and yesterday_close != 0:
+        daily_change_pct = (current_price / yesterday_close - 1) * 100
+    else:
+        daily_change_pct = 0
+
+    color = "#ff4d4f" if daily_change_pct > 0 else "#00c853"
+    arrow = "▲" if daily_change_pct > 0 else "▼"
+
+    st.markdown(f"""
+        <div style="margin-top:18px;text-align:left;">
+            <div style="font-size:13px;color:#aaa;">當日漲幅</div>
+            <div style="font-size:22px;font-weight:600;color:{color};">
+                {arrow} {daily_change_pct:.2f}%
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 with col_btn:
     if ticker_input in st.session_state.watchlist_dict:
