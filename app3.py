@@ -1258,7 +1258,7 @@ def get_vix_index():
         vix = yf.download("^VIX", period="1d", progress=False)
         return float(vix['Close'].iloc[-1])
     except: return 0.0
-
+color = "red" if daily_pct >= 0 else "green"
 
 # --- 6. 介面形式恢復 ---
 col_title, col_btn = st.columns([4, 1])
