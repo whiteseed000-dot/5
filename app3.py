@@ -1196,7 +1196,17 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         df['TL+2SD'] = df['TL'] + sd2 * std
         df['TL-2SD'] = df['TL'] - sd2 * std
         # ------------------------------------
-
+        # === 計算漲跌幅邏輯 ===
+        # df.iloc[-1] 是今天，df.iloc[-2] 是昨天
+        close_today = df['Close'].iloc[-1]
+        close_yesterday = df['Close'].iloc[-2]
+        daily_pct = ((close_today - close_yesterday) / close_yesterday) * 100
+        
+        # 根據漲跌決定顏色（選配，Streamlit 標題不支援直接變色，但可以用 Markdown）
+        # 這裡我們直接把百分比放在標題後面
+        change_info = f"({daily_pct:+.2f}%)"
+        # 判斷顏色 (台股習慣：正數紅，負數綠)
+        color = "red" if daily_pct >= 0 else "green"
         
         # 加入技術指標計算
         df = get_technical_indicators(df)        
@@ -1249,17 +1259,7 @@ def get_vix_index():
         return float(vix['Close'].iloc[-1])
     except: return 0.0
 
-# === 計算漲跌幅邏輯 ===
-# df.iloc[-1] 是今天，df.iloc[-2] 是昨天
-close_today = df['Close'].iloc[-1]
-close_yesterday = df['Close'].iloc[-2]
-daily_pct = ((close_today - close_yesterday) / close_yesterday) * 100
 
-# 根據漲跌決定顏色（選配，Streamlit 標題不支援直接變色，但可以用 Markdown）
-# 這裡我們直接把百分比放在標題後面
-change_info = f"({daily_pct:+.2f}%)"
-# 判斷顏色 (台股習慣：正數紅，負數綠)
-color = "red" if daily_pct >= 0 else "green"
 # --- 6. 介面形式恢復 ---
 col_title, col_btn = st.columns([4, 1])
 with col_title:
