@@ -1352,7 +1352,7 @@ if result:
         change_pct = 0
     
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("最新股價", f"{curr:.2f}",f"{change_pct}")
+    m1.metric("最新股價", f"{curr:.2f}",f"{change_pct:.2f}%", delta_color="inverse")
     m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
     m3.metric("目前狀態", status_label)
     m4.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
