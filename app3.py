@@ -902,26 +902,18 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         # === 2️⃣ 盤中延遲價格 → 正確處理「今日 K」 ===
         intraday = get_intraday_price(ticker)
         
-        if intraday is not None:
+        if intraday is not None and not df.empty:
+        
             now = datetime.now()
-            today_date = pd.Timestamp(now.date())
+            today_date = pd.Timestamp(now.date()).normalize()
+            last_daily_date = df.index.max().normalize()
         
-            is_weekday = now.weekday() < 5
+            # ⭐ 只有當今天大於最後一筆日線，才可能是新交易日
+            if today_date > last_daily_date:
         
-            # ⭐ 關鍵：只要有 intraday 成交量才新增
-            has_volume = intraday["volume"] > 0
+                # 再確認即時資料真的有成交量
+                if intraday["volume"] > 0:
         
-            if is_weekday and has_volume:
-        
-                if today_date in df.index:
-                    df.loc[today_date, ["Open", "High", "Low", "Close", "Volume"]] = [
-                        intraday["open"],
-                        intraday["high"],
-                        intraday["low"],
-                        intraday["close"],
-                        intraday["volume"]
-                    ]
-                else:
                     new_row = pd.DataFrame(
                         {
                             "Open":   intraday["open"],
@@ -932,12 +924,21 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
                         },
                         index=[today_date]
                     )
+        
                     df = pd.concat([df, new_row])
-            
-            else:
-                # 如果是週末，我們不新增今日 K 線
-                # 這樣 df 的最後一根 (iloc[-1]) 就會維持在最後一個收盤日 (如週五)
-                pass
+        
+            # ⭐ 如果 today == last_daily_date
+            # 代表今天已經是正式交易日（例如美股）
+            # 就更新最後一筆
+            elif today_date == last_daily_date:
+        
+                df.loc[last_daily_date, ["Open","High","Low","Close","Volume"]] = [
+                    intraday["open"],
+                    intraday["high"],
+                    intraday["low"],
+                    intraday["close"],
+                    intraday["volume"]
+                ]
                 
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
