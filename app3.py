@@ -902,39 +902,37 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         # === 2️⃣ 盤中延遲價格 → 正確處理「今日 K」 ===
         intraday = get_intraday_price(ticker)
         
-        if intraday is not None and not df.empty:
+        if intraday is not None:
+            now = datetime.now()
+            today_date = pd.Timestamp(now.date())
         
-            # ⭐ 抓即時資料的時間
-            intraday_time = pd.to_datetime(intraday["datetime"]).normalize()
-            last_daily_date = df.index.max().normalize()
+            is_weekday = now.weekday() < 5
         
-            # 只有當「即時資料的日期」大於最後一根日線
-            # 才代表今天真的有開盤
-            if intraday_time > last_daily_date:
+            # ⭐ 關鍵：只要有 intraday 成交量才新增
+            has_volume = intraday["volume"] > 0
         
-                new_row = pd.DataFrame(
-                    {
-                        "Open":   intraday["open"],
-                        "High":   intraday["high"],
-                        "Low":    intraday["low"],
-                        "Close":  intraday["close"],
-                        "Volume": intraday["volume"]
-                    },
-                    index=[intraday_time]
-                )
+            if is_weekday and has_volume:
         
-                df = pd.concat([df, new_row])
-        
-            elif intraday_time == last_daily_date:
-        
-                # 更新最後一根
-                df.loc[last_daily_date, ["Open","High","Low","Close","Volume"]] = [
-                    intraday["open"],
-                    intraday["high"],
-                    intraday["low"],
-                    intraday["close"],
-                    intraday["volume"]
-                ]
+                if today_date in df.index:
+                    df.loc[today_date, ["Open", "High", "Low", "Close", "Volume"]] = [
+                        intraday["open"],
+                        intraday["high"],
+                        intraday["low"],
+                        intraday["close"],
+                        intraday["volume"]
+                    ]
+                else:
+                    new_row = pd.DataFrame(
+                        {
+                            "Open":   intraday["open"],
+                            "High":   intraday["high"],
+                            "Low":    intraday["low"],
+                            "Close":  intraday["close"],
+                            "Volume": intraday["volume"]
+                        },
+                        index=[today_date]
+                    )
+                    df = pd.concat([df, new_row])
                 
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
