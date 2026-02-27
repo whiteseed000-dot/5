@@ -812,8 +812,7 @@ with st.sidebar:
    
     use_k_now = st.sidebar.toggle(
         "啟用及時股價",
-        value=True,
-        st.cache_data.clear()
+        value=True
     )
     # =========================
     # 📊 股價還原設定
