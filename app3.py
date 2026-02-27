@@ -904,34 +904,30 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         
         if intraday is not None and not df.empty:
         
-            now = datetime.now()
-            today_date = pd.Timestamp(now.date()).normalize()
+            # ⭐ 抓即時資料的時間
+            intraday_time = pd.to_datetime(intraday["datetime"]).normalize()
             last_daily_date = df.index.max().normalize()
         
-            # ⭐ 只有當今天大於最後一筆日線，才可能是新交易日
-            if today_date > last_daily_date:
+            # 只有當「即時資料的日期」大於最後一根日線
+            # 才代表今天真的有開盤
+            if intraday_time > last_daily_date:
         
-                # 再確認即時資料真的有成交量
-                if intraday["volume"] > 0:
+                new_row = pd.DataFrame(
+                    {
+                        "Open":   intraday["open"],
+                        "High":   intraday["high"],
+                        "Low":    intraday["low"],
+                        "Close":  intraday["close"],
+                        "Volume": intraday["volume"]
+                    },
+                    index=[intraday_time]
+                )
         
-                    new_row = pd.DataFrame(
-                        {
-                            "Open":   intraday["open"],
-                            "High":   intraday["high"],
-                            "Low":    intraday["low"],
-                            "Close":  intraday["close"],
-                            "Volume": intraday["volume"]
-                        },
-                        index=[today_date]
-                    )
+                df = pd.concat([df, new_row])
         
-                    df = pd.concat([df, new_row])
+            elif intraday_time == last_daily_date:
         
-            # ⭐ 如果 today == last_daily_date
-            # 代表今天已經是正式交易日（例如美股）
-            # 就更新最後一筆
-            elif today_date == last_daily_date:
-        
+                # 更新最後一根
                 df.loc[last_daily_date, ["Open","High","Low","Close","Volume"]] = [
                     intraday["open"],
                     intraday["high"],
