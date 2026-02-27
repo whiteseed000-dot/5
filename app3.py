@@ -1297,24 +1297,10 @@ def get_vix_index():
     except: return 0.0
 
 # --- 6. 介面形式恢復 ---
-# 計算今日漲幅%
-if len(df) >= 2:
-    today_close = df["Close"].iloc[-1]
-    yesterday_close = df["Close"].iloc[-2]
-    change_pct = (today_close - yesterday_close) / yesterday_close * 100
-else:
-    change_pct = 0
-color = "red" if change_pct > 0 else "green" if change_pct < 0 else "gray"
-
 col_title, col_btn = st.columns([4, 1])
 with col_title:
-    #st.markdown(f'#  {ticker_input} ({stock_name}) {df['Close'].shift(1)}', unsafe_allow_html=True, help="若無法顯示資料，請按🔄重新取價")
-    st.markdown(
-        f'#  {ticker_input} ({stock_name})  '
-        f'<span style="color:{color}; font-size:28px;"> {change_pct:.2f}%</span>',
-        unsafe_allow_html=True,
-        help="若無法顯示資料，請按🔄重新取價"
-    )
+    st.markdown(f'#  {ticker_input} ({stock_name}) {df['Close'].shift(1)}', unsafe_allow_html=True, help="若無法顯示資料，請按🔄重新取價")
+
 with col_btn:
     if ticker_input in st.session_state.watchlist_dict:
         if st.button("➖ 移除追蹤"):
@@ -1357,9 +1343,16 @@ if result:
     elif round(vix_val) == 15: vix_status = "⚪ 穩定"
     elif vix_val > 0: vix_status = "🔵 樂觀"
     else: vix_status = "🟢 極致樂觀"
+    # 計算今日漲幅%
+    if len(df) >= 2:
+        today_close = df["Close"].iloc[-1]
+        yesterday_close = df["Close"].iloc[-2]
+        change_pct = (today_close - yesterday_close) / yesterday_close * 100
+    else:
+        change_pct = 0
     
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("最新股價", f"{curr:.2f}")
+    m1.metric("最新股價", f"{curr:.2f}",f"{change_pct}")
     m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
     m3.metric("目前狀態", status_label)
     m4.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
