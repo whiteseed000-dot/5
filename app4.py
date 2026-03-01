@@ -115,14 +115,14 @@ lines_config = [
     ('TL-1SD', '#0096FF', '-1SD (偏低)', 'dash'), 
     ('TL-2SD', '#00FF00', '-2SD (特價)', 'dash')
 ]
-def get_technical_indicators(df):
 
-    def calc_rsi(series, period):
-        delta = series.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        rs = gain / loss
-        return 100 - (100 / (1 + rs))
+def calc_rsi(series, period):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+def get_technical_indicators(df):
 
 
     # --- RSI 依時間週期切換 ---
@@ -287,7 +287,7 @@ def detect_market_pattern(df, slope):
 
     W = 20  # 可調 10~20
     window = df.iloc[-W:]
-    
+
     # 區間價格趨勢（線性回歸）
     x = np.arange(W)
     price_slope = np.polyfit(x, window['Close'], 1)[0]
@@ -317,26 +317,49 @@ def detect_market_pattern(df, slope):
     ma_periods = df.attrs.get('ma_periods', [])
     
     ###區間型態###
-
     # =========================
     # 🟢 結構性底部（區間版）
     # =========================
     if (
         close.iloc[-20:].min() < df['TL-1SD'].iloc[-1] and
         close.iloc[-5:].mean() > close.iloc[-15:-5].mean() and
-        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean()
+        df['RSI14'].iloc[-5:].mean() > df['RSI14'].iloc[-15:-5].mean() and
+        -0.02 < price_slope < 0.05
     ):
         patterns.append("🟢 結構性底部（區間）")
 
-    # =========================
-    # 🟢 雙底確認（區間）
-    # =========================
-    if (
-        abs(close.iloc[-3:].mean() - close.iloc[-10:-7].mean()) /
-        close.iloc[-10:-7].mean() < 0.02 and
-        df['RSI14'].iloc[-3:].mean() > df['RSI14'].iloc[-10:-7].mean()
-    ):
-        patterns.append("🟢 雙底確認（區間）")
+
+
+
+    # 1️⃣ 回測 50 日找出第一個最低點（第一底）
+    lookback = 50
+    sub_df = df.iloc[-lookback:]
+    first_min_idx = sub_df['Close'].idxmin()
+    first_bottom_price = df.loc[first_min_idx, 'Close']
+
+    # 2️⃣ 往右回測 ≥10 日，找「高於第一底」的次低點（第二底）
+    right_df = df.loc[first_min_idx:].iloc[10:]  # 至少隔 10 日
+    if len(right_df) > 10:
+
+        second_min_idx = right_df['Close'].idxmin()
+        second_bottom_price = df.loc[second_min_idx, 'Close']
+    
+        if second_bottom_price > first_bottom_price * 0.98:
+   
+            # 3️⃣ 次低點後 5 日斜率必須為正
+            post_prices = df.loc[second_min_idx:].iloc[:5]['Close'].values
+            if len(post_prices) > 5:
+
+                x = np.arange(5)
+                slope_post, _, _, _, _ = stats.linregress(x, post_prices)
+            
+                # 4️⃣ 現價需大於次低點
+                if (
+                    slope_post > 0 and
+                    curr['Close'] > second_bottom_price and
+                    curr['Close'] < curr['TL']
+                ):
+                    patterns.append("🟢 雙底確認（區間）")
 
     # =========================
     # 🟡 多頭旗形（新增）
@@ -357,51 +380,46 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🟡 多頭旗形（區間）")
 
-    # =========================
-    # 🟡 回檔不破趨勢（區間）
-    # =========================
-    if (
-        close.iloc[-10:].min() > tl.iloc[-1] and
-        slope > 0
-    ):
-        patterns.append("🟡 回檔不破趨勢（區間）")
 
     # =========================
     # 🟡 均線糾結（結構）
     # =========================
     if ma_periods:
         ma_s = df[f"MA{ma_periods[0]}"].iloc[-10:].mean()
-        ma_l = df[f"MA{ma_periods[-1]}"].iloc[-10:].mean()
+        ma_l = df[f"MA{ma_periods[2]}"].iloc[-10:].mean()
 
         if abs(ma_s - ma_l) / ma_l < 0.01:
             patterns.append("🟡 均線糾結（區間）")
-
     
     # =========================
-    # 🟢 碗型底 / 圓弧底
-    # =========================
-    bowl_window = 25
-    x = np.arange(bowl_window)
-    y = close.iloc[-bowl_window:]
+    # 1️⃣ 回測 50 日找最低點
+    lookback = 50
+    sub_df = df.iloc[-lookback:]
+    min_idx = sub_df['Close'].idxmin()
+    bottom_price = df.loc[min_idx, 'Close']
+    
+    # 2️⃣ 最低點左右斜率（各 5 日）
+    left_prices = df.loc[:min_idx].iloc[-5:]['Close'].values
+    right_prices = df.loc[min_idx:].iloc[:5]['Close'].values
 
-    quad_coef = np.polyfit(x, y, 2)[0]
+    if len(left_prices) == 5 and len(right_prices) == 5:
+        x = np.arange(5)
+        slope_left, _, _, _, _ = stats.linregress(x, left_prices)
+        slope_right, _, _, _, _ = stats.linregress(x, right_prices)
 
-    if (
-        quad_coef > 0 and
-        y.min() < df['TL-1SD'].iloc[-1] and
-        close.iloc[-5:].mean() > close.iloc[-10:-5].mean()
-    ):
-        patterns.append("🟢 碗型底（圓弧底）")
-        
-    # === 🟢 區間碗型底（Rounded Bottom）===
-    if (
-        price_curve > 0 and
-        -0.01 < price_slope < 0.02 and
-        higher_lows and
-        rsi_slope > 0 and
-        curr['Close'] < curr['TL-1SD']
-    ):
-        patterns.append("🟢 區間碗型底（區間）")
+        # 3️⃣ 現價回測 10 日，波動 ≤ 5%
+        recent_prices = df['Close'].iloc[-10:]
+        range_ratio = (recent_prices.max() - recent_prices.min()) / recent_prices.mean()
+
+        if (
+            slope_left < 0 and                 # 左側下跌
+            slope_right > 0 and                # 右側回升
+            range_ratio <= 0.05 and             # 區間盤整
+            rsi_slope > 0 and                   # 動能回升
+            curr['Close'] < curr['TL'] and      # 位於低檔結構
+            curr['Close'] > bottom_price * 1.05         # ✅ 現價需高於碗底
+        ):
+            patterns.append("🟢 碗型底（區間）")
 
     # === ⚪ 區間盤整（非趨勢）===
     if (
@@ -411,16 +429,10 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("⚪ 區間盤整（區間）")
 
-    if price_slope > 0 and rsi_slope > 0:
-        patterns.append("🟡 上升趨勢結構（區間）")
-
-    if price_slope < 0 and rsi_slope < 0:
-        patterns.append("🔴 弱勢趨勢結構（區間）")
-
     
         # === ⚪ 箱型整理 ===
     if (
-        df['High'].iloc[-15:].max() - df['Low'].iloc[-15:].min()
+        df['High'].iloc[-50:].max() - df['Low'].iloc[-50:].min()
         < 1.5 * (curr['TL+1SD'] - curr['TL'])
     ):
         patterns.append("⚪ 箱型整理（區間）")
@@ -432,7 +444,7 @@ def detect_market_pattern(df, slope):
         macd_slope < 0 and
         curr['Close'] > curr['TL+1SD']
     ):
-        patterns.append("🔴 區間頭部派發（區間）")
+        patterns.append("🔴 頭部形成（區間）")
 
 
     # =========================
@@ -471,18 +483,36 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🔴 趨勢末端（動能衰竭）")
 
-        # === 🟢 V 型反轉 ===
-    if (
-        prev['Close'] < curr['TL-2SD'] and
-        curr['Close'] > curr['TL-1SD'] and
-        (curr['RSI14'] - prev['RSI14']) > 10
-    ):
-        patterns.append("🟢 V 型反轉")
+    
+    # === 🟢 V 型反轉 ===
+    # 1️⃣ 回測 50 日找最低點
+    lookback = 10
+    sub_df = df.iloc[-lookback:]
+    min_idx = sub_df['Close'].idxmin()
+    bottom_price = df.loc[min_idx, 'Close']
+    
+    # 2️⃣ 最低點左右斜率（各 3 日）
+    left_prices = df.loc[:min_idx].iloc[-3:]['Close'].values
+    right_prices = df.loc[min_idx:].iloc[:3]['Close'].values
+
+    if len(left_prices) == 3 and len(right_prices) == 3:
+        x = np.arange(3)
+        slope_left, _, _, _, _ = stats.linregress(x, left_prices)
+        slope_right, _, _, _, _ = stats.linregress(x, right_prices)
+
+        if (
+            slope_left < 0 and                 # 左側下跌
+            slope_right > 0 and                # 右側回升
+            rsi_slope > 0 and                   # 動能回升
+            curr['Close'] > bottom_price * 1.1         # ✅ 現價需高於碗底
+        ):
+            patterns.append("🟢 V 型反轉")
+
 
         # === 🟢 雙底確認 ===
     if (
         abs(curr['Close'] - df['Close'].iloc[-6]) / df['Close'].iloc[-6] < 0.02 and
-        curr['RSI14'] > df['RSI14'].iloc[-6]
+        curr['RSI14'] > df['RSI14'].iloc[-6] 
     ):
         patterns.append("🟢 雙底確認")
 
@@ -582,19 +612,11 @@ def detect_market_pattern(df, slope):
     ):
         patterns.append("🟢 底部背離（潛在反轉）")
 
-    # --- 回檔不破 TL（多頭續行） ---
-    if (
-        curr['Close'] > curr['TL'] and
-        prev['Close'] < curr['TL+1SD'] and
-        slope > 0 and
-        curr['RSI14'] > 45
-    ):
-        patterns.append("🟡 回檔不破趨勢")
 
     # --- 均線糾結突破 ---
     if ma_periods:
         ma_short = df[f"MA{ma_periods[0]}"]
-        ma_long = df[f"MA{ma_periods[-1]}"]
+        ma_long = df[f"MA{ma_periods[2]}"]
     
         if (
             abs(ma_short.iloc[-1] - ma_long.iloc[-1]) / ma_long.iloc[-1] < 0.01 and
@@ -629,6 +651,18 @@ def detect_market_pattern(df, slope):
         abs(curr['MACD']) < abs(prev['MACD'])
     ):
         patterns.append("⚪ 盤整收斂")
+    
+    # =========================
+    # 🔵 爆大量（Volume Spike）
+    # =========================
+
+    # 1️⃣ 最新收盤日與前一日成交量
+    vol_today = df['Volume'].iloc[-1]
+    vol_prev = df['Volume'].iloc[-2]
+
+    # 2️⃣ 今日成交量 > 前一日 3 倍
+    if vol_today > vol_prev * 3:
+        patterns.append("🔵 爆大量")
     
     return patterns
 
@@ -703,6 +737,33 @@ def update_pattern_history(ticker, patterns):
 
     return " | ".join(hist) if hist else ""
 
+def get_intraday_price(ticker):
+    """
+    取得 Yahoo Finance 盤中延遲價格（約 15 分鐘）
+    用來覆蓋今天那一根日 K
+    """
+    try:
+        df_i = yf.Ticker(ticker).history(
+            period="1d",
+            interval="1m"
+        )
+
+        if df_i.empty:
+            return None
+
+        last = df_i.iloc[-1]
+
+        return {
+            "open": float(df_i.iloc[0]["Open"]),
+            "high": float(df_i["High"].max()),
+            "low": float(df_i["Low"].min()),
+            "close": float(last["Close"]),
+            "volume": float(df_i["Volume"].sum())
+        }
+    except:
+        return None
+
+
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -748,6 +809,67 @@ with st.sidebar:
         index=0
     )
     years_input = st.slider("回測年數", 1.0, 10.0, 3.5, 0.5)
+   
+    use_k_now = st.sidebar.toggle(
+        "啟用及時股價",
+        value=True
+    )
+    if use_k_now:
+        st.cache_data.clear()
+    else:
+        st.cache_data.clear()
+
+    # =========================
+    # 📊 股價還原設定
+    # =========================  
+    use_adjusted_price = st.sidebar.toggle(
+        "使用還原股價",
+        value=False,
+        help="開啟：適合長期趨勢；關閉：適合短線、實際成交價"
+    )
+    # ----------------------------
+    # 還原股價設定
+    # ----------------------------
+    if use_adjusted_price:
+        st.cache_data.clear()
+        auto_adjust = True
+        actions = True
+        repair = True
+    else:
+        st.cache_data.clear()
+        auto_adjust = False
+        actions = False
+        repair = False
+    
+    # 主開關：是否顯示任何箭頭
+    show_all_signals = st.sidebar.toggle(
+        "顯示全部訊號",
+        value=True
+    )
+    
+    # 子開關：是否顯示【弱】訊號（只有主開關開啟時才有意義）
+    show_weak_signal = st.sidebar.toggle(
+        "顯示【弱】訊號",
+        value=False,
+        disabled=not show_all_signals
+    )
+    if not show_all_signals:
+        st.cache_data.clear()
+        buy_levels_to_show  = []
+        sell_levels_to_show = []
+    else:
+        if show_weak_signal:
+            st.cache_data.clear()
+            buy_levels_to_show  = ['弱', '中', '強']
+            sell_levels_to_show = ['弱', '中', '強']
+        else:
+            st.cache_data.clear()
+            buy_levels_to_show  = ['中', '強']
+            sell_levels_to_show = ['中', '強']
+
+# 在側邊欄的登出按鈕部分
+    if st.button("🔄 重新取價"):
+        st.cache_data.clear()
 
     st.divider()
 # 在側邊欄的登出按鈕部分
@@ -760,15 +882,110 @@ with st.sidebar:
         st.rerun()
 
 # --- 5. 核心運算 ---
-@st.cache_data(ttl=3600)
-def get_stock_data(ticker, years, time_frame="日"): # 新增參數
+@st.cache_data(ttl=3600)  
+def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
     try:
         end = datetime.now()
         start = end - timedelta(days=int(years * 365))
-        df = yf.download(ticker, start=start, end=end, progress=False)
-        if df.empty: return None
-        if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
+        # === 1️⃣ 抓「日線歷史資料」（結構用） ===
+        df = yf.download(
+            ticker,
+            start=start,
+            end=end,
+            interval="1d",
+            progress=False,
+            auto_adjust=auto_adjust,
+            actions=actions,
+            repair=repair
+        )
+
+        if df.empty:
+            return None
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        
+        intraday = get_intraday_price(ticker)
+
+            # === 2️⃣ 盤中延遲價格 → 正確處理「今日 K」 ===     
+        if not use_k_now:
+            if intraday is not None and not df.empty:
+            
+                now = pd.Timestamp.now(tz="Asia/Taipei")
+                today = now.normalize()
+            
+                last_daily_date = df.index.max().normalize()
+            
+                # ⭐ 核心判斷：
+                # 只有當今天的日線資料已經存在於日線資料源（yfinance）
+                # 才允許更新或新增
+            
+                # 重新抓一次最新日線（只抓最近3天即可）
+                check_df = yf.download(ticker, period="3d", progress=False)
+            
+                if not check_df.empty:
+                    real_last_date = check_df.index.max().normalize()
+            
+                    # 只有當今天真的出現在日線資料裡
+                    # 才代表今天是正式交易日
+                    if real_last_date == today:
+            
+                        if today in df.index:
+                            df.loc[today, ["Open","High","Low","Close","Volume"]] = [
+                                intraday["open"],
+                                intraday["high"],
+                                intraday["low"],
+                                intraday["close"],
+                                intraday["volume"]
+                            ]
+                        else:
+                            new_row = pd.DataFrame(
+                                {
+                                    "Open": intraday["open"],
+                                    "High": intraday["high"],
+                                    "Low": intraday["low"],
+                                    "Close": intraday["close"],
+                                    "Volume": intraday["volume"]
+                                },
+                                index=[today]
+                            )
+                            df = pd.concat([df, new_row])
+        else:                    
+            if intraday is not None:
+                now = datetime.now()
+                today_date = pd.Timestamp(now.date())
+            
+                is_weekday = now.weekday() < 5
+            
+                # ⭐ 關鍵：只要有 intraday 成交量才新增
+                has_volume = intraday["volume"] > 0
+            
+                if is_weekday and has_volume:
+            
+                    if today_date in df.index:
+                        df.loc[today_date, ["Open", "High", "Low", "Close", "Volume"]] = [
+                            intraday["open"],
+                            intraday["high"],
+                            intraday["low"],
+                            intraday["close"],
+                            intraday["volume"]
+                        ]
+                    else:
+                        new_row = pd.DataFrame(
+                            {
+                                "Open":   intraday["open"],
+                                "High":   intraday["high"],
+                                "Low":    intraday["low"],
+                                "Close":  intraday["close"],
+                                "Volume": intraday["volume"]
+                            },
+                            index=[today_date]
+                        )
+                        df = pd.concat([df, new_row])
+                
+                    
+                
         # --- 新增：數據重採樣邏輯（符合金融慣例） ---
         if time_frame == "週":
     # 週線：週一～週五，K棒時間放在「週五」
@@ -787,7 +1004,7 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         elif time_frame == "月":
     # 月線：整個月份，K棒時間放在「月底（最後交易日）」
             df = df.resample(
-                'M',
+                'ME',
                 label='right',     # 標記在月底
                 closed='right'     # 包含月底最後交易日
             ).agg({
@@ -798,8 +1015,7 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
                 'Volume': 'sum'    # 當月成交量
             }).dropna()
 # ----------------------------------------------
-            
-        # ---------------------------
+
 # --- 依時間週期自動切換 MA 參數 ---
         if time_frame == "日":
             ma_periods = [5, 10, 20, 60, 120]
@@ -809,14 +1025,191 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
             ma_periods = [3, 6, 12, 24, 48, 96]
 
         for p in ma_periods:
-            df[f'MA{p}'] = df['Close'].rolling(window=p).mean()
+            df[f'MA{p}'] = df['Close'].rolling(window=p).mean() 
+            df[f'MA{p}_slope'] = df[f'MA{p}'].diff()
 
         df.attrs['ma_periods'] = ma_periods
+        
+        if time_frame == "日":
+            fast_ma, slow_ma, trend_ma = 10, 20, 60
+        elif time_frame == "週":
+            fast_ma, slow_ma, trend_ma = 13, 26, 52
+        elif time_frame == "月":
+            fast_ma, slow_ma, trend_ma = 6, 12, 24
+       
+
+        rsi_periods = [7, 14]
+        
+        for p in rsi_periods:
+            df[f'R-RSI{p}'] = calc_rsi(df['Close'], p)
+        
+        df.attrs['rsi_periods'] = rsi_periods
+        # --------------------------        
+        
+        Klow_9 = df['Low'].rolling(9).min();
+        Khigh_9 = df['High'].rolling(9).max()
+        Krsv = 100 * (df['Close'] - Klow_9) / (Khigh_9 - Klow_9)
+        df['KK'] = Krsv.ewm(com=2).mean()
+        df['KD'] = df['KK'].ewm(com=2).mean()
+        
+        # MACD (12, 26, 9)
+        exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+        df['M-MACD'] = exp1 - exp2
+        df['M-Signal'] = df['M-MACD'].ewm(span=9, adjust=False).mean()
+        Mm_diff = df['M-MACD'] - df['M-Signal']
+        
+
+        df['buy_signal'] = (
+            # ① 趨勢過濾（只做多頭）
+            ((df['Close'] > df[f'MA{trend_ma}']) &
+        
+            # ② 價格突破快 / 慢 MA（突破確認）
+            (df['Close'] > df[f'MA{fast_ma}']) &
+            (df['Close'].shift(1) <= df[f'MA{fast_ma}'].shift(1)) &
+            (df['Close'] > df[f'MA{slow_ma}']) &
+        
+            # ③ MA 方向一致（連續斜率）
+            (df[f'MA{fast_ma}_slope'] > 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) > 0) &
+            (df[f'MA{slow_ma}_slope'] > 0) &
+        
+            # ④ K 線轉強
+            (df['Close'] > df['Open']) &
+            (df['Close'].shift(1) < df['Open'].shift(1))) |
+        
+            # ===== 新增：多指標確認（不新增欄位） =====
+        
+            # ⑤ MACD 動能確認
+            ((df['M-MACD'] > df['M-Signal']) & (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1))) |
+            
+            ((df['KK'] > df['KD']) & (df['KK'].shift(1) <= df['KD'].shift(1)) & (df['KK'].shift(1) < 20 ))
+        )
+        
+        df['sell_signal'] = (
+            # ① 趨勢過濾（只做空頭）
+            ((df['Close'] < df[f'MA{trend_ma}']) &
+        
+            # ② 價格跌破快 / 慢 MA（跌破確認）
+            (df['Close'] < df[f'MA{fast_ma}']) &
+            (df['Close'].shift(1) >= df[f'MA{fast_ma}'].shift(1)) &
+            (df['Close'] < df[f'MA{slow_ma}']) &
+        
+            # ③ MA 方向一致
+            (df[f'MA{fast_ma}_slope'] < 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) < 0) &
+            (df[f'MA{slow_ma}_slope'] < 0) &
+        
+            # ④ K 線轉弱
+            (df['Close'] < df['Open']) &
+            (df['Close'].shift(1) > df['Open'].shift(1))) |
+        
+            # ===== 新增：多指標確認 =====
+        
+            # ⑤ MACD 動能轉空
+            ((df['M-MACD'] < df['M-Signal']) & (df['M-MACD'].shift(1) >= df['M-Signal'].shift(1))) |
+            # ⑥ RSI 在空方區、非超賣
+            #((df['R-RSI7'] < df['R-RSI14']) & (df['R-RSI7'].shift(1) >= df['R-RSI14'].shift(1)))
+            ((df['KK'] < df['KD']) & (df['KK'].shift(1) >= df['KD'].shift(1)) & (df['KK'].shift(1) > 60 ))
+        )
+
+        df['buy_score'] = 0
+
+        # === 1️⃣ MA 趨勢結構（最重要） ===
+        df.loc[
+            (df['Close'] > df[f'MA{trend_ma}']) &
+            (df[f'MA{fast_ma}'] > df[f'MA{slow_ma}']) &
+            (df[f'MA{slow_ma}'] > df[f'MA{trend_ma}']),
+            'buy_score'
+        ] += 3
+        
+        # === 2️⃣ MA 動能（斜率） ===
+        df.loc[
+            (df[f'MA{fast_ma}_slope'] > 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) > 0),
+            'buy_score'
+        ] += 1
+        
+        # === 3️⃣ MACD 黃金交叉（你箭頭用的） ===
+        df.loc[
+            (df['M-MACD'] > df['M-Signal']) &
+            (df['M-MACD'].shift(1) <= df['M-Signal'].shift(1)),
+            'buy_score'
+        ] += 1
+        
+        # === 4️⃣ KD 黃金交叉（你箭頭用的） ===
+        df.loc[
+            (df['KK'] > df['KD']) & 
+            (df['KK'].shift(1) <= df['KD'].shift(1)),
+            'buy_score'
+        ] += 1
+
+        # 強勢 K（實體夠大）
+        df.loc[
+            (df['Close'] > df['Open']) &
+            ((df['Close'] - df['Open']) > 0.5 * (df['High'] - df['Low'])),
+            'buy_score'
+        ] += 1
+
+
+        
+        df['sell_score'] = 0
+
+        # === 1️⃣ MA 空頭結構 ===
+        df.loc[
+            (df['Close'] < df[f'MA{trend_ma}']) &
+            (df[f'MA{fast_ma}'] < df[f'MA{slow_ma}']) &
+            (df[f'MA{slow_ma}'] < df[f'MA{trend_ma}']),
+            'sell_score'
+        ] += 3
+        
+        # === 2️⃣ MA 動能 ===
+        df.loc[
+            (df[f'MA{fast_ma}_slope'] < 0) &
+            (df[f'MA{fast_ma}_slope'].shift(1) < 0),
+            'sell_score'
+        ] += 1
+        
+        # === 3️⃣ MACD 死亡交叉 ===
+        df.loc[
+            (df['M-MACD'] < df['M-Signal']) &
+            (df['M-MACD'].shift(1) >= df['M-Signal'].shift(1)),
+            'sell_score'
+        ] += 1
+        
+        # === 4️⃣ KD 死亡交叉 ===
+        df.loc[
+            (df['KK'] < df['KD']) & 
+            (df['KK'].shift(1) >= df['KD'].shift(1)),
+            'sell_score'
+        ] += 1
+
+        df.loc[
+            (df['Close'] < df['Open']) &
+            ((df['Open'] - df['Close']) > 0.5 * (df['High'] - df['Low'])),
+            'sell_score'
+        ] += 1
+
+        df['buy_level'] = pd.cut(
+            df['buy_score'],
+            bins=[-1, 2, 4, 7],
+            labels=['弱', '中', '強']
+        )
+        
+        df['sell_level'] = pd.cut(
+            df['sell_score'],
+            bins=[-1, 2, 4, 7],
+            labels=['弱', '中', '強']
+        )
+    
+
+
+
 # ----------------------------------        
         df = df.reset_index()
+        df.rename(columns={df.columns[0]: "Date"}, inplace=True)
         df['x'] = np.arange(len(df))
-
-
+        
         # --- 趨勢線計算（週線使用加權回歸） ---
         x = df['x'].values
         y = df['Close'].values
@@ -861,19 +1254,24 @@ def get_stock_data(ticker, years, time_frame="日"): # 新增參數
         df['MA20'] = df['Close'].rolling(20).mean()
         df['BB_up'] = df['MA20'] + 2 * df['Close'].rolling(20).std()
         df['BB_low'] = df['MA20'] - 2 * df['Close'].rolling(20).std()
-        df['MA5'] = df['Close'].rolling(window=5).mean()
-        df['MA10'] = df['Close'].rolling(window=10).mean()
-        df['MA20'] = df['Close'].rolling(window=20).mean()
-        df['MA60'] = df['Close'].rolling(window=60).mean()
-        df['MA120'] = df['Close'].rolling(window=120).mean()
         
-        # --- 樂活通道核心計算 (長線 100MA 邏輯) ---
-        # 使用 100 日移動平均線作為長線中軸
-        df['H_TL'] = df['Close'].rolling(window=100).mean()
+
+        # --- 樂活通道核心計算（依時間尺度修正） ---
+        if time_frame == "日":
+            h_window = 100      # 約 5 個月
+            band_pct = 0.10
+        elif time_frame == "週":
+            h_window = 52       # 約 1 年
+            band_pct = 0.15
+        elif time_frame == "月":
+            h_window = 24       # 約 2 年
+            band_pct = 0.20
         
-        # 使用固定百分比帶寬，模擬五線譜的位階感
-        df['H_TL+1SD'] = df['H_TL'] * 1.10  # 通道上軌 (+10%)
-        df['H_TL-1SD'] = df['H_TL'] * 0.90  # 通道下軌 (-10%)
+        df['H_TL'] = df['Close'].rolling(window=h_window, min_periods=h_window//2).mean()
+        
+        df['H_TL+1SD'] = df['H_TL'] * (1 + band_pct)
+        df['H_TL-1SD'] = df['H_TL'] * (1 - band_pct)
+
 
         # 價格一階 / 二階差分（趨勢彎曲度）
         df['dP'] = df['Close'].diff()
@@ -901,7 +1299,7 @@ def get_vix_index():
 # --- 6. 介面形式恢復 ---
 col_title, col_btn = st.columns([4, 1])
 with col_title:
-    st.markdown(f'#  {ticker_input} ({stock_name})', unsafe_allow_html=True, help="若無法顯示資料，請按右上角 ⋮ → Clear cache")
+    st.markdown(f'#  {ticker_input} ({stock_name})', unsafe_allow_html=True, help="若無法顯示資料，請按🔄重新取價")
 
 with col_btn:
     if ticker_input in st.session_state.watchlist_dict:
@@ -945,13 +1343,21 @@ if result:
     elif round(vix_val) == 15: vix_status = "⚪ 穩定"
     elif vix_val > 0: vix_status = "🔵 樂觀"
     else: vix_status = "🟢 極致樂觀"
-    
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("最新股價", f"{curr:.2f}")
+    # 計算今日漲幅%
+    if len(df) >= 2:
+        today_close = df["Close"].iloc[-1]
+        yesterday_close = df["Close"].iloc[-2]
+        change_pct = (today_close - yesterday_close) / yesterday_close * 100
+    else:
+        change_pct = 0
+
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("最新股價", f"{curr:.2f}",f"{change_pct:+.2f}%", delta_color="inverse")
     m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
     m3.metric("目前狀態", status_label)
-    m4.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
-    m5.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="off", help="超過60代表極度恐慌")
+    m4.metric("K線訊號", icon)
+    m5.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
+    m6.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="off", help="超過60代表極度恐慌")
 
     # --- 7. 切換按鈕 ---
     
@@ -1022,9 +1428,9 @@ if result:
         
         # 通道配置：顏色與五線譜連動，方便判斷位階
         h_lines_config = [ 
-            ('H_TL+1SD', '#FFBD03', '通道上軌 (+10%)', 'dash'), 
-            ('H_TL', '#FFFFFF', '趨勢中軸 (100MA)', 'solid'), 
-            ('H_TL-1SD', '#0096FF', '通道下軌 (-10%)', 'dash'), 
+            ('H_TL+1SD', '#FFBD03', '通道上軌', 'dash'), 
+            ('H_TL', '#FFFFFF', '趨勢中軸', 'solid'), 
+            ('H_TL-1SD', '#0096FF', '通道下軌', 'dash'), 
         ]
         
         for col, hex_color, name_tag, line_style in h_lines_config:
@@ -1060,6 +1466,70 @@ if result:
             decreasing_line_color='#00FF00'  # 跌：綠
             # 自定義 K 線懸浮文字格式
         ))
+        fig.add_trace(
+            go.Scatter(
+                x=df['Date'],
+                y=df['Close'],
+                mode='markers',
+                marker=dict(
+                    size=40,
+                    color='rgba(0,0,0,0)',
+                ),
+                hovertemplate='<extra></extra>',
+                showlegend=False
+            )
+        )
+        offset = (df['High'] - df['Low']).mean() * 0.3
+        
+        df['buy_y']  = df['Low']  - offset
+        df['sell_y'] = df['High'] + offset
+        
+        buy_plot_df = df[
+            (df['buy_signal']) &
+            (df['buy_level'].isin(buy_levels_to_show))
+        ]
+        
+        sell_plot_df = df[
+            (df['sell_signal']) &
+            (df['sell_level'].isin(sell_levels_to_show))
+        ]
+
+        
+        fig.add_trace(
+            go.Scatter(
+                x=buy_plot_df['Date'],
+                y=buy_plot_df['buy_y'],
+                mode='markers',
+                marker=dict(
+                    symbol='triangle-up',
+                    size=buy_plot_df['buy_level'].map({'弱': 10,'中': 12, '強': 18}),
+                    color=buy_plot_df['buy_level'].map({'弱': '#FFD700','中': '#FFD700', '強': '#00FF7F'}),
+                    opacity=1.0,
+                    line=dict(width=1, color='black')
+                ),
+                name='Buy Signal',
+                hovertext=buy_plot_df['buy_level'],
+                hoverinfo='text'
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=sell_plot_df['Date'],
+                y=sell_plot_df['sell_y'],
+                mode='markers',
+                marker=dict(
+                    symbol='triangle-down',
+                    size=sell_plot_df['sell_level'].map({'弱': 10,'中': 12, '強': 18}),
+                    color=sell_plot_df['sell_level'].map({'弱': '#FFA500','中': '#FFA500', '強': '#FF3333'}),
+                    opacity=1.0,
+                    line=dict(width=1, color='black')
+                ),
+                name='Sell Signal',
+                hovertext=sell_plot_df['sell_level'],
+                hoverinfo='text'
+            )
+        )
 
         # 2. 疊加 MA 線段 (5, 10, 20, 60, 120)
         # 從 df 取回 MA 週期（不會 NameError）
@@ -1139,14 +1609,20 @@ if result:
             freq='D'
         )
         dt_breaks = dt_all.difference(df['Date'])
+    
+        fig.update_xaxes(
+            rangebreaks=[
+                dict(bounds=["sat", "mon"]),        # 週末
+                dict(values=dt_breaks.tolist())     # 停市日（含農曆年）
+            ]
+        )
+    
+    else:
+        # 週K / 月K：不要使用 rangebreaks
+        fig.update_xaxes(rangebreaks=[])
 
-        if not dt_breaks.empty:
-            fig.update_xaxes(
-                rangebreaks=[dict(values=dt_breaks.tolist())]
-            )
 # 週線 / 月線：不使用 rangebreaks，避免 K 棒中心位移
 # -----------------------------------
-
 
     fig.update_layout(
         height=800 if show_sub_chart else 650,
@@ -1161,8 +1637,16 @@ if result:
             spikemode="across", # 穿過整個圖表
             spikethickness=1,
             spikecolor="white", # 設定為白色
-            spikedash="solid"   # 實線 (若要虛線改為 dash)
-        )
+            spikedash="solid",   # 實線 (若要虛線改為 dash)
+        ),
+        yaxis=dict(
+                    showspikes=True,
+                    spikemode="across", # 橫跨整個圖表
+                    spikethickness=1,
+                    spikecolor="white", # 水平線顏色設為白色
+                    spikedash="dot",    # 實線
+                    spikesnap="data",   # 捕捉滑鼠位置
+                )
     )    
         # 如果有開啟副圖，額外設定副圖的 Y 軸指引線顏色為白色
     if show_sub_chart:
@@ -1206,12 +1690,26 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
         curr_price = float(tdf['Close'].iloc[-1])
         tl_last = tdf['TL'].iloc[-1]
         dist_pct = ((curr_price - tl_last) / tl_last) * 100
-    
+
+        # === 最後一根 K 的買賣訊號 ===
+        last_buy  = bool(tdf['buy_signal'].iloc[-1])
+        last_sell = bool(tdf['sell_signal'].iloc[-1])
+        icon = "—"
+
+        if last_buy:
+            lvl = str(tdf['buy_level'].iloc[-1])
+            icon = f"▲ {lvl}"
+        
+        elif last_sell:
+            lvl = str(tdf['sell_level'].iloc[-1])
+            icon = f"▼ {lvl}"
+            
         resonance_rows.append({
             "代號": ticker,
             "名稱": name,
             "共振分數": score,
             "共振分數V2": f"{score_V2:.1f}",
+            "K線訊號": icon,
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
@@ -1234,10 +1732,11 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
                 "名稱": st.column_config.TextColumn(width="small"),
                 "共振分數": st.column_config.NumberColumn(width="small"),
                 "共振分數V2": st.column_config.NumberColumn(width="small"),
+                "K線訊號": st.column_config.TextColumn(width="small"),
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
-                "AI 市場型態": st.column_config.TextColumn(width="large"),
+                "AI 市場型態": st.column_config.TextColumn(),
             }
         )
     else:
@@ -1257,7 +1756,28 @@ if st.button("🔄 開始掃描所有標的狀態"):
             elif p > tdf['TL-1SD'].iloc[-1]: pos = "⚪ 合理"
             elif p > tdf['TL-2SD'].iloc[-1]: pos = "🔵 偏低"
             else: pos = "🟢 特價"
-            summary.append({"代號": t, "名稱": name, "最新價格": f"{p:.1f}", "偏離中心線": f"{((p-t_tl)/t_tl)*100:+.1f}%", "位階狀態": pos})
+
+            # === 最後一根 K 的買賣訊號 ===
+            last_buy  = bool(tdf['buy_signal'].iloc[-1])
+            last_sell = bool(tdf['sell_signal'].iloc[-1])
+            icon = "—"
+
+            if last_buy:
+                lvl = str(tdf['buy_level'].iloc[-1])
+                icon = f"▲ {lvl}"
+            
+            elif last_sell:
+                lvl = str(tdf['sell_level'].iloc[-1])
+                icon = f"▼ {lvl}"
+                
+            summary.append({
+                "代號": t,
+                "名稱": name,
+                "最新價格": f"{p:.1f}",
+                "偏離中心線": f"{((p - t_tl) / t_tl) * 100:+.1f}%",
+                "位階狀態": pos,
+                "K線訊號": icon
+            })
     if summary: st.table(pd.DataFrame(summary))
 # --- 3. UI 顯示部分 (放置於指標儀表板下方) ---
 
