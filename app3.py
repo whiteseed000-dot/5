@@ -1351,16 +1351,16 @@ if result:
     else:
         change_pct = 0
     # === 最後一根 K 的買賣訊號 ===
-    last_buy  = bool(tdf['buy_signal'].iloc[-1])
-    last_sell = bool(tdf['sell_signal'].iloc[-1])
+    last_buy  = bool(df['buy_signal'].iloc[-1])
+    last_sell = bool(df['sell_signal'].iloc[-1])
     icon = "—"
 
     if last_buy:
-        lvl = str(tdf['buy_level'].iloc[-1])
+        lvl = str(df['buy_level'].iloc[-1])
         icon = f"▲ {lvl}"
     
     elif last_sell:
-        lvl = str(tdf['sell_level'].iloc[-1])
+        lvl = str(df['sell_level'].iloc[-1])
         icon = f"▼ {lvl}"
     m1, m2, m3, m4, m5, m6 = st.columns(6)
     m1.metric("最新股價", f"{curr:.2f}",f"{change_pct:+.2f}%", delta_color="inverse")
