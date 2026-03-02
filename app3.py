@@ -910,47 +910,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
 
             # === 2️⃣ 盤中延遲價格 → 正確處理「今日 K」 ===     
         if not use_k_now:
-            if intraday is not None and not df.empty:
-            
-                now = pd.Timestamp.now(tz="Asia/Taipei")
-                today = now.normalize()
-            
-                last_daily_date = df.index.max().normalize()
-            
-                # ⭐ 核心判斷：
-                # 只有當今天的日線資料已經存在於日線資料源（yfinance）
-                # 才允許更新或新增
-            
-                # 重新抓一次最新日線（只抓最近3天即可）
-                check_df = yf.download(ticker, period="3d", progress=False)
-            
-                if not check_df.empty:
-                    real_last_date = check_df.index.max().normalize()
-            
-                    # 只有當今天真的出現在日線資料裡
-                    # 才代表今天是正式交易日
-                    if real_last_date == today:
-            
-                        if today in df.index:
-                            df.loc[today, ["Open","High","Low","Close","Volume"]] = [
-                                intraday["open"],
-                                intraday["high"],
-                                intraday["low"],
-                                intraday["close"],
-                                intraday["volume"]
-                            ]
-                        else:
-                            new_row = pd.DataFrame(
-                                {
-                                    "Open": intraday["open"],
-                                    "High": intraday["high"],
-                                    "Low": intraday["low"],
-                                    "Close": intraday["close"],
-                                    "Volume": intraday["volume"]
-                                },
-                                index=[today]
-                            )
-                            df = pd.concat([df, new_row])
+            pass
         else:                    
             if intraday is not None:
                 now = datetime.now()
