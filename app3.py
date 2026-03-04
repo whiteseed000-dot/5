@@ -1739,7 +1739,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
             
             elif last_sell:
                 lvl = str(tdf['sell_level'].iloc[-1])
-                icon = f"'<span style="color:green;">▼</span>' {lvl}"
+                icon = f'<span style="color:green;">▼ {lvl}</span>'
                 
             summary.append({
                 "代號": t,
