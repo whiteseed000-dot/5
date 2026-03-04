@@ -1669,11 +1669,11 @@ if st.button("## 🏆 Watchlist 共振排行榜"):
 
         if last_buy:
             lvl = str(tdf['buy_level'].iloc[-1])
-            icon = f"▲ {lvl}"
+            icon = f"🔸 {lvl}"
         
         elif last_sell:
             lvl = str(tdf['sell_level'].iloc[-1])
-            icon = f"▼ {lvl}"
+            icon = f"🔹 {lvl}"
             
         resonance_rows.append({
             "代號": ticker,
