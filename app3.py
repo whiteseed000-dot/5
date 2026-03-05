@@ -1420,7 +1420,7 @@ if result:
         # ===============================
         st.markdown("### 📊 基本面")
     
-        f1, f2, f3, f4, f5, f6, f7, f8, f9 = st.columns(9)
+
         f_row1 = st.columns(6)
         f_row2 = st.columns(3)
         
