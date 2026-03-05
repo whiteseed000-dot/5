@@ -1451,21 +1451,23 @@ if result:
         # ===== 成長與估值指標 =====
         eps_growth = info.get("earningsQuarterlyGrowth")
         revenue_growth = info.get("revenueGrowth")
+        fcf = info.get("freeCashflow")
+        market_cap = info.get("marketCap")
         eps_cagr_3y = calc_eps_cagr(stock, 3)
         eps_cagr_5y = calc_eps_cagr(stock, 5)                
         # 轉換百分比
         eps_growth = eps_growth * 100 if eps_growth else None
         revenue_growth = revenue_growth * 100 if revenue_growth else None
+        # FCF Yield
+        fcf_yield = (fcf / market_cap * 100) if (fcf and market_cap) else None  
                 
         roe = info.get("returnOnEquity")
         roa = info.get("returnOnAssets")
         gross_margin = info.get("grossMargins")
         op_margin = info.get("operatingMargins")
         debt_ratio = info.get("debtToEquity")
-        fcf = info.get("freeCashflow")
-        market_cap = info.get("marketCap")
     
-        fcf_yield = (fcf / market_cap) if (fcf and market_cap) else None    
+      
         # 百分比轉換
         roe = roe * 100 if roe else None
         roa = roa * 100 if roa else None
