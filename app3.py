@@ -1385,7 +1385,7 @@ if result:
 
         i8.metric(
             "負債比率",
-            f"{debt_ratio:.2f}" if debt_ratio else "N/A",
+            f"{debt_ratio:.2f}%" if debt_ratio else "N/A",
             help="Debt / Equity Ratio"
         )
         st.write("")
