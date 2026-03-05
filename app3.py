@@ -1463,7 +1463,9 @@ if result:
         op_margin = info.get("operatingMargins")
         debt_ratio = info.get("debtToEquity")
         fcf = info.get("freeCashflow")
+        market_cap = info.get("marketCap")
     
+        fcf_yield = (fcf / market_cap) if (fcf and market_cap) else None    
         # 百分比轉換
         roe = roe * 100 if roe else None
         roa = roa * 100 if roa else None
