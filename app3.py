@@ -1331,42 +1331,64 @@ if result:
     m6.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="off", help="超過60代表極度恐慌")
 
     # --- 7. 切換按鈕 ---
-    
     st.divider()
     show_detailed_metrics = st.toggle("顯示詳細指標", value=False)
+    
     if show_detailed_metrics:
-
-        c_rsi = df['RSI14'].iloc[-1]; c_macd = df['MACD'].iloc[-1]
-        c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
+    
+        # ========= 技術面資料 =========
+        c_rsi = df['RSI14'].iloc[-1]
+        c_macd = df['MACD'].iloc[-1]
+        c_sig = df['Signal'].iloc[-1]
+        c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
-        
+    
+        # ========= 基本面資料 =========
         stock = yf.Ticker(ticker_input)
-        
         info = stock.info
-        
+    
         roe = info.get("returnOnEquity")
+        roa = info.get("returnOnAssets")
+        gross_margin = info.get("grossMargins")
+        op_margin = info.get("operatingMargins")
         debt_ratio = info.get("debtToEquity")
-        
+        fcf = info.get("freeCashflow")
+    
+        # 百分比轉換
         roe = roe * 100 if roe else None
-        debt_ratio = debt_ratio if debt_ratio else None
-        
-        i1, i2, i3, i4, i5, i6, i7, i8 = st.columns(8)
+        roa = roa * 100 if roa else None
+        gross_margin = gross_margin * 100 if gross_margin else None
+        op_margin = op_margin * 100 if op_margin else None
+    
+        # ===============================
+        # 技術面
+        # ===============================
+        st.markdown("### 📈 技術面")
+    
+        i1, i2, i3, i4, i5, i6 = st.columns(6)
+    
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
-        
+    
         macd_delta = c_macd - c_sig
         macd_status = "📈 金叉" if macd_delta > 0 else "📉 死叉"
         i2.metric("MACD 趨勢", f"{c_macd:.2f}", macd_status, delta_color="off")
-        
+    
         bias_status = "⚠️ 乖離大" if abs(c_bias) > 5 else "✅ 穩定"
         i3.metric("月線乖離 (BIAS)", f"{c_bias:+.2f}%", bias_status, delta_color="off")
-        
+    
         ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
         i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="off")
-
+    
         r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
-        i5.metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off", help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。")
-
+        i5.metric(
+            "決定係數 (R²)",
+            f"{r_squared:.2f}",
+            r2_status,
+            delta_color="off",
+            help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。"
+        )
+    
         res_score = calc_resonance_score(df)
         res_label = (
             "🟢 強烈偏多" if res_score >= 80 else
@@ -1374,20 +1396,53 @@ if result:
             "⚪ 中性" if res_score >= 40 else
             "🟠 偏弱" if res_score >= 20 else
             "🔴 高風險"
-        )     
+        )
+    
         i6.metric("多指標共振分數", f"{res_score}/100", res_label, delta_color="off")
-
-        i7.metric(
+    
+        st.write("")
+    
+        # ===============================
+        # 基本面
+        # ===============================
+        st.markdown("### 📊 基本面")
+    
+        f1, f2, f3, f4, f5, f6 = st.columns(6)
+    
+        f1.metric(
             "ROE",
             f"{roe:.2f}%" if roe else "N/A",
             help="股東權益報酬率"
         )
-
-        i8.metric(
-            "負債比率",
+    
+        f2.metric(
+            "ROA",
+            f"{roa:.2f}%" if roa else "N/A",
+            help="資產報酬率"
+        )
+    
+        f3.metric(
+            "毛利率",
+            f"{gross_margin:.2f}%" if gross_margin else "N/A"
+        )
+    
+        f4.metric(
+            "營益率",
+            f"{op_margin:.2f}%" if op_margin else "N/A"
+        )
+    
+        f5.metric(
+            "負債比",
             f"{debt_ratio:.2f}%" if debt_ratio else "N/A",
             help="Debt / Equity Ratio"
         )
+    
+        f6.metric(
+            "自由現金流",
+            f"{fcf/1e9:.2f} B" if fcf else "N/A",
+            help="Free Cash Flow"
+        )
+    
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
