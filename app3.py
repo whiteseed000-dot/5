@@ -1502,8 +1502,8 @@ if result:
         st.markdown("### 📊 基本面")
     
 
-        f_row1 = st.columns(6)
-        f_row2 = st.columns(3)
+        f_row1 = st.columns(5)
+        f_row2 = st.columns(5)
         
         # 第一排
         f_row1[0].metric("ROE", f"{roe:.2f}%" if roe else "N/A")
@@ -1511,12 +1511,13 @@ if result:
         f_row1[2].metric("毛利率", f"{gross_margin:.2f}%" if gross_margin else "N/A")
         f_row1[3].metric("營益率", f"{op_margin:.2f}%" if op_margin else "N/A")
         f_row1[4].metric("負債比", f"{debt_ratio:.2f}%" if debt_ratio else "N/A")
-        f_row1[5].metric("自由現金流", f"{fcf/1e9:.2f} B" if fcf else "N/A")
+
         
         # 第二排
         f_row2[0].metric("EPS 成長率", f"{eps_growth:.2f}%" if eps_growth else "N/A")
         f_row2[1].metric("營收成長率", f"{revenue_growth:.2f}%" if revenue_growth else "N/A")
         f_row2[2].metric("FCF Yield", f"{fcf_yield:.2f}%" if fcf_yield else "N/A")
+        f_row2[3].metric("自由現金流", f"{fcf/1e9:.2f} B" if fcf else "N/A")
         fund_score = calc_fundamental_score(info)
         
         fund_label = (
@@ -1527,7 +1528,7 @@ if result:
             "🔴 高風險"
         )
         
-        st.metric(
+        f_row2[4].metric(
             "📊 基本面評級",
             f"{fund_score}/100",
             fund_label
