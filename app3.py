@@ -1424,57 +1424,18 @@ if result:
         f_row1 = st.columns(6)
         f_row2 = st.columns(3)
         
-        f1.metric(
-            "ROE",
-            f"{roe:.2f}%" if roe else "N/A",
-            help="股東權益報酬率"
-        )
-    
-        f2.metric(
-            "ROA",
-            f"{roa:.2f}%" if roa else "N/A",
-            help="資產報酬率"
-        )
-    
-        f3.metric(
-            "毛利率",
-            f"{gross_margin:.2f}%" if gross_margin else "N/A"
-        )
-    
-        f4.metric(
-            "營益率",
-            f"{op_margin:.2f}%" if op_margin else "N/A"
-        )
-    
-        f5.metric(
-            "負債比",
-            f"{debt_ratio:.2f}%" if debt_ratio else "N/A",
-            help="Debt / Equity Ratio"
-        )
-    
-        f6.metric(
-            "自由現金流",
-            f"{fcf/1e9:.2f} B" if fcf else "N/A",
-            help="Free Cash Flow"
-        )
+        # 第一排
+        f_row1[0].metric("ROE", f"{roe:.2f}%" if roe else "N/A")
+        f_row1[1].metric("ROA", f"{roa:.2f}%" if roa else "N/A")
+        f_row1[2].metric("毛利率", f"{gross_margin:.2f}%" if gross_margin else "N/A")
+        f_row1[3].metric("營益率", f"{op_margin:.2f}%" if op_margin else "N/A")
+        f_row1[4].metric("負債比", f"{debt_ratio:.2f}%" if debt_ratio else "N/A")
+        f_row1[5].metric("自由現金流", f"{fcf/1e9:.2f} B" if fcf else "N/A")
         
-        f7.metric(
-            "EPS 成長率",
-            f"{eps_growth:.2f}%" if eps_growth else "N/A",
-            help="Earnings Growth (YoY)"
-        )
-        
-        f8.metric(
-            "營收成長率",
-            f"{revenue_growth:.2f}%" if revenue_growth else "N/A",
-            help="Revenue Growth (YoY)"
-        )
-        
-        f9.metric(
-            "FCF Yield",
-            f"{fcf_yield:.2f}%" if fcf_yield else "N/A",
-            help="自由現金流 / 市值"
-        )
+        # 第二排
+        f_row2[0].metric("EPS 成長率", f"{eps_growth:.2f}%" if eps_growth else "N/A")
+        f_row2[1].metric("營收成長率", f"{revenue_growth:.2f}%" if revenue_growth else "N/A")
+        f_row2[2].metric("FCF Yield", f"{fcf_yield:.2f}%" if fcf_yield else "N/A")
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
