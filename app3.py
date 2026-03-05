@@ -1340,6 +1340,16 @@ if result:
         c_sig = df['Signal'].iloc[-1]; c_bias = df['BIAS'].iloc[-1]
         ma60_last = df['MA60'].iloc[-1]
         
+        stock = yf.Ticker(ticker_input)
+        
+        info = stock.info
+        
+        roe = info.get("returnOnEquity")
+        debt_ratio = info.get("debtToEquity")
+        
+        roe = roe * 100 if roe else None
+        debt_ratio = debt_ratio if debt_ratio else None
+        
         i1, i2, i3, i4, i5, i6 = st.columns(6)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
