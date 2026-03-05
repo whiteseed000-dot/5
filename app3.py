@@ -1346,7 +1346,20 @@ if result:
         # ========= 基本面資料 =========
         stock = yf.Ticker(ticker_input)
         info = stock.info
-    
+        # ===== 成長與估值指標 =====
+        eps_growth = info.get("earningsQuarterlyGrowth")
+        revenue_growth = info.get("revenueGrowth")
+        
+        market_cap = info.get("marketCap")
+        fcf = info.get("freeCashflow")
+        
+        # 轉換百分比
+        eps_growth = eps_growth * 100 if eps_growth else None
+        revenue_growth = revenue_growth * 100 if revenue_growth else None
+        
+        # FCF Yield
+        fcf_yield = (fcf / market_cap * 100) if (fcf and market_cap) else None
+        
         roe = info.get("returnOnEquity")
         roa = info.get("returnOnAssets")
         gross_margin = info.get("grossMargins")
@@ -1407,8 +1420,10 @@ if result:
         # ===============================
         st.markdown("### 📊 基本面")
     
-        f1, f2, f3, f4, f5, f6 = st.columns(6)
-    
+        f1, f2, f3, f4, f5, f6, f7, f8, f9 = st.columns(9)
+        f_row1 = st.columns(6)
+        f_row2 = st.columns(3)
+        
         f1.metric(
             "ROE",
             f"{roe:.2f}%" if roe else "N/A",
@@ -1442,7 +1457,24 @@ if result:
             f"{fcf/1e9:.2f} B" if fcf else "N/A",
             help="Free Cash Flow"
         )
-    
+        
+        f7.metric(
+            "EPS 成長率",
+            f"{eps_growth:.2f}%" if eps_growth else "N/A",
+            help="Earnings Growth (YoY)"
+        )
+        
+        f8.metric(
+            "營收成長率",
+            f"{revenue_growth:.2f}%" if revenue_growth else "N/A",
+            help="Revenue Growth (YoY)"
+        )
+        
+        f9.metric(
+            "FCF Yield",
+            f"{fcf_yield:.2f}%" if fcf_yield else "N/A",
+            help="自由現金流 / 市值"
+        )
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
