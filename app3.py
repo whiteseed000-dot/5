@@ -1453,8 +1453,8 @@ if result:
         revenue_growth = info.get("revenueGrowth")
         fcf = info.get("freeCashflow")
         market_cap = info.get("marketCap")
-        eps_cagr_3y = calc_eps_cagr(stock, 3)
-        eps_cagr_5y = calc_eps_cagr(stock, 5)                
+       # eps_cagr_3y = calc_eps_cagr(stock, 3)
+       # eps_cagr_5y = calc_eps_cagr(stock, 5)                
         # 轉換百分比
         eps_growth = eps_growth * 100 if eps_growth else None
         revenue_growth = revenue_growth * 100 if revenue_growth else None
@@ -1524,7 +1524,7 @@ if result:
 
         f_row1 = st.columns(5)
         f_row2 = st.columns(5)
-        f_row3 = st.columns(5)
+
         # 第一排
         f_row1[0].metric("ROE", f"{roe:.2f}%" if roe else "N/A",help="股東權益報酬率")
         f_row1[1].metric("ROA", f"{roa:.2f}%" if roa else "N/A",help="資產報酬率")
@@ -1537,17 +1537,7 @@ if result:
         f_row2[0].metric("EPS 成長率", f"{eps_growth:.2f}%" if eps_growth else "N/A")
         f_row2[1].metric("營收成長率", f"{revenue_growth:.2f}%" if revenue_growth else "N/A")
         f_row2[2].metric("FCF Yield", f"{fcf_yield:.2f}%" if fcf_yield else "N/A",help="自由現金流殖利率")
-        f_row2[3].metric(
-            "EPS 3Y CAGR",
-            f"{eps_cagr_3y:.2f}%" if eps_cagr_3y else "N/A",
-            help="3年EPS複合年成長率"
-        )
-        
-        f_row2[4].metric(
-            "EPS 5Y CAGR",
-            f"{eps_cagr_5y:.2f}%" if eps_cagr_5y else "N/A",
-            help="5年EPS複合年成長率"
-        )        
+        f_row2[3].metric("自由現金流", f"{fcf/1e9:.2f} B" if fcf else "N/A")
         
         fund_score = calc_fundamental_score(info)
         
@@ -1559,7 +1549,7 @@ if result:
             "🔴 高風險"
         )
         
-        f_row3[0].metric(
+        f_row2[4].metric(
             "📊 基本面評級",
             f"{fund_score}/100",
             fund_label
