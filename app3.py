@@ -1382,6 +1382,12 @@ if result:
             f"{roe:.2f}%" if roe else "N/A",
             help="股東權益報酬率"
         )
+
+        i8.metric(
+            "負債比率",
+            f"{debt_ratio:.2f}" if debt_ratio else "N/A",
+            help="Debt / Equity Ratio"
+        )
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
