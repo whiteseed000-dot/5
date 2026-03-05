@@ -762,7 +762,88 @@ def get_intraday_price(ticker):
         }
     except:
         return None
+        
+def calc_fundamental_score(info):
 
+    score = 0
+
+    roe = info.get("returnOnEquity")
+    roa = info.get("returnOnAssets")
+    gross_margin = info.get("grossMargins")
+    op_margin = info.get("operatingMargins")
+    debt_ratio = info.get("debtToEquity")
+    revenue_growth = info.get("revenueGrowth")
+    eps_growth = info.get("earningsQuarterlyGrowth")
+
+    market_cap = info.get("marketCap")
+    fcf = info.get("freeCashflow")
+
+    fcf_yield = (fcf / market_cap) if (fcf and market_cap) else None
+
+    # ROE
+    if roe:
+        roe *= 100
+        if roe > 20:
+            score += 20
+        elif roe > 10:
+            score += 10
+
+    # ROA
+    if roa:
+        roa *= 100
+        if roa > 10:
+            score += 10
+        elif roa > 5:
+            score += 5
+
+    # 毛利率
+    if gross_margin:
+        gross_margin *= 100
+        if gross_margin > 50:
+            score += 10
+        elif gross_margin > 30:
+            score += 5
+
+    # 營益率
+    if op_margin:
+        op_margin *= 100
+        if op_margin > 30:
+            score += 10
+        elif op_margin > 15:
+            score += 5
+
+    # 負債比
+    if debt_ratio:
+        if debt_ratio < 50:
+            score += 10
+        elif debt_ratio < 100:
+            score += 5
+
+    # 營收成長
+    if revenue_growth:
+        revenue_growth *= 100
+        if revenue_growth > 15:
+            score += 10
+        elif revenue_growth > 5:
+            score += 5
+
+    # EPS成長
+    if eps_growth:
+        eps_growth *= 100
+        if eps_growth > 15:
+            score += 10
+        elif eps_growth > 5:
+            score += 5
+
+    # FCF Yield
+    if fcf_yield:
+        fcf_yield *= 100
+        if fcf_yield > 5:
+            score += 10
+        elif fcf_yield > 2:
+            score += 5
+
+    return score
 
 # --- 4. 側邊欄 ---
 with st.sidebar:
@@ -1436,6 +1517,21 @@ if result:
         f_row2[0].metric("EPS 成長率", f"{eps_growth:.2f}%" if eps_growth else "N/A")
         f_row2[1].metric("營收成長率", f"{revenue_growth:.2f}%" if revenue_growth else "N/A")
         f_row2[2].metric("FCF Yield", f"{fcf_yield:.2f}%" if fcf_yield else "N/A")
+        fund_score = calc_fundamental_score(info)
+        
+        fund_label = (
+            "🟢 優質公司" if fund_score >= 80 else
+            "🟡 穩健公司" if fund_score >= 60 else
+            "⚪ 普通公司" if fund_score >= 40 else
+            "🟠 偏弱公司" if fund_score >= 20 else
+            "🔴 高風險"
+        )
+        
+        st.metric(
+            "📊 基本面評級",
+            f"{fund_score}/100",
+            fund_label
+        )
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
