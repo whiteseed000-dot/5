@@ -1350,7 +1350,7 @@ if result:
         roe = roe * 100 if roe else None
         debt_ratio = debt_ratio if debt_ratio else None
         
-        i1, i2, i3, i4, i5, i6 = st.columns(6)
+        i1, i2, i3, i4, i5, i6, i7, i8 = st.columns(8)
         rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
         i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
         
@@ -1376,7 +1376,12 @@ if result:
             "🔴 高風險"
         )     
         i6.metric("多指標共振分數", f"{res_score}/100", res_label, delta_color="off")
-        
+
+        i7.metric(
+            "ROE",
+            f"{roe:.2f}%" if roe else "N/A",
+            help="股東權益報酬率"
+        )
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
