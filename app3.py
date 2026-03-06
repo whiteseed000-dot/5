@@ -848,8 +848,22 @@ def calc_fundamental_score(info):
 def calc_eps_cagr(stock, years):
 
     try:
-        earnings = stock.earnings   # 年度EPS
-        eps = earnings["Earnings"]
+        # 取得年度財報
+        income = stock.income_stmt
+        
+        # Net Income
+        net_income = income.loc["Net Income"]
+
+        # Shares Outstanding
+        shares = stock.info.get("sharesOutstanding")
+
+        if shares is None:
+            return None
+
+        # 計算 EPS
+        eps = net_income / shares
+
+        eps = eps[::-1]  # 轉成舊→新排序
 
         if len(eps) < years + 1:
             return None
@@ -861,11 +875,11 @@ def calc_eps_cagr(stock, years):
             return None
 
         cagr = (end_eps / start_eps) ** (1 / years) - 1
+
         return cagr * 100
 
     except:
         return None
-
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -1466,8 +1480,10 @@ if result:
         gross_margin = info.get("grossMargins")
         op_margin = info.get("operatingMargins")
         debt_ratio = info.get("debtToEquity")
-    
-      
+        
+        eps_cagr_3y = calc_eps_cagr(stock, 3)
+        eps_cagr_5y = calc_eps_cagr(stock, 5)   
+              
         # 百分比轉換
         roe = roe * 100 if roe else None
         roa = roa * 100 if roa else None
@@ -1531,14 +1547,7 @@ if result:
         f_row1[2].metric("毛利率", f"{gross_margin:.2f}%" if gross_margin else "N/A")
         f_row1[3].metric("營益率", f"{op_margin:.2f}%" if op_margin else "N/A")
         f_row1[4].metric("負債比", f"{debt_ratio:.2f}%" if debt_ratio else "N/A")
-
-        
-        # 第二排
-        f_row2[0].metric("EPS 成長率", f"{eps_growth:.2f}%" if eps_growth else "N/A")
-        f_row2[1].metric("營收成長率", f"{revenue_growth:.2f}%" if revenue_growth else "N/A")
-        f_row2[2].metric("FCF Yield", f"{fcf_yield:.2f}%" if fcf_yield else "N/A",help="自由現金流殖利率")
-        f_row2[3].metric("自由現金流", f"{fcf/1e9:.2f} B" if fcf else "N/A")
-        
+       
         fund_score = calc_fundamental_score(info)
         
         fund_label = (
@@ -1549,10 +1558,26 @@ if result:
             "🔴 高風險"
         )
         
-        f_row2[4].metric(
+        f_row1[5].metric(
             "📊 基本面評級",
             f"{fund_score}/100",
             fund_label
+        )
+        
+        # 第二排
+        f_row2[0].metric("EPS 成長率", f"{eps_growth:.2f}%" if eps_growth else "N/A")
+        f_row2[1].metric("營收成長率", f"{revenue_growth:.2f}%" if revenue_growth else "N/A")
+        f_row2[2].metric("FCF Yield", f"{fcf_yield:.2f}%" if fcf_yield else "N/A",help="自由現金流殖利率")
+        f_row2[3].metric("自由現金流", f"{fcf/1e9:.2f} B" if fcf else "N/A")
+        
+        f_row2[4].metric(
+            "EPS 3Y CAGR",
+            f"{eps_cagr_3y:.2f}%" if eps_cagr_3y else "N/A"
+        )
+        
+        f_row2[5].metric(
+            "EPS 5Y CAGR",
+            f"{eps_cagr_5y:.2f}%" if eps_cagr_5y else "N/A"
         )
         st.write("")
     
