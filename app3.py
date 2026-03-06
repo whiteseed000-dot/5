@@ -845,7 +845,7 @@ def calc_fundamental_score(info):
 
     return score
 
-def calc_eps_cagr(stock, years):
+def calc_eps_cagr2(stock, years):
 
     try:
         # 取得年度財報
@@ -876,6 +876,26 @@ def calc_eps_cagr(stock, years):
 
         cagr = (end_eps / start_eps) ** (1 / years) - 1
 
+        return cagr * 100
+
+    except:
+        return None
+def calc_eps_cagr(stock, years):
+
+    try:
+        earnings = stock.earnings
+        eps = earnings["Earnings"].dropna()
+
+        if len(eps) <= years:
+            return None
+
+        start_eps = eps.iloc[-(years+1)]
+        end_eps = eps.iloc[-1]
+
+        if start_eps <= 0:
+            return None
+
+        cagr = (end_eps / start_eps) ** (1 / years) - 1
         return cagr * 100
 
     except:
@@ -1468,7 +1488,7 @@ if result:
         fcf = info.get("freeCashflow")
         market_cap = info.get("marketCap")
         eps_cagr_3y = calc_eps_cagr(stock, 3)
-        eps_cagr_5y = calc_eps_cagr(stock, 4)                
+        eps_cagr_5y = calc_eps_cagr(stock, 5)                
         # 轉換百分比
         eps_growth = eps_growth * 100 if eps_growth else None
         revenue_growth = revenue_growth * 100 if revenue_growth else None
