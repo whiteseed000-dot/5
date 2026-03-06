@@ -1468,7 +1468,7 @@ if result:
         fcf = info.get("freeCashflow")
         market_cap = info.get("marketCap")
         eps_cagr_3y = calc_eps_cagr(stock, 3)
-        eps_cagr_5y = calc_eps_cagr(stock, 5)                
+        eps_cagr_5y = calc_eps_cagr(stock, 4)                
         # 轉換百分比
         eps_growth = eps_growth * 100 if eps_growth else None
         revenue_growth = revenue_growth * 100 if revenue_growth else None
