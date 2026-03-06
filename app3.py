@@ -845,7 +845,7 @@ def calc_fundamental_score(info):
 
     return score
 
-def calc_eps_cagr2(stock, years):
+def calc_eps_cagr(stock, years):
 
     try:
         # 取得年度財報
@@ -875,30 +875,6 @@ def calc_eps_cagr2(stock, years):
             return None
 
         cagr = (end_eps / start_eps) ** (1 / years) - 1
-
-        return cagr * 100
-
-    except:
-        return None
-
-def calc_eps_cagr(stock, years):
-
-    try:
-        income = stock.income_stmt
-        net_income = income.loc["Net Income"].dropna()
-
-        net_income = net_income[::-1]
-
-        if len(net_income) <= years:
-            return None
-
-        start = net_income.iloc[-(years+1)]
-        end = net_income.iloc[-1]
-
-        if start <= 0 or end <= 0:
-            return None
-
-        cagr = (end / start) ** (1/years) - 1
 
         return cagr * 100
 
