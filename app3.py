@@ -1846,7 +1846,7 @@ if result:
 # 二、Watchlist「共振排行榜」（全收藏掃描）
 # ==================================================
 st.divider()
-if st.button("## 🏆 Watchlist 共振排行榜"):
+if st.button("🏆 Watchlist 共振排行榜"):
     resonance_rows = []
     
     for ticker, name in st.session_state.watchlist_dict.items():
