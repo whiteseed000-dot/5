@@ -1481,8 +1481,8 @@ if result:
         op_margin = info.get("operatingMargins")
         debt_ratio = info.get("debtToEquity")
         
-        eps_cagr_3y = calc_eps_cagr(stock, 3)
-        eps_cagr_5y = calc_eps_cagr(stock, 5)   
+    #    eps_cagr_3y = calc_eps_cagr(stock, 3)
+ #       eps_cagr_5y = calc_eps_cagr(stock, 5)   
               
         # 百分比轉換
         roe = roe * 100 if roe else None
