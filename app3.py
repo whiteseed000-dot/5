@@ -1467,8 +1467,8 @@ if result:
         revenue_growth = info.get("revenueGrowth")
         fcf = info.get("freeCashflow")
         market_cap = info.get("marketCap")
-       # eps_cagr_3y = calc_eps_cagr(stock, 3)
-       # eps_cagr_5y = calc_eps_cagr(stock, 5)                
+        eps_cagr_3y = calc_eps_cagr(stock, 3)
+        eps_cagr_5y = calc_eps_cagr(stock, 5)                
         # 轉換百分比
         eps_growth = eps_growth * 100 if eps_growth else None
         revenue_growth = revenue_growth * 100 if revenue_growth else None
@@ -1535,8 +1535,8 @@ if result:
         st.markdown("### 📊 基本面")
     
 
-        f_row1 = st.columns(5)
-        f_row2 = st.columns(5)
+        f_row1 = st.columns(6)
+        f_row2 = st.columns(6)
 
         # 第一排
         f_row1[0].metric("ROE", f"{roe:.2f}%" if roe else "N/A",help="股東權益報酬率")
@@ -1566,7 +1566,17 @@ if result:
         f_row2[1].metric("營收成長率", f"{revenue_growth:.2f}%" if revenue_growth else "N/A")
         f_row2[2].metric("FCF Yield", f"{fcf_yield:.2f}%" if fcf_yield else "N/A",help="自由現金流殖利率")
         f_row2[3].metric("自由現金流", f"{fcf/1e9:.2f} B" if fcf else "N/A")
+        f_row2[4].metric(
+            "EPS 3Y CAGR",
+            f"{eps_cagr_3y:.2f}%" if eps_cagr_3y else "N/A",
+            help="3年EPS複合年成長率"
+        )
         
+        f_row2[5].metric(
+            "EPS 5Y CAGR",
+            f"{eps_cagr_5y:.2f}%" if eps_cagr_5y else "N/A",
+            help="5年EPS複合年成長率"
+        )        
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
