@@ -1574,7 +1574,45 @@ if result:
             f"{eps_cagr_3y:.2f}%" if eps_cagr_3y else "N/A",
             help="3年EPS複合年成長率"
         )
-        f_row2[5].metric("EPS", f"{eps_ttm:.2f}" if eps_ttm else "N/A")        
+        # ===== 最新年度 / 季度 EPS =====
+        try:
+            # 年度 EPS
+            income = stock.income_stmt
+            net_income = income.loc["Net Income"].dropna()
+            shares = info.get("sharesOutstanding")
+        
+            latest_year_date = income.columns[0]
+            latest_year = latest_year_date.year
+        
+            annual_eps = (net_income.iloc[0] / shares) if shares else None
+        
+            # 季度 EPS
+            q_income = stock.quarterly_income_stmt
+            q_net_income = q_income.loc["Net Income"].dropna()
+        
+            latest_q_date = q_income.columns[0]
+            q_year = latest_q_date.year
+            q_month = latest_q_date.month
+            q_num = (q_month - 1) // 3 + 1
+        
+            quarter_eps = (q_net_income.iloc[0] / shares) if shares else None
+        
+            label = f"{latest_year} / {q_year} Q{q_num}"
+        
+            value = (
+                f"{annual_eps:.2f} / {quarter_eps:.2f}"
+                if annual_eps and quarter_eps else "N/A"
+            )
+        
+        except:
+            label = "EPS (Year/Q)"
+            value = "N/A"
+        
+        f_row2[5].metric(
+            f"最新EPS ({label})",
+            value,
+            help="顯示最新年度 EPS / 最新季度 EPS"
+        )     
      
         st.write("")
     
