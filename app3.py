@@ -1468,7 +1468,10 @@ if result:
         fcf = info.get("freeCashflow")
         market_cap = info.get("marketCap")
         eps_cagr_3y = calc_eps_cagr(stock, 3)
-        eps_cagr_5y = calc_eps_cagr(stock, 5)                
+       # eps_cagr_5y = calc_eps_cagr(stock, 5)  
+
+        eps_ttm = info.get("trailingEps")
+        
         # 轉換百分比
         eps_growth = eps_growth * 100 if eps_growth else None
         revenue_growth = revenue_growth * 100 if revenue_growth else None
@@ -1571,12 +1574,8 @@ if result:
             f"{eps_cagr_3y:.2f}%" if eps_cagr_3y else "N/A",
             help="3年EPS複合年成長率"
         )
-        
-        f_row2[5].metric(
-            "EPS 5Y CAGR",
-            f"{eps_cagr_5y:.2f}%" if eps_cagr_5y else "N/A",
-            help="5年EPS複合年成長率"
-        )        
+        f_row2[5].metric("EPS", f"{eps_ttm:.2f}" if eps_ttm else "N/A")        
+     
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
