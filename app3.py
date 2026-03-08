@@ -880,8 +880,8 @@ def calc_eps_cagr(stock, years):
 
     except:
         return None
-# ===== 取得最新年度 / 季度 EPS =====
 def get_latest_eps(stock, info):
+
     try:
         shares = info.get("sharesOutstanding")
 
@@ -905,15 +905,10 @@ def get_latest_eps(stock, info):
 
         quarter_eps = (q_net_income.iloc[0] / shares) if shares else None
 
-        if annual_eps and quarter_eps:
-            value = f"{latest_year} EPS {annual_eps:.2f} / {q_year} Q{q_num} EPS {quarter_eps:.2f}"
-        else:
-            value = "N/A"
+        return annual_eps, latest_year, quarter_eps, q_year, q_num
 
     except:
-        value = "N/A"
-
-    return value
+        return None, None, None, None, None
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -1523,7 +1518,7 @@ if result:
         roa = roa * 100 if roa else None
         gross_margin = gross_margin * 100 if gross_margin else None
         op_margin = op_margin * 100 if op_margin else None
-    
+        annual_eps, latest_year, quarter_eps, q_year, q_num = get_latest_eps(stock, info)    
         # ===============================
         # 技術面
         # ===============================
@@ -1608,7 +1603,11 @@ if result:
             f"{eps_cagr_3y:.2f}%" if eps_cagr_3y else "N/A",
             help="3年EPS複合年成長率"
         )
-        f_row2[5] = get_latest_eps(stock, info)    
+        f_row2[5].metric(
+            f"年度EPS ({latest_year})",
+            f"{annual_eps:.2f}" if annual_eps else "N/A",
+            help="最新年度每股盈餘"
+        )  
      
         st.write("")
     
