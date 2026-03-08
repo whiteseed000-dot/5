@@ -1597,16 +1597,20 @@ if result:
         f_row2[0].metric("EPS 成長率", f"{eps_growth:.2f}%" if eps_growth else "N/A")
         f_row2[1].metric("營收成長率", f"{revenue_growth:.2f}%" if revenue_growth else "N/A")
         f_row2[2].metric("FCF Yield", f"{fcf_yield:.2f}%" if fcf_yield else "N/A",help="自由現金流殖利率")
-        f_row2[3].metric("自由現金流", f"{fcf/1e9:.2f} B" if fcf else "N/A")
-        f_row2[4].metric(
+        f_row2[3].metric(
             "EPS 3Y CAGR",
             f"{eps_cagr_3y:.2f}%" if eps_cagr_3y else "N/A",
             help="3年EPS複合年成長率"
         )
+
+        f_row2[4].metric(
+            f"季度EPS ({q_year} Q{q_num})",
+            f"{quarter_eps:.2f}" if quarter_eps else "N/A",
+        )
+        
         f_row2[5].metric(
             f"年度EPS ({latest_year})",
             f"{annual_eps:.2f}" if annual_eps else "N/A",
-            help="最新年度每股盈餘"
         )  
      
         st.write("")
