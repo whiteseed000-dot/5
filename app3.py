@@ -880,6 +880,40 @@ def calc_eps_cagr(stock, years):
 
     except:
         return None
+# ===== 取得最新年度 / 季度 EPS =====
+def get_latest_eps(stock, info):
+    try:
+        shares = info.get("sharesOutstanding")
+
+        # ===== 年度 EPS =====
+        income = stock.income_stmt
+        net_income = income.loc["Net Income"].dropna()
+
+        latest_year_date = income.columns[0]
+        latest_year = latest_year_date.year
+
+        annual_eps = (net_income.iloc[0] / shares) if shares else None
+
+        # ===== 季度 EPS =====
+        q_income = stock.quarterly_income_stmt
+        q_net_income = q_income.loc["Net Income"].dropna()
+
+        latest_q_date = q_income.columns[0]
+        q_year = latest_q_date.year
+        q_month = latest_q_date.month
+        q_num = (q_month - 1) // 3 + 1
+
+        quarter_eps = (q_net_income.iloc[0] / shares) if shares else None
+
+        if annual_eps and quarter_eps:
+            value = f"{latest_year} EPS {annual_eps:.2f} / {q_year} Q{q_num} EPS {quarter_eps:.2f}"
+        else:
+            value = "N/A"
+
+    except:
+        value = "N/A"
+
+    return value
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -1574,45 +1608,7 @@ if result:
             f"{eps_cagr_3y:.2f}%" if eps_cagr_3y else "N/A",
             help="3年EPS複合年成長率"
         )
-        # ===== 最新年度 / 季度 EPS =====
-        try:
-            # 年度 EPS
-            income = stock.income_stmt
-            net_income = income.loc["Net Income"].dropna()
-            shares = info.get("sharesOutstanding")
-        
-            latest_year_date = income.columns[0]
-            latest_year = latest_year_date.year
-        
-            annual_eps = (net_income.iloc[0] / shares) if shares else None
-        
-            # 季度 EPS
-            q_income = stock.quarterly_income_stmt
-            q_net_income = q_income.loc["Net Income"].dropna()
-        
-            latest_q_date = q_income.columns[0]
-            q_year = latest_q_date.year
-            q_month = latest_q_date.month
-            q_num = (q_month - 1) // 3 + 1
-        
-            quarter_eps = (q_net_income.iloc[0] / shares) if shares else None
-        
-            label = f"{latest_year} / {q_year} Q{q_num}"
-        
-            value = (
-                f"{annual_eps:.2f} / {quarter_eps:.2f}"
-                if annual_eps and quarter_eps else "N/A"
-            )
-        
-        except:
-            label = "EPS (Year/Q)"
-            value = "N/A"
-        
-        f_row2[5].metric(
-            f"最新EPS ({label})",
-            value,
-            help="顯示最新年度 EPS / 最新季度 EPS"
-        )     
+        f_row2[5] = get_latest_eps(stock, info)    
      
         st.write("")
     
