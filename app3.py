@@ -1604,12 +1604,12 @@ if result:
         )
 
         f_row2[4].metric(
-            f"{q_year} Q{q_num}EPS ",
+            f"{q_year} Q{q_num} EPS ",
             f"{quarter_eps:.2f}" if quarter_eps else "N/A",
         )
         
         f_row2[5].metric(
-            f"{latest_year}年EPS ",
+            f"{latest_year}年度EPS ",
             f"{annual_eps:.2f}" if annual_eps else "N/A",
         )  
      
