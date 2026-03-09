@@ -1575,7 +1575,7 @@ if result:
         f_row1[1].metric("ROA", f"{roa:.2f}%" if roa else "N/A",help="資產報酬率")
         f_row1[2].metric("毛利率", f"{gross_margin:.2f}%" if gross_margin else "N/A")
         f_row1[3].metric("營益率", f"{op_margin:.2f}%" if op_margin else "N/A")
-        f_row1[4].metric("負債比", f"{debt_ratio:.2f}%" if debt_ratio else "N/A")
+        f_row1[4].metric("負債比", f"{debt_ratio:.2f}" if debt_ratio else "N/A")
         fund_score = calc_fundamental_score(info)
         
         fund_label = (
