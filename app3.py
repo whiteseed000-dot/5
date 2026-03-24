@@ -8,6 +8,15 @@ from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 from plotly.subplots import make_subplots
+
+
+import requests
+
+# 创建一个自定义 Session
+session = requests.Session()
+session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+})
 # --- 1. 核心雲端邏輯 ---
 def get_gsheet_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -1489,7 +1498,7 @@ if result:
         ma60_last = df['MA60'].iloc[-1]
     
         # ========= 基本面資料 =========
-        stock = yf.Ticker(ticker_input)
+        stock = yf.Ticker(ticker_input, session=session)
         info = stock.info
         # ===== 成長與估值指標 =====
         eps_growth = info.get("earningsQuarterlyGrowth")
