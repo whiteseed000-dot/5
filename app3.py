@@ -787,7 +787,7 @@ def get_full_stock_data(ticker_str):
         # 3. 抓取財報
         df_inc = stock.financials
         df_q_inc = stock.quarterly_financials
-        
+
         return {
             "info": raw_info,
             "shares": shares,
@@ -798,7 +798,8 @@ def get_full_stock_data(ticker_str):
             "ps": raw_info.get("priceToSalesTrailing12Months"),
             "ins_held": raw_info.get("heldPercentInstitutions"),
             "short_ratio": raw_info.get("shortPercentOfFloat"),
-            "net_margin": raw_info.get("netProfitMargins")
+            "net_margin": raw_info.get("netProfitMargins"),
+            "est_eps_q": raw_info.get("earningsEstimateNextQuarter")
         }
     except Exception as e:
         return None
@@ -1522,7 +1523,7 @@ if result:
             st.write("")
             # --- 新增：核心估值與籌碼面 ---
             st.markdown("### 💎 核心估值與籌碼面")
-            v_row = st.columns(6)
+            v_row = st.columns(7)
     
             # 1. PE (本益比)
             pe = data_pack.get("pe")
@@ -1550,7 +1551,10 @@ if result:
             sr = data_pack.get("short_ratio")
             sr_status = "🔥 易軋空" if sr and sr > 0.1 else None # 超過 10% 算高
             v_row[5].metric("空單餘額比", f"{sr*100:.1f}%" if sr else "N/A", sr_status, help="空單比例過高時，若利多出現易引發軋空行情")
-        
+            # 【新增：下季預期 EPS】
+            est_eps = data_pack['est_eps_q']
+            v_row[6].metric("下季預期 EPS", f"{est_eps:.2f}" if est_eps else "N/A", 
+                             help="分析師對下一季度的平均盈餘預測")       
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
