@@ -1397,7 +1397,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
 @st.cache_data(ttl=3600)
 def get_vix_index():
     try:
-        vix = yf.download("^VIX", period="1d", progress=False)
+        vix = yf.download("^VIX", period="5d", progress=False)
         return float(vix['Close'].iloc[-1])
     except: return 0.0
 
