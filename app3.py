@@ -1469,7 +1469,7 @@ if result:
             t_row[3].metric("季線支撐 (MA60)", f"{ma60_last:.1f}", "🚀 站上季線" if curr_p > ma60_last else "🩸 跌破季線", delta_color="off")
             
             r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
-            t_row[4].metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off")
+            t_row[4].metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off",help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強")
             
             res_score = calc_resonance_score(df)
             res_label = (
