@@ -6,6 +6,8 @@ from scipy import stats
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import gspread
+import time
+import random
 from google.oauth2.service_account import Credentials
 from plotly.subplots import make_subplots
 # --- 1. 核心雲端邏輯 ---
@@ -763,152 +765,91 @@ def get_intraday_price(ticker):
     except:
         return None
         
-def calc_fundamental_score(info):
+# --- 核心快取函數：一小時內同樣代號只會抓一次 ---
+@st.cache_data(ttl=3600)
+def get_full_stock_data(ticker_str):
+    """將所有網路請求集中在此，避免頻繁敲擊 Yahoo 門戶"""
+    try:
+        # 模擬真人延遲，降低被封鎖率
+        time.sleep(random.uniform(0.5, 1.5))
+        
+        stock = yf.Ticker(ticker_str)
+        
+        # 一次性抓取所有表單 (這是最容易卡住的地方)
+        info = stock.info
+        fast = stock.fast_info
+        df_inc = stock.financials
+        df_q_inc = stock.quarterly_financials
+        
+        # 整理回傳資料包
+        return {
+            "info": info,
+            "fast": fast,
+            "df_inc": df_inc,
+            "df_q_inc": df_q_inc,
+            "shares": fast.get("shares_outstanding"),
+            "ticker_obj": stock
+        }
+    except Exception as e:
+        st.error(f"無法獲取 {ticker_str} 的基本面資料，請稍後再試。")
+        return None
 
+# --- 改寫後的計算函數：只吃資料，不抓資料 ---
+def calc_fundamental_score_safe(info):
+    if not info: return 0
     score = 0
-
-    roe = info.get("returnOnEquity")
-    roa = info.get("returnOnAssets")
-    gross_margin = info.get("grossMargins")
-    op_margin = info.get("operatingMargins")
-    debt_ratio = info.get("debtToEquity")
-    revenue_growth = info.get("revenueGrowth")
-    eps_growth = info.get("earningsQuarterlyGrowth")
-
-    market_cap = info.get("marketCap")
+    # 取得各項指標，預設為 0
+    metrics = {
+        "roe": info.get("returnOnEquity", 0) * 100 if info.get("returnOnEquity") else 0,
+        "roa": info.get("returnOnAssets", 0) * 100 if info.get("returnOnAssets") else 0,
+        "gm": info.get("grossMargins", 0) * 100 if info.get("grossMargins") else 0,
+        "om": info.get("operatingMargins", 0) * 100 if info.get("operatingMargins") else 0,
+        "debt": info.get("debtToEquity", 100) if info.get("debtToEquity") else 100,
+        "rev_g": info.get("revenueGrowth", 0) * 100 if info.get("revenueGrowth") else 0,
+        "eps_g": info.get("earningsQuarterlyGrowth", 0) * 100 if info.get("earningsQuarterlyGrowth") else 0,
+    }
+    
+    # 分數邏輯
+    score += 20 if metrics["roe"] > 20 else (10 if metrics["roe"] > 10 else 0)
+    score += 10 if metrics["roa"] > 10 else (5 if metrics["roa"] > 5 else 0)
+    score += 10 if metrics["gm"] > 50 else (5 if metrics["gm"] > 30 else 0)
+    score += 10 if metrics["om"] > 30 else (5 if metrics["om"] > 15 else 0)
+    score += 10 if metrics["debt"] < 50 else (5 if metrics["debt"] < 100 else 0)
+    score += 10 if metrics["rev_g"] > 15 else (5 if metrics["rev_g"] > 5 else 0)
+    score += 10 if metrics["eps_g"] > 15 else (5 if metrics["eps_g"] > 5 else 0)
+    
+    # FCF Yield 計算
     fcf = info.get("freeCashflow")
-
-    fcf_yield = (fcf / market_cap) if (fcf and market_cap) else None
-
-    # ROE
-    if roe:
-        roe *= 100
-        if roe > 20:
-            score += 20
-        elif roe > 10:
-            score += 10
-
-    # ROA
-    if roa:
-        roa *= 100
-        if roa > 10:
-            score += 10
-        elif roa > 5:
-            score += 5
-
-    # 毛利率
-    if gross_margin:
-        gross_margin *= 100
-        if gross_margin > 50:
-            score += 10
-        elif gross_margin > 30:
-            score += 5
-
-    # 營益率
-    if op_margin:
-        op_margin *= 100
-        if op_margin > 30:
-            score += 10
-        elif op_margin > 15:
-            score += 5
-
-    # 負債比
-    if debt_ratio:
-        if debt_ratio < 50:
-            score += 10
-        elif debt_ratio < 100:
-            score += 5
-
-    # 營收成長
-    if revenue_growth:
-        revenue_growth *= 100
-        if revenue_growth > 15:
-            score += 10
-        elif revenue_growth > 5:
-            score += 5
-
-    # EPS成長
-    if eps_growth:
-        eps_growth *= 100
-        if eps_growth > 15:
-            score += 10
-        elif eps_growth > 5:
-            score += 5
-
-    # FCF Yield
-    if fcf_yield:
-        fcf_yield *= 100
-        if fcf_yield > 5:
-            score += 10
-        elif fcf_yield > 2:
-            score += 5
-
+    m_cap = info.get("marketCap")
+    if fcf and m_cap:
+        f_yield = (fcf / m_cap) * 100
+        score += 10 if f_yield > 5 else (5 if f_yield > 2 else 0)
+        
     return score
 
-def calc_eps_cagr(stock, years):
-
+def calc_eps_cagr_safe(df_inc, shares, years=3):
     try:
-        # 取得年度財報
-        income = stock.income_stmt
-        
-        # Net Income
-        net_income = income.loc["Net Income"]
+        if df_inc is None or df_inc.empty or not shares: return None
+        net_inc = df_inc.loc["Net Income"]
+        eps = (net_inc / shares)[::-1] # 轉成舊到新
+        if len(eps) < years + 1: return None
+        start, end = eps.iloc[-(years+1)], eps.iloc[-1]
+        if start <= 0: return None
+        return ((end / start) ** (1 / years) - 1) * 100
+    except: return None
 
-        # Shares Outstanding
-        shares = stock.info.get("sharesOutstanding")
-
-        if shares is None:
-            return None
-
-        # 計算 EPS
-        eps = net_income / shares
-
-        eps = eps[::-1]  # 轉成舊→新排序
-
-        if len(eps) < years + 1:
-            return None
-
-        start_eps = eps.iloc[-(years+1)]
-        end_eps = eps.iloc[-1]
-
-        if start_eps <= 0:
-            return None
-
-        cagr = (end_eps / start_eps) ** (1 / years) - 1
-
-        return cagr * 100
-
-    except:
-        return None
-def get_latest_eps(stock, info):
-
+def get_latest_eps_safe(df_inc, df_q_inc, shares):
     try:
-        shares = info.get("sharesOutstanding")
-
-        # ===== 年度 EPS =====
-        income = stock.income_stmt
-        net_income = income.loc["Net Income"].dropna()
-
-        latest_year_date = income.columns[0]
-        latest_year = latest_year_date.year
-
-        annual_eps = (net_income.iloc[0] / shares) if shares else None
-
-        # ===== 季度 EPS =====
-        q_income = stock.quarterly_income_stmt
-        q_net_income = q_income.loc["Net Income"].dropna()
-
-        latest_q_date = q_income.columns[0]
-        q_year = latest_q_date.year
-        q_month = latest_q_date.month
-        q_num = (q_month - 1) // 3 + 1
-
-        quarter_eps = (q_net_income.iloc[0] / shares) if shares else None
-
-        return annual_eps, latest_year, quarter_eps, q_year, q_num
-
-    except:
-        return None, None, None, None, None
+        if not shares: return None, None, None, None, None
+        # 年度
+        ann_eps = (df_inc.loc["Net Income"].iloc[0] / shares) if not df_inc.empty else None
+        ann_year = df_inc.columns[0].year if not df_inc.empty else None
+        # 季度
+        q_eps = (df_q_inc.loc["Net Income"].iloc[0] / shares) if not df_q_inc.empty else None
+        q_date = df_q_inc.columns[0] if not df_q_inc.empty else None
+        q_year, q_num = (q_date.year, (q_date.month - 1) // 3 + 1) if q_date else (None, None)
+        return ann_eps, ann_year, q_eps, q_year, q_num
+    except: return None, None, None, None, None
 # --- 4. 側邊欄 ---
 with st.sidebar:
     st.header("📋 追蹤清單")
@@ -1489,138 +1430,66 @@ if result:
     show_detailed_metrics = st.toggle("顯示詳細指標", value=False)
     
     if show_detailed_metrics:
-    
-        # ========= 技術面資料 =========
-        c_rsi = df['RSI14'].iloc[-1]
-        c_macd = df['MACD'].iloc[-1]
-        c_sig = df['Signal'].iloc[-1]
-        c_bias = df['BIAS'].iloc[-1]
-        ma60_last = df['MA60'].iloc[-1]
-    
-        # ========= 基本面資料 =========
-        stock = yf.Ticker(ticker_input)
-        info = stock.info
-        # ===== 成長與估值指標 =====
-        eps_growth = info.get("earningsQuarterlyGrowth")
-        revenue_growth = info.get("revenueGrowth")
-        fcf = info.get("freeCashflow")
-        market_cap = info.get("marketCap")
-        eps_cagr_3y = calc_eps_cagr(stock, 3)
-       # eps_cagr_5y = calc_eps_cagr(stock, 5)  
-
-        eps_ttm = info.get("trailingEps")
+        # 1. 抓取資料包 (使用快取函數)
+        with st.spinner('🔍 正在抓取基本面數據...'):
+            data_pack = get_full_stock_data(ticker_input)
         
-        # 轉換百分比
-        eps_growth = eps_growth * 100 if eps_growth else None
-        revenue_growth = revenue_growth * 100 if revenue_growth else None
-        # FCF Yield
-        fcf_yield = (fcf / market_cap * 100) if (fcf and market_cap) else None  
-                
-        roe = info.get("returnOnEquity")
-        roa = info.get("returnOnAssets")
-        gross_margin = info.get("grossMargins")
-        op_margin = info.get("operatingMargins")
-        debt_ratio = info.get("debtToEquity")
-        
-        # 百分比轉換
-        roe = roe * 100 if roe else None
-        roa = roa * 100 if roa else None
-        gross_margin = gross_margin * 100 if gross_margin else None
-        op_margin = op_margin * 100 if op_margin else None
-        annual_eps, latest_year, quarter_eps, q_year, q_num = get_latest_eps(stock, info)    
-        # ===============================
-        # 技術面
-        # ===============================
-        st.markdown("### 📈 技術面")
+        if data_pack:
+            # 2. 預先計算所有需要的值
+            info = data_pack['info']
+            shares = data_pack['shares']
+            
+            f_score = calc_fundamental_score_safe(info)
+            cagr_3y = calc_eps_cagr_safe(data_pack['df_inc'], shares, 3)
+            ann_eps, ann_y, q_eps, q_y, q_n = get_latest_eps_safe(data_pack['df_inc'], data_pack['df_q_inc'], shares)
+            
+            # 3. 顯示技術面
+            st.markdown("### 📈 技術面分析")
+            t_row = st.columns(6)
+            
+            c_rsi = df['RSI14'].iloc[-1]
+            rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
+            t_row[0].metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
     
-        i1, i2, i3, i4, i5, i6 = st.columns(6)
+            macd_delta = df['MACD'].iloc[-1] - df['Signal'].iloc[-1]
+            t_row[1].metric("MACD 趨勢", f"{df['MACD'].iloc[-1]:.2f}", "📈 金叉" if macd_delta > 0 else "📉 死叉", delta_color="off")
+            
+            c_bias = df['BIAS'].iloc[-1]
+            t_row[2].metric("月線乖離", f"{c_bias:+.2f}%", "⚠️ 偏高" if abs(c_bias) > 5 else "✅ 穩定", delta_color="off")
+            
+            curr_p = df['Close'].iloc[-1]
+            ma60 = df['MA60'].iloc[-1]
+            t_row[3].metric("季線支撐", f"{ma60:.1f}", "🚀 站上" if curr_p > ma60 else "🩸 跌破", delta_color="off")
+            
+            t_row[4].metric("決定係數 R²", f"{r_squared:.2f}", "🎯 極準" if r_squared > 0.8 else "✅ 具參考性", delta_color="off")
+            
+            res_score = calc_resonance_score(df)
+            t_row[5].metric("多指標共振", f"{res_score}/100", "🟢 強烈偏多" if res_score >= 80 else "⚪ 中性", delta_color="off")
     
-        rsi_status = "🔥 超買" if c_rsi > 70 else ("❄️ 超跌" if c_rsi < 30 else "⚖️ 中性")
-        i1.metric("RSI (14)", f"{c_rsi:.1f}", rsi_status, delta_color="off")
+            # 4. 顯示基本面
+            st.markdown("### 📊 基本面數據")
+            f1 = st.columns(6)
+            f2 = st.columns(6)
     
-        macd_delta = c_macd - c_sig
-        macd_status = "📈 金叉" if macd_delta > 0 else "📉 死叉"
-        i2.metric("MACD 趨勢", f"{c_macd:.2f}", macd_status, delta_color="off")
+            # 第一排：效率與評級
+            f1[0].metric("ROE", f"{info.get('returnOnEquity',0)*100:.2f}%" if info.get('returnOnEquity') else "N/A")
+            f1[1].metric("ROA", f"{info.get('returnOnAssets',0)*100:.2f}%" if info.get('returnOnAssets') else "N/A")
+            f1[2].metric("毛利率", f"{info.get('grossMargins',0)*100:.2f}%" if info.get('grossMargins') else "N/A")
+            f1[3].metric("營益率", f"{info.get('operatingMargins',0)*100:.2f}%" if info.get('operatingMargins') else "N/A")
+            f1[4].metric("負債比", f"{info.get('debtToEquity',0):.2f}%" if info.get('debtToEquity') else "N/A")
+            
+            f_label = "🟢 優質" if f_score >= 80 else ("🟡 穩健" if f_score >= 60 else "🟠 偏弱")
+            f1[5].metric("基本面評級", f"{f_score}/100", f_label)
     
-        bias_status = "⚠️ 乖離大" if abs(c_bias) > 5 else "✅ 穩定"
-        i3.metric("月線乖離 (BIAS)", f"{c_bias:+.2f}%", bias_status, delta_color="off")
-    
-        ma60_status = "🚀 站上季線" if curr > ma60_last else "🩸 跌破季線"
-        i4.metric("季線支撐 (MA60)", f"{ma60_last:.1f}", ma60_status, delta_color="off")
-    
-        r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
-        i5.metric(
-            "決定係數 (R²)",
-            f"{r_squared:.2f}",
-            r2_status,
-            delta_color="off",
-            help="數值越接近 1，代表五線譜趨勢線對股價的解釋力越強。"
-        )
-    
-        res_score = calc_resonance_score(df)
-        res_label = (
-            "🟢 強烈偏多" if res_score >= 80 else
-            "🟡 偏多" if res_score >= 60 else
-            "⚪ 中性" if res_score >= 40 else
-            "🟠 偏弱" if res_score >= 20 else
-            "🔴 高風險"
-        )
-    
-        i6.metric("多指標共振分數", f"{res_score}/100", res_label, delta_color="off")
-    
-        st.write("")
-    
-        # ===============================
-        # 基本面
-        # ===============================
-        st.markdown("### 📊 基本面")
-    
-
-        f_row1 = st.columns(6)
-        f_row2 = st.columns(6)
-
-        # 第一排
-        f_row1[0].metric("ROE", f"{roe:.2f}%" if roe else "N/A",help="股東權益報酬率")
-        f_row1[1].metric("ROA", f"{roa:.2f}%" if roa else "N/A",help="資產報酬率")
-        f_row1[2].metric("毛利率", f"{gross_margin:.2f}%" if gross_margin else "N/A")
-        f_row1[3].metric("營益率", f"{op_margin:.2f}%" if op_margin else "N/A")
-        f_row1[4].metric("負債比", f"{debt_ratio:.2f}%" if debt_ratio else "N/A")
-        fund_score = calc_fundamental_score(info)
-        
-        fund_label = (
-            "🟢 優質公司" if fund_score >= 80 else
-            "🟡 穩健公司" if fund_score >= 60 else
-            "⚪ 普通公司" if fund_score >= 40 else
-            "🟠 偏弱公司" if fund_score >= 20 else
-            "🔴 高風險"
-        )
-        
-        f_row1[5].metric(
-            "📊 基本面評級",
-            f"{fund_score}/100",
-            fund_label
-        )
-               
-
-        # 第二排
-        f_row2[0].metric("EPS 成長率", f"{eps_growth:.2f}%" if eps_growth else "N/A")
-        f_row2[1].metric("營收成長率", f"{revenue_growth:.2f}%" if revenue_growth else "N/A")
-        f_row2[2].metric("FCF Yield", f"{fcf_yield:.2f}%" if fcf_yield else "N/A",help="自由現金流殖利率")
-        f_row2[3].metric(
-            "EPS 3Y CAGR",
-            f"{eps_cagr_3y:.2f}%" if eps_cagr_3y else "N/A",
-            help="3年EPS複合年成長率"
-        )
-
-        f_row2[4].metric(
-            f"{q_year} Q{q_num} EPS ",
-            f"{quarter_eps:.2f}" if quarter_eps else "N/A",
-        )
-        
-        f_row2[5].metric(
-            f"{latest_year}年度EPS ",
-            f"{annual_eps:.2f}" if annual_eps else "N/A",
-        )  
+            # 第二排：成長與 EPS
+            f2[0].metric("EPS 成長", f"{info.get('earningsQuarterlyGrowth',0)*100:.2f}%" if info.get('earningsQuarterlyGrowth') else "N/A")
+            f2[1].metric("營收成長", f"{info.get('revenueGrowth',0)*100:.2f}%" if info.get('revenueGrowth') else "N/A")
+            
+            fcf_y = (info.get('freeCashflow',0)/info.get('marketCap',1)*100) if info.get('freeCashflow') else None
+            f2[2].metric("FCF Yield", f"{fcf_y:.2f}%" if fcf_y else "N/A")
+            f2[3].metric("EPS 3Y CAGR", f"{cagr_3y:.2f}%" if cagr_3y else "N/A")
+            f2[4].metric(f"{q_y} Q{q_n} EPS", f"{q_eps:.2f}" if q_eps else "N/A")
+            f2[5].metric(f"{ann_y} 年度 EPS", f"{ann_eps:.2f}" if ann_eps else "N/A")  
      
         st.write("")
     
