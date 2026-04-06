@@ -1437,7 +1437,7 @@ if result:
     st.divider()
     show_detailed_metrics = st.toggle("顯示詳細指標", value=False)
     
-     if show_detailed_metrics:
+    if show_detailed_metrics:
         with st.spinner('🔍 正在抓取數據...'):
             data_pack = get_full_stock_data(ticker_input)
         
