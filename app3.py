@@ -1495,10 +1495,10 @@ if result:
             f1[4].metric("負債比", f"{info.get('debtToEquity',0):.2f}%" if info.get('debtToEquity') else "N/A")
             
             fund_label = (
-                "🟢 優質公司" if fund_score >= 80 else
-                "🟡 穩健公司" if fund_score >= 60 else
-                "⚪ 普通公司" if fund_score >= 40 else
-                "🟠 偏弱公司" if fund_score >= 20 else
+                "🟢 優質公司" if f_score >= 80 else
+                "🟡 穩健公司" if f_score >= 60 else
+                "⚪ 普通公司" if f_score >= 40 else
+                "🟠 偏弱公司" if f_score >= 20 else
                 "🔴 高風險"
             )
             f1[5].metric("基本面評級", f"{f_score}/100", f_label)
