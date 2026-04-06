@@ -1445,7 +1445,17 @@ if result:
         if data_pack:
             info = data_pack['info']
             shares = data_pack['shares']
-            
+        # 補強 1：手動計算純益率 (NM)
+            nm = info.get("netProfitMargins")
+            if nm is None and not data_pack['df_inc'].empty:
+                try:
+                    # 拿最新一季/年度的數字
+                    latest_inc = data_pack['df_inc'].iloc[:, 0]
+                    net_inc = latest_inc.get('Net Income', 0)
+                    rev = latest_inc.get('Total Revenue', 1)
+                    nm = net_inc / rev if rev != 0 else None
+                except:
+                    nm = None            
             # 使用抓到的資料進行計算
             f_score = calc_fundamental_score_safe(info)
             cagr_3y = calc_eps_cagr_safe(data_pack['df_inc'], shares, 3)
