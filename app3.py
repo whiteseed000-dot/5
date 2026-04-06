@@ -1406,7 +1406,10 @@ def get_vix_index():
             return round(float(hist['Close'].iloc[-1]), 2)
         else:
             return "無資料"
-
+    except Exception as e:
+            # 如果失敗，可以在終端機看到具體錯誤原因
+            print(f"Error: {e}")
+            return 0.0
 # --- 6. 介面形式恢復 ---
 col_title, col_btn = st.columns([4, 1])
 with col_title:
