@@ -1536,7 +1536,7 @@ if result:
     
             # 3. PS (股價營收比)
             ps = data_pack.get("ps")
-            v_row[2].metric("股價營收比 (PS)", f"{ps:.2f}" if ps else "N/A")
+            v_row[2].metric("股價營收比 (PS)", f"{ps:.2f}" if ps else "N/A",help="通常 P/S 低於0.75具吸引力，高於1.5需避開，高於3可能被高估")
     
             # 4. 淨利率 (Net Margin)
             nm = data_pack.get("net_margin")
