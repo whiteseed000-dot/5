@@ -1494,7 +1494,7 @@ if result:
             f1[3].metric("營益率", f"{info.get('operatingMargins',0)*100:.2f}%" if info.get('operatingMargins') else "N/A")
             f1[4].metric("負債比", f"{info.get('debtToEquity',0):.2f}%" if info.get('debtToEquity') else "N/A")
             
-            fund_label = (
+            f_label = (
                 "🟢 優質公司" if f_score >= 80 else
                 "🟡 穩健公司" if f_score >= 60 else
                 "⚪ 普通公司" if f_score >= 40 else
