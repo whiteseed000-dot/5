@@ -772,34 +772,29 @@ def get_full_stock_data(ticker_str):
         time.sleep(random.uniform(0.5, 1.5))
         stock = yf.Ticker(ticker_str)
         
-        # 1. 抓取 info 並轉成純 dict (避免裡面帶有特殊物件)
-        raw_info = dict(stock.info) 
+        # 1. 抓取 info 並轉為純字典
+        raw_info = dict(stock.info)
         
-        # 2. 抓取 fast_info 裡面的具體數值 (不要直接存 fast_info 物件)
-        fast = stock.fast_info
-        fast_data = {
-            "shares_outstanding": fast.shares_outstanding,
-            "market_cap": fast.market_cap,
-            "last_price": fast.last_price
-        }
-        
-        # 3. 抓取財報 (DataFrame 是可以被序列化的，但為了保險我們確保它是空的也不出錯)
+        # 2. 處理 FastInfo (改用更安全的 get 方法)
+        # 嘗試從不同地方獲取總股數，因為 yfinance 版本差異很大
+        shares = raw_info.get("sharesOutstanding")
+        if not shares:
+            try:
+                shares = stock.fast_info.shares_outstanding
+            except:
+                shares = None
+
+        # 3. 抓取財報
         df_inc = stock.financials
         df_q_inc = stock.quarterly_financials
         
-        # 如果是空的，給一個空的 DataFrame
-        if df_inc is None: df_inc = pd.DataFrame()
-        if df_q_inc is None: df_q_inc = pd.DataFrame()
-
-        # 【關鍵】：只回傳 Streamlit 認識的資料型態 (dict, float, int, pandas DataFrame)
         return {
             "info": raw_info,
-            "fast": fast_data,
-            "df_inc": df_inc,
-            "df_q_inc": df_q_inc
+            "shares": shares,
+            "df_inc": df_inc if df_inc is not None else pd.DataFrame(),
+            "df_q_inc": df_q_inc if df_q_inc is not None else pd.DataFrame()
         }
     except Exception as e:
-        st.error(f"獲取資料時發生錯誤: {e}")
         return None
 
 # --- 改寫後的計算函數：只吃資料，不抓資料 ---
@@ -1438,18 +1433,22 @@ if result:
     show_detailed_metrics = st.toggle("顯示詳細指標", value=False)
     
     if show_detailed_metrics:
-        with st.spinner('🔍 正在抓取數據...'):
+        with st.spinner('🔍 深度掃描中...'):
             data_pack = get_full_stock_data(ticker_input)
         
         if data_pack:
             info = data_pack['info']
-            # 修改這裡：直接從 fast 字典拿
-            shares = data_pack['fast'].get('shares_outstanding')
+            shares = data_pack['shares']
             
-            # 其餘計算函數保持不變
+            # 使用抓到的資料進行計算
             f_score = calc_fundamental_score_safe(info)
-            cagr_3y = calc_eps_cagr_safe(data_pack['df_inc'], shares, 3)
-            ann_eps, ann_y, q_eps, q_y, q_n = get_latest_eps_safe(data_pack['df_inc'], data_pack['df_q_inc'], shares)
+            
+            # 注意：傳入 data_pack['df_inc'] 與 data_pack['df_q_inc']
+            ann_eps, ann_y, q_eps, q_y, q_n = get_latest_eps_safe(
+                data_pack['df_inc'], 
+                data_pack['df_q_inc'], 
+                shares
+            )
             
             # 3. 顯示技術面
             st.markdown("### 📈 技術面分析")
