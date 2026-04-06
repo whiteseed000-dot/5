@@ -792,7 +792,7 @@ def get_full_stock_data(ticker_str):
             "info": raw_info,
             "shares": shares,
             "df_inc": df_inc if df_inc is not None else pd.DataFrame(),
-            "df_q_inc": df_q_inc if df_q_inc is not None else pd.DataFrame()
+            "df_q_inc": df_q_inc if df_q_inc is not None else pd.DataFrame(),
             "pe": raw_info.get("trailingPE"),
             "peg": raw_info.get("pegRatio"),
             "ps": raw_info.get("priceToSalesTrailing12Months"),
