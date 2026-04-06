@@ -1518,7 +1518,8 @@ if result:
             f2[3].metric("EPS 3Y CAGR", f"{cagr_3y:.2f}%" if cagr_3y else "N/A",help="3年EPS複合年成長率")
             f2[4].metric(f"{q_y} Q{q_n} EPS", f"{q_eps:.2f}" if q_eps else "N/A")
             f2[5].metric(f"{ann_y}年度EPS", f"{ann_eps:.2f}" if ann_eps else "N/A")  
-
+            
+            st.write("")
             # --- 新增：核心估值與籌碼面 ---
             st.markdown("### 💎 核心估值與籌碼面")
             v_row = st.columns(6)
@@ -1526,7 +1527,7 @@ if result:
             # 1. PE (本益比)
             pe = data_pack.get("pe")
             pe_text = f"{pe:.2f}" if pe else "N/A"
-            v_row[0].metric("本益比 (PE)", pe_text, help="Trailing PE")
+            v_row[0].metric("本益比 (PE)", pe_text)
     
             # 2. PEG (本益成長比)
             peg = data_pack.get("peg")
@@ -1539,7 +1540,7 @@ if result:
     
             # 4. 淨利率 (Net Margin)
             nm = data_pack.get("net_margin")
-            v_row[3].metric("淨利率 (NM)", f"{nm*100:.2f}%" if nm else "N/A", help="公司最終留在口袋裡的錢")
+            v_row[3].metric("淨利率 (NM)", f"{nm*100:.2f}%" if nm else "N/A")
     
             # 5. 法人持股 (Institutional Held)
             ins = data_pack.get("ins_held")
