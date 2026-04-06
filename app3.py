@@ -770,28 +770,27 @@ def get_intraday_price(ticker):
 def get_full_stock_data(ticker_str):
     """將所有網路請求集中在此，避免頻繁敲擊 Yahoo 門戶"""
     try:
-        # 模擬真人延遲，降低被封鎖率
+        # 模擬真人延遲
         time.sleep(random.uniform(0.5, 1.5))
         
         stock = yf.Ticker(ticker_str)
         
-        # 一次性抓取所有表單 (這是最容易卡住的地方)
+        # 一次性抓取資料
         info = stock.info
         fast = stock.fast_info
         df_inc = stock.financials
         df_q_inc = stock.quarterly_financials
         
-        # 整理回傳資料包
+        # 【關鍵修改點】：不要回傳 stock (Ticker 物件)，只回傳純數據字典
         return {
             "info": info,
             "fast": fast,
             "df_inc": df_inc,
             "df_q_inc": df_q_inc,
-            "shares": fast.get("shares_outstanding"),
-            "ticker_obj": stock
+            "shares": fast.get("shares_outstanding")
         }
     except Exception as e:
-        st.error(f"無法獲取 {ticker_str} 的基本面資料，請稍後再試。")
+        st.error(f"無法獲取 {ticker_str} 的基本面資料。")
         return None
 
 # --- 改寫後的計算函數：只吃資料，不抓資料 ---
