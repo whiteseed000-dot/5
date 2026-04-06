@@ -1442,7 +1442,7 @@ if result:
             
             # 使用抓到的資料進行計算
             f_score = calc_fundamental_score_safe(info)
-            
+            cagr_3y = calc_eps_cagr_safe(data_pack['df_inc'], shares, 3)
             # 注意：傳入 data_pack['df_inc'] 與 data_pack['df_q_inc']
             ann_eps, ann_y, q_eps, q_y, q_n = get_latest_eps_safe(
                 data_pack['df_inc'], 
