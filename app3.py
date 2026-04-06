@@ -1451,7 +1451,7 @@ if result:
             )
             
             # 3. 顯示技術面
-            st.markdown("### 📈 技術面分析")
+            st.markdown("### 📈 技術面")
             t_row = st.columns(6)
             
             c_rsi = df['RSI14'].iloc[-1]
@@ -1462,41 +1462,56 @@ if result:
             t_row[1].metric("MACD 趨勢", f"{df['MACD'].iloc[-1]:.2f}", "📈 金叉" if macd_delta > 0 else "📉 死叉", delta_color="off")
             
             c_bias = df['BIAS'].iloc[-1]
-            t_row[2].metric("月線乖離", f"{c_bias:+.2f}%", "⚠️ 偏高" if abs(c_bias) > 5 else "✅ 穩定", delta_color="off")
+            t_row[2].metric("月線乖離 (BIAS)", f"{c_bias:+.2f}%", "⚠️ 乖離大" if abs(c_bias) > 5 else "✅ 穩定", delta_color="off")
             
             curr_p = df['Close'].iloc[-1]
-            ma60 = df['MA60'].iloc[-1]
-            t_row[3].metric("季線支撐", f"{ma60:.1f}", "🚀 站上" if curr_p > ma60 else "🩸 跌破", delta_color="off")
+            ma60_last = df['MA60'].iloc[-1]
+            t_row[3].metric("季線支撐 (MA60)", f"{ma60_last:.1f}", "🚀 站上季線" if curr_p > ma60_last else "🩸 跌破季線", delta_color="off")
             
-            t_row[4].metric("決定係數 R²", f"{r_squared:.2f}", "🎯 極準" if r_squared > 0.8 else "✅ 具參考性", delta_color="off")
+            r2_status = "🎯 趨勢極準" if r_squared > 0.8 else ("✅ 具參考性" if r_squared > 0.5 else "❓ 參考性低")
+            t_row[4].metric("決定係數 (R²)", f"{r_squared:.2f}", r2_status, delta_color="off")
             
             res_score = calc_resonance_score(df)
-            t_row[5].metric("多指標共振", f"{res_score}/100", "🟢 強烈偏多" if res_score >= 80 else "⚪ 中性", delta_color="off")
-    
+            res_label = (
+                "🟢 強烈偏多" if res_score >= 80 else
+                "🟡 偏多" if res_score >= 60 else
+                "⚪ 中性" if res_score >= 40 else
+                "🟠 偏弱" if res_score >= 20 else
+                "🔴 高風險"
+            )
+            t_row[5].metric("多指標共振分數", f"{res_score}/100", res_label, delta_color="off")
+            
+            st.write("")
             # 4. 顯示基本面
-            st.markdown("### 📊 基本面數據")
+            st.markdown("### 📊 基本面")
             f1 = st.columns(6)
             f2 = st.columns(6)
     
             # 第一排：效率與評級
-            f1[0].metric("ROE", f"{info.get('returnOnEquity',0)*100:.2f}%" if info.get('returnOnEquity') else "N/A")
-            f1[1].metric("ROA", f"{info.get('returnOnAssets',0)*100:.2f}%" if info.get('returnOnAssets') else "N/A")
+            f1[0].metric("ROE", f"{info.get('returnOnEquity',0)*100:.2f}%" if info.get('returnOnEquity') else "N/A",help="股東權益報酬率")
+            f1[1].metric("ROA", f"{info.get('returnOnAssets',0)*100:.2f}%" if info.get('returnOnAssets') else "N/A",help="資產報酬率")
             f1[2].metric("毛利率", f"{info.get('grossMargins',0)*100:.2f}%" if info.get('grossMargins') else "N/A")
             f1[3].metric("營益率", f"{info.get('operatingMargins',0)*100:.2f}%" if info.get('operatingMargins') else "N/A")
             f1[4].metric("負債比", f"{info.get('debtToEquity',0):.2f}%" if info.get('debtToEquity') else "N/A")
             
-            f_label = "🟢 優質" if f_score >= 80 else ("🟡 穩健" if f_score >= 60 else "🟠 偏弱")
+            fund_label = (
+                "🟢 優質公司" if fund_score >= 80 else
+                "🟡 穩健公司" if fund_score >= 60 else
+                "⚪ 普通公司" if fund_score >= 40 else
+                "🟠 偏弱公司" if fund_score >= 20 else
+                "🔴 高風險"
+            )
             f1[5].metric("基本面評級", f"{f_score}/100", f_label)
     
             # 第二排：成長與 EPS
-            f2[0].metric("EPS 成長", f"{info.get('earningsQuarterlyGrowth',0)*100:.2f}%" if info.get('earningsQuarterlyGrowth') else "N/A")
-            f2[1].metric("營收成長", f"{info.get('revenueGrowth',0)*100:.2f}%" if info.get('revenueGrowth') else "N/A")
+            f2[0].metric("EPS 成長率", f"{info.get('earningsQuarterlyGrowth',0)*100:.2f}%" if info.get('earningsQuarterlyGrowth') else "N/A")
+            f2[1].metric("營收成長率", f"{info.get('revenueGrowth',0)*100:.2f}%" if info.get('revenueGrowth') else "N/A")
             
             fcf_y = (info.get('freeCashflow',0)/info.get('marketCap',1)*100) if info.get('freeCashflow') else None
-            f2[2].metric("FCF Yield", f"{fcf_y:.2f}%" if fcf_y else "N/A")
-            f2[3].metric("EPS 3Y CAGR", f"{cagr_3y:.2f}%" if cagr_3y else "N/A")
+            f2[2].metric("FCF Yield", f"{fcf_y:.2f}%" if fcf_y else "N/A",help="自由現金流殖利率")
+            f2[3].metric("EPS 3Y CAGR", f"{cagr_3y:.2f}%" if cagr_3y else "N/A",help="3年EPS複合年成長率")
             f2[4].metric(f"{q_y} Q{q_n} EPS", f"{q_eps:.2f}" if q_eps else "N/A")
-            f2[5].metric(f"{ann_y} 年度 EPS", f"{ann_eps:.2f}" if ann_eps else "N/A")  
+            f2[5].metric(f"{ann_y}年度EPS", f"{ann_eps:.2f}" if ann_eps else "N/A")  
      
         st.write("")
     
