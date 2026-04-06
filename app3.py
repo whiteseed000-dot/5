@@ -1429,17 +1429,20 @@ if result:
     show_detailed_metrics = st.toggle("顯示詳細指標", value=False)
     
     if show_detailed_metrics:
-        # 1. 抓取資料包 (使用快取函數)
         with st.spinner('🔍 正在抓取基本面數據...'):
             data_pack = get_full_stock_data(ticker_input)
         
         if data_pack:
-            # 2. 預先計算所有需要的值
             info = data_pack['info']
             shares = data_pack['shares']
             
+            # 計算分數與 CAGR
             f_score = calc_fundamental_score_safe(info)
+            
+            # 注意：這裡直接傳入資料包裡的 df_inc 即可
             cagr_3y = calc_eps_cagr_safe(data_pack['df_inc'], shares, 3)
+            
+            # 注意：get_latest_eps_safe 也要對應修改，確保它吃的是 df 而不是 stock 物件
             ann_eps, ann_y, q_eps, q_y, q_n = get_latest_eps_safe(data_pack['df_inc'], data_pack['df_q_inc'], shares)
             
             # 3. 顯示技術面
