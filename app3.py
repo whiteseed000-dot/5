@@ -793,6 +793,12 @@ def get_full_stock_data(ticker_str):
             "shares": shares,
             "df_inc": df_inc if df_inc is not None else pd.DataFrame(),
             "df_q_inc": df_q_inc if df_q_inc is not None else pd.DataFrame()
+            "pe": raw_info.get("trailingPE"),
+            "peg": raw_info.get("pegRatio"),
+            "ps": raw_info.get("priceToSalesTrailing12Months"),
+            "ins_held": raw_info.get("heldPercentInstitutions"),
+            "short_ratio": raw_info.get("shortPercentOfFloat"),
+            "net_margin": raw_info.get("netProfitMargins")
         }
     except Exception as e:
         return None
@@ -1512,7 +1518,38 @@ if result:
             f2[3].metric("EPS 3Y CAGR", f"{cagr_3y:.2f}%" if cagr_3y else "N/A",help="3年EPS複合年成長率")
             f2[4].metric(f"{q_y} Q{q_n} EPS", f"{q_eps:.2f}" if q_eps else "N/A")
             f2[5].metric(f"{ann_y}年度EPS", f"{ann_eps:.2f}" if ann_eps else "N/A")  
-     
+
+            # --- 新增：核心估值與籌碼面 ---
+            st.markdown("### 💎 核心估值與籌碼面")
+            v_row = st.columns(6)
+    
+            # 1. PE (本益比)
+            pe = data_pack.get("pe")
+            pe_text = f"{pe:.2f}" if pe else "N/A"
+            v_row[0].metric("本益比 (PE)", pe_text, help="Trailing PE")
+    
+            # 2. PEG (本益成長比)
+            peg = data_pack.get("peg")
+            peg_status = "✅ 便宜" if peg and peg < 1 else ("⚠️ 偏貴" if peg and peg > 2 else None)
+            v_row[1].metric("PEG 比率", f"{peg:.2f}" if peg else "N/A", peg_status, help="PEG < 1 通常代表股價相對於成長性較便宜")
+    
+            # 3. PS (股價營收比)
+            ps = data_pack.get("ps")
+            v_row[2].metric("股價營收比 (PS)", f"{ps:.2f}" if ps else "N/A")
+    
+            # 4. 淨利率 (Net Margin)
+            nm = data_pack.get("net_margin")
+            v_row[3].metric("純益率 (NM)", f"{nm*100:.2f}%" if nm else "N/A", help="公司最終留在口袋裡的錢")
+    
+            # 5. 法人持股 (Institutional Held)
+            ins = data_pack.get("ins_held")
+            v_row[4].metric("法人持股比例", f"{ins*100:.1f}%" if ins else "N/A", help="比例越高，代表受大資金青睞")
+    
+            # 6. 空單比例 (Short Ratio)
+            sr = data_pack.get("short_ratio")
+            sr_status = "🔥 易軋空" if sr and sr > 0.1 else None # 超過 10% 算高
+            v_row[5].metric("空單餘額比", f"{sr*100:.1f}%" if sr else "N/A", sr_status, help="空單比例過高時，若利多出現易引發軋空行情")
+        
         st.write("")
     
     view_mode = st.radio("分析視圖", ["樂活五線譜", "樂活通道", "K線指標", "KD指標", "布林通道", "成交量"], horizontal=True, label_visibility="collapsed")
