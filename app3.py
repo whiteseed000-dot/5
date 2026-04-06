@@ -1531,7 +1531,7 @@ if result:
             # 2. PEG (本益成長比)
             peg = data_pack.get("peg")
             peg_status = "✅ 便宜" if peg and peg < 1 else ("⚠️ 偏貴" if peg and peg > 2 else None)
-            v_row[1].metric("PEG 比率", f"{peg:.2f}" if peg else "N/A", peg_status, help="PEG < 1 通常代表股價相對於成長性較便宜")
+            v_row[1].metric("本益成長比 (PEG)", f"{peg:.2f}" if peg else "N/A", peg_status, help="PEG < 1 通常代表股價相對於成長性較便宜")
     
             # 3. PS (股價營收比)
             ps = data_pack.get("ps")
@@ -1539,7 +1539,7 @@ if result:
     
             # 4. 淨利率 (Net Margin)
             nm = data_pack.get("net_margin")
-            v_row[3].metric("純益率 (NM)", f"{nm*100:.2f}%" if nm else "N/A", help="公司最終留在口袋裡的錢")
+            v_row[3].metric("淨利率 (NM)", f"{nm*100:.2f}%" if nm else "N/A", help="公司最終留在口袋裡的錢")
     
             # 5. 法人持股 (Institutional Held)
             ins = data_pack.get("ins_held")
