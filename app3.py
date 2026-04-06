@@ -1397,9 +1397,15 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
 @st.cache_data(ttl=3600)
 def get_vix_index():
     try:
-        vix = yf.download("^VIX", period="5d", progress=False)
-        return float(vix['Close'].iloc[-1])
-    except: return 0.0
+        # 改用 5 天，確保在假日或週一早晨也能抓到前一天的收盤價
+        vix = yf.Ticker("^VIX")
+        hist = vix.history(period="5d")
+        
+        if not hist.empty:
+            # 取得最後一筆有效的收盤價
+            return round(float(hist['Close'].iloc[-1]), 2)
+        else:
+            return "無資料"
 
 # --- 6. 介面形式恢復 ---
 col_title, col_btn = st.columns([4, 1])
