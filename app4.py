@@ -1573,20 +1573,24 @@ if st.button("🏆 Watchlist 共振排行榜"):
         res = get_stock_data(ticker, years_input, time_frame)
         if not res:
             continue
-    
+        
         tdf, trend_info = res
         if trend_info is None or len(tdf) < 50:
             continue
-    
+        
         slope = trend_info[0]
         score = calc_resonance_score(tdf)
         score_V2 = calc_resonance_score_V2(tdf)
         patterns = detect_market_pattern(tdf, slope)
         stable_pattern = update_pattern_history(ticker, patterns)
-    
+        
         curr_price = float(tdf['Close'].iloc[-1])
         tl_last = tdf['TL'].iloc[-1]
         dist_pct = ((curr_price - tl_last) / tl_last) * 100
+
+        # --- 新增：帶寬擠壓判斷 ---
+        bw_val = tdf['BANDWIDTH'].iloc[-1] if 'BANDWIDTH' in tdf.columns else 0.0
+        bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else f"{bw_val*100:.1f}%"
 
         last_buy  = bool(tdf['buy_signal'].iloc[-1])
         last_sell = bool(tdf['sell_signal'].iloc[-1])
@@ -1608,6 +1612,7 @@ if st.button("🏆 Watchlist 共振排行榜"):
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
+            "帶寬擠壓": bw_squeeze,  # <--- 新增欄位
             "AI 市場型態": stable_pattern,
         })
     
@@ -1628,6 +1633,7 @@ if st.button("🏆 Watchlist 共振排行榜"):
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
+                "帶寬擠壓": st.column_config.TextColumn(width="small"), # <--- 新增 Config
                 "AI 市場型態": st.column_config.TextColumn(),
             }
         )
@@ -1648,6 +1654,10 @@ if st.button("🔄 開始掃描所有標的狀態"):
             elif p > tdf['TL-2SD'].iloc[-1]: pos = "🔵 偏低"
             else: pos = "🟢 特價"
 
+            # --- 新增：帶寬擠壓判斷 ---
+            bw_val = tdf['BANDWIDTH'].iloc[-1] if 'BANDWIDTH' in tdf.columns else 0.0
+            bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else f"{bw_val*100:.1f}%"
+
             last_buy  = bool(tdf['buy_signal'].iloc[-1])
             last_sell = bool(tdf['sell_signal'].iloc[-1])
             icon = "—"
@@ -1665,6 +1675,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 "最新價格": f"{p:.1f}",
                 "偏離中心線": f"{((p - t_tl) / t_tl) * 100:+.1f}%",
                 "位階狀態": pos,
+                "帶寬擠壓": bw_squeeze,  # <--- 新增欄位
                 "K線訊號": icon
             })
     if summary: st.table(pd.DataFrame(summary))
