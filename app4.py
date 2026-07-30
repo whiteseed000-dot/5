@@ -1590,8 +1590,8 @@ if st.button("🏆 Watchlist 共振排行榜"):
 
         # --- 修正：帶寬擠壓安全讀取邏輯 ---
         bw_squeeze = "—"
-        if 'BANDWIDTH' in tdf.columns and pd.notna(tdf['BANDWIDTH'].iloc[-1]):
-            bw_raw = float(tdf['BANDWIDTH'].iloc[-1])
+        if 'BandWidth' in tdf.columns and pd.notna(tdf['BandWidth'].iloc[-1]):
+            bw_raw = float(tdf['BandWidth'].iloc[-1])
             
             # 如果數據非 0 才進行判斷
             if bw_raw > 0:
@@ -1673,7 +1673,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 bw_raw = float(tdf['BandWidth'].iloc[-1])
                 if bw_raw > 0:
                     if bw_raw <= 1.0:
-                        is_squeezed = bw_raw < 0.1
+                        is_squeezed = bw_raw < 0.04
                         display_val = bw_raw * 100
                     else:
                         is_squeezed = bw_raw < 4.0
