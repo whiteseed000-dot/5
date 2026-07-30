@@ -1091,6 +1091,7 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         # 加入技術指標計算 (含 BIAS、MA20、BB_up、BB_low、BandWidth)
         df = get_technical_indicators(df)        
         
+        df['BandWidth'] = (df['BB_up'] - df['BB_low']) / df['MA20']
         low_9 = df['Low'].rolling(9).min()
         high_9 = df['High'].rolling(9).max()
         rsv = 100 * (df['Close'] - low_9) / (high_9 - low_9)
