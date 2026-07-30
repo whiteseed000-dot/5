@@ -1756,6 +1756,18 @@ if result:
             fig.add_trace(go.Bar(x=df['Date'], y=m_diff, marker_color=m_colors, name="柱狀圖", hovertemplate='%{y:.2f}'), row=2, col=1)
             fig.add_trace(go.Scatter(x=df['Date'], y=df['MACD'], line=dict(color='#00BFFF'), name="MACD", hovertemplate='%{y:.2f}'), row=2, col=1)
             fig.add_trace(go.Scatter(x=df['Date'], y=df['Signal'], line=dict(color='#E066FF'), name="Signal", hovertemplate='%{y:.2f}'), row=2, col=1)
+        
+        elif sub_mode == "BandWidth":
+                    fig.add_trace(
+                        go.Scatter(
+                            x=df['Date'], 
+                            y=df['BandWidth'], 
+                            name="BandWidth", 
+                            line=dict(color='#FFD700', width=1.5), 
+                            hovertemplate='%{y:.4f}'
+                        ), 
+                        row=2, col=1
+                    )
     
     # 使用 Pandas 的 Set 運算取代 Python 迴圈，速度提升數十倍
 
