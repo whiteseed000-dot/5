@@ -1655,8 +1655,8 @@ if st.button("🔄 開始掃描所有標的狀態"):
             else: pos = "🟢 特價"
 
             # --- 新增：帶寬擠壓判斷 ---
-            bw_val = tdf['BANDWIDTH'].iloc[-1] if 'BANDWIDTH' in tdf.columns else 0.0
-            bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else f"{bw_val*100:.1f}%"
+            bw_val = tdf['BANDWIDTH'].iloc[-1] if 'BANDWIDTH' in tdf.columns else "—"
+            bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else "—"
 
             last_buy  = bool(tdf['buy_signal'].iloc[-1])
             last_sell = bool(tdf['sell_signal'].iloc[-1])
