@@ -1091,7 +1091,6 @@ def get_stock_data(ticker, years, time_frame="日", use_adjusted_price=False):
         # 加入技術指標計算 (含 BIAS、MA20、BB_up、BB_low、BandWidth)
         df = get_technical_indicators(df)        
         
-        df['BandWidth'] = (df['BB_up'] - df['BB_low']) / df['MA20']
         low_9 = df['Low'].rolling(9).min()
         high_9 = df['High'].rolling(9).max()
         rsv = 100 * (df['Close'] - low_9) / (high_9 - low_9)
@@ -1674,7 +1673,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 bw_raw = float(tdf['BANDWIDTH'].iloc[-1])
                 if bw_raw > 0:
                     if bw_raw <= 1.0:
-                        is_squeezed = bw_raw < 0.04
+                        is_squeezed = bw_raw < 0.1
                         display_val = bw_raw * 100
                     else:
                         is_squeezed = bw_raw < 4.0
