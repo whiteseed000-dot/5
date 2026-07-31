@@ -1609,10 +1609,10 @@ if st.button("🏆 Watchlist 共振排行榜"):
             "共振分數": score,
             "共振分數V2": f"{score_V2:.1f}",
             "K線訊號": icon,
+            "帶寬擠壓": bw_squeeze,  # <--- 新增欄位
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
-            "帶寬擠壓": bw_squeeze,  # <--- 新增欄位
             "AI 市場型態": stable_pattern,
         })
     
@@ -1630,10 +1630,10 @@ if st.button("🏆 Watchlist 共振排行榜"):
                 "共振分數": st.column_config.NumberColumn(width="small"),
                 "共振分數V2": st.column_config.NumberColumn(width="small"),
                 "K線訊號": st.column_config.TextColumn(width="small"),
+                "帶寬擠壓": st.column_config.TextColumn(width="small"), # <--- 新增 Config
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
-                "帶寬擠壓": st.column_config.TextColumn(width="small"), # <--- 新增 Config
                 "AI 市場型態": st.column_config.TextColumn(),
             }
         )
@@ -1675,8 +1675,8 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 "最新價格": f"{p:.1f}",
                 "偏離中心線": f"{((p - t_tl) / t_tl) * 100:+.1f}%",
                 "位階狀態": pos,
-                "帶寬擠壓": bw_squeeze,  # <--- 新增欄位
-                "K線訊號": icon
+                "K線訊號": icon,
+                "帶寬擠壓": bw_squeeze  # <--- 新增欄位
             })
     if summary: st.table(pd.DataFrame(summary))
 
