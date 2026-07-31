@@ -1695,7 +1695,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
             # --- 修正：擠壓突破 / 跌破 判斷 ---
             bw_5d_min = tdf['BandWidth'].tail(5).min() if 'BandWidth' in tdf.columns else 1.0
             is_strong_signal = any(k in lvl for k in ["中", "強"])
-            has_squeezed_5d = bw_5d_min < 0.12
+            has_squeezed_5d = bw_5d_min < 0.05
 
             squeeze_breakout = "—"
             if is_strong_signal and has_squeezed_5d:
