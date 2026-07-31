@@ -1608,13 +1608,17 @@ if st.button("🏆 Watchlist 共振排行榜"):
             lvl = str(tdf['sell_level'].iloc[-1])
             icon = f"🔹 {lvl}"
 
-        # --- 新增：擠壓突破判斷 ---
-        # 1. K線訊號為「中」以上
-        is_mid_or_above = any(k in lvl for k in ["中", "強"])
-        # 2. 回測 5 天內任意一天帶寬 < 5% (0.05)
+        # --- 修正：擠壓突破 / 跌破 判斷 ---
         bw_5d_min = tdf['BandWidth'].tail(5).min() if 'BandWidth' in tdf.columns else 1.0
-        
-        squeeze_breakout = "🚀 突破" if (is_mid_or_above and bw_5d_min < 0.05) else "—"
+        is_strong_signal = any(k in lvl for k in ["中", "強"])
+        has_squeezed_5d = bw_5d_min < 0.05
+
+        squeeze_breakout = "—"
+        if is_strong_signal and has_squeezed_5d:
+            if last_buy:
+                squeeze_breakout = "🚀 突破"
+            elif last_sell:
+                squeeze_breakout = "📉 跌破"
 
         resonance_rows.append({
             "代號": ticker,
@@ -1623,7 +1627,7 @@ if st.button("🏆 Watchlist 共振排行榜"):
             "共振分數V2": f"{score_V2:.1f}",
             "K線訊號": icon,
             "帶寬擠壓": bw_squeeze,
-            "擠壓突破": squeeze_breakout,  # <--- 新增欄位
+            "擠壓突破": squeeze_breakout,  # <--- 顯示 🚀 突破 / 📉 跌破 / —
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
@@ -1645,7 +1649,7 @@ if st.button("🏆 Watchlist 共振排行榜"):
                 "共振分數V2": st.column_config.NumberColumn(width="small"),
                 "K線訊號": st.column_config.TextColumn(width="small"),
                 "帶寬擠壓": st.column_config.TextColumn(width="small"),
-                "擠壓突破": st.column_config.TextColumn(width="small"), # <--- 新增 Config
+                "擠壓突破": st.column_config.TextColumn(width="small"),
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
@@ -1675,6 +1679,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else f"{bw_val*100:.1f}%"
             else:
                 bw_squeeze = "—"
+                
             last_buy  = bool(tdf['buy_signal'].iloc[-1])
             last_sell = bool(tdf['sell_signal'].iloc[-1])
             icon = "—"
@@ -1687,10 +1692,17 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 lvl = str(tdf['sell_level'].iloc[-1])
                 icon = f"🔹 {lvl}"
                 
-            # --- 新增：擠壓突破判斷 ---
-            is_mid_or_above = any(k in lvl for k in ["中", "強"])
+            # --- 修正：擠壓突破 / 跌破 判斷 ---
             bw_5d_min = tdf['BandWidth'].tail(5).min() if 'BandWidth' in tdf.columns else 1.0
-            squeeze_breakout = "🚀 突破" if (is_mid_or_above and bw_5d_min < 0.05) else "—"
+            is_strong_signal = any(k in lvl for k in ["中", "強"])
+            has_squeezed_5d = bw_5d_min < 0.12
+
+            squeeze_breakout = "—"
+            if is_strong_signal and has_squeezed_5d:
+                if last_buy:
+                    squeeze_breakout = "🚀 突破"
+                elif last_sell:
+                    squeeze_breakout = "📉 跌破"
 
             summary.append({
                 "代號": t,
@@ -1700,7 +1712,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 "位階狀態": pos,
                 "K線訊號": icon,
                 "帶寬擠壓": bw_squeeze,
-                "擠壓突破": squeeze_breakout  # <--- 新增欄位
+                "擠壓突破": squeeze_breakout
             })
     if summary: st.table(pd.DataFrame(summary))
 
