@@ -1654,13 +1654,14 @@ if st.button("🔄 開始掃描所有標的狀態"):
             elif p > tdf['TL-2SD'].iloc[-1]: pos = "🔵 偏低"
             else: pos = "🟢 特價"
 
-            # --- 新增：帶寬擠壓判斷 ---
-            bw_val = tdf['BandWidth'].iloc[-1] if 'BandWidth' in tdf.columns else 0.0
+            # --- 帶寬擠壓與回測 5 天判斷 ---
+            bw_val = tdf['BandWidth'].iloc[-1] if 'BandWidth' in tdf.columns else "—"
             bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else f"{bw_val*100:.1f}%"
 
             last_buy  = bool(tdf['buy_signal'].iloc[-1])
             last_sell = bool(tdf['sell_signal'].iloc[-1])
             icon = "—"
+            lvl = ""
 
             if last_buy:
                 lvl = str(tdf['buy_level'].iloc[-1])
@@ -1669,6 +1670,11 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 lvl = str(tdf['sell_level'].iloc[-1])
                 icon = f"🔹 {lvl}"
                 
+            # --- 新增：擠壓突破判斷 ---
+            is_mid_or_above = any(k in lvl for k in ["中", "強"])
+            bw_5d_min = tdf['BandWidth'].tail(5).min() if 'BandWidth' in tdf.columns else 1.0
+            squeeze_breakout = "🚀 突破" if (is_mid_or_above and bw_5d_min < 0.06) else "—"
+
             summary.append({
                 "代號": t,
                 "名稱": name,
@@ -1676,7 +1682,8 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 "偏離中心線": f"{((p - t_tl) / t_tl) * 100:+.1f}%",
                 "位階狀態": pos,
                 "K線訊號": icon,
-                "帶寬擠壓": bw_squeeze  # <--- 新增欄位
+                "帶寬擠壓": bw_squeeze,
+                "擠壓突破": squeeze_breakout  # <--- 新增欄位
             })
     if summary: st.table(pd.DataFrame(summary))
 
