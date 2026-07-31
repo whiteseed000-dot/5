@@ -1588,22 +1588,9 @@ if st.button("🏆 Watchlist 共振排行榜"):
         tl_last = tdf['TL'].iloc[-1]
         dist_pct = ((curr_price - tl_last) / tl_last) * 100
 
-        # --- 修正：帶寬擠壓安全讀取邏輯 ---
-        bw_squeeze = "—"
-        if 'BandWidth' in tdf.columns and pd.notna(tdf['BandWidth'].iloc[-1]):
-            bw_raw = float(tdf['BandWidth'].iloc[-1])
-            
-            # 如果數據非 0 才進行判斷
-            if bw_raw > 0:
-                # 自動判斷是小數(0.04)還是百分比(4.0)
-                if bw_raw <= 1.0: # 小數格式 (0.035 代表 3.5%)
-                    is_squeezed = bw_raw < 0.04
-                    display_val = bw_raw * 100
-                else: # 百分比格式 (3.5 代表 3.5%)
-                    is_squeezed = bw_raw < 4.0
-                    display_val = bw_raw
-                
-                bw_squeeze = f"⚡ {display_val:.1f}%" if is_squeezed else f"{display_val:.1f}%"
+        # --- 新增：帶寬擠壓判斷 ---
+        bw_val = tdf['BandWidth'].iloc[-1] if 'BandWidth' in tdf.columns else 0.0
+        bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else f"{bw_val*100:.1f}%"
 
         last_buy  = bool(tdf['buy_signal'].iloc[-1])
         last_sell = bool(tdf['sell_signal'].iloc[-1])
@@ -1622,10 +1609,10 @@ if st.button("🏆 Watchlist 共振排行榜"):
             "共振分數": score,
             "共振分數V2": f"{score_V2:.1f}",
             "K線訊號": icon,
-            "帶寬擠壓": bw_squeeze,
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
+            "帶寬擠壓": bw_squeeze,  # <--- 新增欄位
             "AI 市場型態": stable_pattern,
         })
     
@@ -1643,10 +1630,10 @@ if st.button("🏆 Watchlist 共振排行榜"):
                 "共振分數": st.column_config.NumberColumn(width="small"),
                 "共振分數V2": st.column_config.NumberColumn(width="small"),
                 "K線訊號": st.column_config.TextColumn(width="small"),
-                "帶寬擠壓": st.column_config.TextColumn(width="small"),
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
+                "帶寬擠壓": st.column_config.TextColumn(width="small"), # <--- 新增 Config
                 "AI 市場型態": st.column_config.TextColumn(),
             }
         )
@@ -1667,19 +1654,9 @@ if st.button("🔄 開始掃描所有標的狀態"):
             elif p > tdf['TL-2SD'].iloc[-1]: pos = "🔵 偏低"
             else: pos = "🟢 特價"
 
-            # --- 修正：帶寬擠壓安全讀取邏輯 ---
-            bw_squeeze = "—"
-            if 'BandWidth' in tdf.columns and pd.notna(tdf['BandWidth'].iloc[-1]):
-                bw_raw = float(tdf['BandWidth'].iloc[-1])
-                if bw_raw > 0:
-                    if bw_raw <= 1.0:
-                        is_squeezed = bw_raw < 0.04
-                        display_val = bw_raw * 100
-                    else:
-                        is_squeezed = bw_raw < 4.0
-                        display_val = bw_raw
-                    
-                    bw_squeeze = f"⚡ {display_val:.1f}%" if is_squeezed else f"{display_val:.1f}%"
+            # --- 新增：帶寬擠壓判斷 ---
+            bw_val = tdf['BandWidth'].iloc[-1] if 'BandWidth' in tdf.columns else 0.0
+            bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else f"{bw_val*100:.1f}%"
 
             last_buy  = bool(tdf['buy_signal'].iloc[-1])
             last_sell = bool(tdf['sell_signal'].iloc[-1])
@@ -1698,8 +1675,8 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 "最新價格": f"{p:.1f}",
                 "偏離中心線": f"{((p - t_tl) / t_tl) * 100:+.1f}%",
                 "位階狀態": pos,
-                "K線訊號": icon,
-                "帶寬擠壓": bw_squeeze
+                "帶寬擠壓": bw_squeeze,  # <--- 新增欄位
+                "K線訊號": icon
             })
     if summary: st.table(pd.DataFrame(summary))
 
