@@ -1191,7 +1191,7 @@ if result:
     last_buy  = bool(df['buy_signal'].iloc[-1])
     last_sell = bool(df['sell_signal'].iloc[-1])
     icon = "—"
-
+    lvl = ""
     if last_buy:
         lvl = str(df['buy_level'].iloc[-1])
         icon = f"▲ {lvl}"
