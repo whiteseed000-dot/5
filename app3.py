@@ -1588,13 +1588,18 @@ if st.button("🏆 Watchlist 共振排行榜"):
         tl_last = tdf['TL'].iloc[-1]
         dist_pct = ((curr_price - tl_last) / tl_last) * 100
 
-        # --- 新增：帶寬擠壓判斷 ---
+        # --- 帶寬擠壓與回測 5 天判斷 ---
         bw_val = tdf['BandWidth'].iloc[-1] if 'BandWidth' in tdf.columns else 0.0
-        bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else f"{bw_val*100:.1f}%"
+        
+        if bw_val > 0:
+            bw_squeeze = f"⚡ {bw_val*100:.1f}%" if bw_val < 0.04 else f"{bw_val*100:.1f}%"
+        else:
+            bw_squeeze = "—"
 
         last_buy  = bool(tdf['buy_signal'].iloc[-1])
         last_sell = bool(tdf['sell_signal'].iloc[-1])
         icon = "—"
+        lvl = ""
 
         if last_buy:
             lvl = str(tdf['buy_level'].iloc[-1])
@@ -1602,14 +1607,23 @@ if st.button("🏆 Watchlist 共振排行榜"):
         elif last_sell:
             lvl = str(tdf['sell_level'].iloc[-1])
             icon = f"🔹 {lvl}"
-            
+
+        # --- 新增：擠壓突破判斷 ---
+        # 1. K線訊號為「中」以上
+        is_mid_or_above = any(k in lvl for k in ["中", "強"])
+        # 2. 回測 5 天內任意一天帶寬 < 5% (0.05)
+        bw_5d_min = tdf['BandWidth'].tail(5).min() if 'BandWidth' in tdf.columns else 1.0
+        
+        squeeze_breakout = "🚀 突破" if (is_mid_or_above and bw_5d_min < 0.05) else "—"
+
         resonance_rows.append({
             "代號": ticker,
             "名稱": name,
             "共振分數": score,
             "共振分數V2": f"{score_V2:.1f}",
             "K線訊號": icon,
-            "帶寬擠壓": bw_squeeze,  # <--- 新增欄位
+            "帶寬擠壓": bw_squeeze,
+            "擠壓突破": squeeze_breakout,  # <--- 新增欄位
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
@@ -1630,7 +1644,8 @@ if st.button("🏆 Watchlist 共振排行榜"):
                 "共振分數": st.column_config.NumberColumn(width="small"),
                 "共振分數V2": st.column_config.NumberColumn(width="small"),
                 "K線訊號": st.column_config.TextColumn(width="small"),
-                "帶寬擠壓": st.column_config.TextColumn(width="small"), # <--- 新增 Config
+                "帶寬擠壓": st.column_config.TextColumn(width="small"),
+                "擠壓突破": st.column_config.TextColumn(width="small"), # <--- 新增 Config
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
@@ -1675,7 +1690,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
             # --- 新增：擠壓突破判斷 ---
             is_mid_or_above = any(k in lvl for k in ["中", "強"])
             bw_5d_min = tdf['BandWidth'].tail(5).min() if 'BandWidth' in tdf.columns else 1.0
-            squeeze_breakout = "🚀 突破" if (is_mid_or_above and bw_5d_min < 0.06) else "—"
+            squeeze_breakout = "🚀 突破" if (is_mid_or_above and bw_5d_min < 0.05) else "—"
 
             summary.append({
                 "代號": t,
