@@ -1215,7 +1215,7 @@ if result:
     m2.metric("趨勢中心 (TL)", f"{tl_last:.2f}", f"{dist_pct:+.2f}%", delta_color="inverse")
     m3.metric("目前狀態", status_label)
     m4.metric("K線訊號", icon)
-    m5.metric("帶寬擠壓", squeeze_breakout)
+    m5.metric("擠壓訊號", squeeze_breakout)
     m6.metric("趨勢斜率", f"{slope:.2f}", help="正值代表長期趨勢向上")
     m7.metric("VIX 恐慌指數", f"{vix_val:.2f}", vix_status, delta_color="off", help="超過60代表極度恐慌")
 
@@ -1628,9 +1628,9 @@ if st.button("🏆 Watchlist 共振排行榜"):
         squeeze_breakout = "—"
         if is_strong_signal and has_squeezed_5d:
             if last_buy:
-                squeeze_breakout = "🚀 突破"
+                squeeze_breakout = "🔥 突破"
             elif last_sell:
-                squeeze_breakout = "📉 跌破"
+                squeeze_breakout = "❄️ 跌破"
 
         resonance_rows.append({
             "代號": ticker,
@@ -1639,7 +1639,7 @@ if st.button("🏆 Watchlist 共振排行榜"):
             "共振分數V2": f"{score_V2:.1f}",
             "K線訊號": icon,
             "帶寬擠壓": bw_squeeze,
-            "擠壓突破": squeeze_breakout,  # <--- 顯示 🚀 突破 / 📉 跌破 / —
+            "擠壓突破": squeeze_breakout,  
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
@@ -1712,9 +1712,9 @@ if st.button("🔄 開始掃描所有標的狀態"):
             squeeze_breakout = "—"
             if is_strong_signal and has_squeezed_5d:
                 if last_buy:
-                    squeeze_breakout = "🚀 突破"
+                    squeeze_breakout = "🔥 突破"
                 elif last_sell:
-                    squeeze_breakout = "📉 跌破"
+                    squeeze_breakout = "❄️ 跌破"
 
             summary.append({
                 "代號": t,
