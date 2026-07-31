@@ -1639,7 +1639,7 @@ if st.button("🏆 Watchlist 共振排行榜"):
             "共振分數V2": f"{score_V2:.1f}",
             "K線訊號": icon,
             "帶寬擠壓": bw_squeeze,
-            "擠壓突破": squeeze_breakout,  
+            "擠壓訊號": squeeze_breakout,  
             "狀態": score_label(score),
             "最新價格": f"{curr_price:.1f}",
             "偏離 TL": f"{dist_pct:+.1f}%",
@@ -1661,7 +1661,7 @@ if st.button("🏆 Watchlist 共振排行榜"):
                 "共振分數V2": st.column_config.NumberColumn(width="small"),
                 "K線訊號": st.column_config.TextColumn(width="small"),
                 "帶寬擠壓": st.column_config.TextColumn(width="small"),
-                "擠壓突破": st.column_config.TextColumn(width="small"),
+                "擠壓訊號": st.column_config.TextColumn(width="small"),
                 "狀態": st.column_config.TextColumn(width="small"),
                 "最新價格": st.column_config.TextColumn(width="small"),
                 "偏離 TL": st.column_config.TextColumn(width="small"),
@@ -1724,7 +1724,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
                 "位階狀態": pos,
                 "K線訊號": icon,
                 "帶寬擠壓": bw_squeeze,
-                "擠壓突破": squeeze_breakout
+                "擠壓訊號": squeeze_breakout
             })
     if summary: st.table(pd.DataFrame(summary))
 
