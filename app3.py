@@ -1165,7 +1165,7 @@ if result:
 
     patterns = detect_market_pattern(df, slope)
     if patterns:
-        st.markdown("### 🧠 AI 市場型態判讀")
+        st.markdown("### 🧠 市場型態判讀")
         for p in patterns:
             st.write(p)
     
@@ -1174,7 +1174,7 @@ if result:
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
     elif curr > df['TL-2SD'].iloc[-1]: status_label = "🔵 偏低"
     elif curr < df['TL-2SD'].iloc[-1]: status_label = "🟢 特價"
-    else: status_label = "無資料"
+    else: status_label = "-"
 
     if vix_val >= 30: vix_status = "🔴 恐慌"
     elif vix_val > 15: vix_status = "🟠 警戒"
@@ -1685,7 +1685,7 @@ if st.button("🔄 開始掃描所有標的狀態"):
             elif p > tdf['TL-1SD'].iloc[-1]: pos = "⚪ 合理"
             elif p > tdf['TL-2SD'].iloc[-1]: pos = "🔵 偏低"
             elif p < tdf['TL-2SD'].iloc[-1]: pos = "🔵 偏低"
-            else: pos = "無資料"
+            else: pos = "-"
 
             # --- 帶寬擠壓與回測 5 天判斷 ---
             bw_val = tdf['BandWidth'].iloc[-1] if 'BandWidth' in tdf.columns else 0.0
