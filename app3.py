@@ -1684,7 +1684,8 @@ if st.button("🔄 開始掃描所有標的狀態"):
             elif p > tdf['TL+1SD'].iloc[-1]: pos = "🟠 偏高"
             elif p > tdf['TL-1SD'].iloc[-1]: pos = "⚪ 合理"
             elif p > tdf['TL-2SD'].iloc[-1]: pos = "🔵 偏低"
-            else: pos = "🟢 特價"
+            elif p < tdf['TL-2SD'].iloc[-1]: pos = "🔵 偏低"
+            else: pos = "無資料"
 
             # --- 帶寬擠壓與回測 5 天判斷 ---
             bw_val = tdf['BandWidth'].iloc[-1] if 'BandWidth' in tdf.columns else 0.0
