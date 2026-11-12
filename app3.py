@@ -1173,7 +1173,8 @@ if result:
     elif curr > df['TL+1SD'].iloc[-1]: status_label = "🟠 偏高"
     elif curr > df['TL-1SD'].iloc[-1]: status_label = "⚪ 合理"
     elif curr > df['TL-2SD'].iloc[-1]: status_label = "🔵 偏低"
-    else: status_label = "🟢 特價"
+    elif curr < df['TL-2SD'].iloc[-1]: status_label = "🟢 特價"
+    else: status_label = "無資料"
 
     if vix_val >= 30: vix_status = "🔴 恐慌"
     elif vix_val > 15: vix_status = "🟠 警戒"
